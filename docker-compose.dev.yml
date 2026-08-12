@@ -1,0 +1,15 @@
+services:
+  containarr:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: npm run serve
+    volumes:
+      - ./volumes/containarr:/data
+      - ./www/:/app/www/
+      - ./lib/:/app/lib/
+      - ./services/:/app/services/
+      - ./server.mjs:/app/server.mjs
+      - ./config.mjs:/app/config.mjs
+      - ./package.json:/app/package.json
+      - ./package-lock.json:/app/package-lock.json

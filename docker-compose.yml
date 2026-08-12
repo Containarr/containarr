@@ -1,0 +1,19 @@
+services:
+  containarr:
+    image: containarr
+    container_name: containarr
+    volumes:
+      - ./volumes/containarr:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "80:80/tcp"
+      - "443:443/tcp"
+      # - "81:81/tcp"
+    tty: true
+    networks:
+      - containarr
+
+networks:
+  containarr:
+    name: containarr
+    driver: bridge
