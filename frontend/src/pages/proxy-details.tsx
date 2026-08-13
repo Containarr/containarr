@@ -11,6 +11,7 @@ import {
 import { Link, useNavigate, useParams } from "react-router-dom"
 
 import { ProxyDialog } from "@/components/new-proxy-dialog"
+import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { ErrorState } from "@/components/resource-states"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -25,6 +26,7 @@ export function ProxyDetailsPage() {
   const { proxyId = "" } = useParams()
   const navigate = useNavigate()
   const [editing, setEditing] = useState(false)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const proxy = useApi<ProxyResource>(`/api/v1/proxy/${proxyId}`)
@@ -41,8 +43,6 @@ export function ProxyDetailsPage() {
   const publicUrl = getPublicProxyUrl(resource, domain)
 
   async function deleteProxy() {
-    if (!window.confirm(`Delete the ${resource.subdomain} proxy?`)) return
-
     setDeleting(true)
     setDeleteError(null)
     try {
@@ -100,7 +100,10 @@ export function ProxyDetailsPage() {
               type="button"
               variant="destructive"
               disabled={deleting}
-              onClick={() => void deleteProxy()}
+              onClick={() => {
+                setDeleteError(null)
+                setConfirmingDelete(true)
+              }}
             >
               {deleting ? (
                 <LoaderCircle className="mr-2 size-4 animate-spin" />
@@ -110,7 +113,6 @@ export function ProxyDetailsPage() {
               Delete
             </Button>
           </div>
-          {deleteError && <p className="text-xs text-red-600">{deleteError}</p>}
         </div>
       </div>
 
@@ -139,6 +141,18 @@ export function ProxyDetailsPage() {
           setEditing(false)
           proxy.reload()
         }}
+      />
+      <DeleteConfirmDialog
+        open={confirmingDelete}
+        title={`Delete ${resource.subdomain} proxy?`}
+        description="This removes the reverse proxy rule. This action cannot be undone."
+        deleting={deleting}
+        error={deleteError}
+        onCancel={() => {
+          setConfirmingDelete(false)
+          setDeleteError(null)
+        }}
+        onConfirm={() => void deleteProxy()}
       />
     </section>
   )

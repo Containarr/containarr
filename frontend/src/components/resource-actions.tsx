@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { LoaderCircle, Play, RefreshCw, RotateCcw, Square } from "lucide-react"
+import { LoaderCircle, Play, RefreshCw, Square } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { apiRequest } from "@/lib/api"
@@ -10,13 +10,13 @@ export function ResourceActions({
   id,
   kind,
   onComplete,
-  recreate = false,
+  restartRecreates = false,
   state,
 }: {
   id: string
   kind: "app" | "container"
   onComplete: () => void
-  recreate?: boolean
+  restartRecreates?: boolean
   state: string | null
 }) {
   const [pending, setPending] = useState<Action | null>(null)
@@ -39,6 +39,7 @@ export function ResourceActions({
   }
 
   const primaryAction: Action = running ? "stop" : "start"
+  const restartAction: Action = restartRecreates ? "recreate" : "restart"
 
   return (
     <div>
@@ -67,32 +68,16 @@ export function ResourceActions({
           type="button"
           variant="ghost"
           disabled={pending !== null}
-          onClick={() => void run("restart")}
+          onClick={() => void run(restartAction)}
           className="rounded-none border-l border-border shadow-none focus-visible:z-10 focus-visible:ring-inset"
         >
-          {pending === "restart" ? (
+          {pending === restartAction ? (
             <LoaderCircle className="mr-2 size-4 animate-spin" />
           ) : (
             <RefreshCw className="mr-2 size-3.5" />
           )}
           Restart
         </Button>
-        {recreate && (
-          <Button
-            type="button"
-            variant="ghost"
-            disabled={pending !== null}
-            onClick={() => void run("recreate")}
-            className="rounded-none border-l border-border shadow-none focus-visible:z-10 focus-visible:ring-inset"
-          >
-            {pending === "recreate" ? (
-              <LoaderCircle className="mr-2 size-4 animate-spin" />
-            ) : (
-              <RotateCcw className="mr-2 size-3.5" />
-            )}
-            Recreate
-          </Button>
-        )}
       </div>
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
     </div>

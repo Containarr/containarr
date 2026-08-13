@@ -38,7 +38,7 @@ export function ContainersPage() {
       <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
         <PageHeader
           title="Containers"
-          description="Every Docker container available on this host."
+          description="All containers, running and inactive, on this host."
         />
         <ViewToggle value={view} onChange={setView} />
       </div>
@@ -198,9 +198,9 @@ function ContainersTable({
     if (!sort) return defaultItems
 
     return [...defaultItems].sort((left, right) => {
-      const leftStandalone = getComposeProject(left) ? 1 : 0
-      const rightStandalone = getComposeProject(right) ? 1 : 0
-      if (leftStandalone !== rightStandalone) return leftStandalone - rightStandalone
+      const leftGroupRank = getContainerGroupRank(left)
+      const rightGroupRank = getContainerGroupRank(right)
+      if (leftGroupRank !== rightGroupRank) return leftGroupRank - rightGroupRank
 
       const comparison = getContainerSortValue(left, sort.key, apps).localeCompare(
         getContainerSortValue(right, sort.key, apps),
@@ -264,7 +264,7 @@ function ContainersTable({
                 </div>
               </td>
               <td className="px-4 py-3 font-medium">
-                {getComposeProject(container) || "Standalone"}
+                {getContainerGroupName(container)}
               </td>
               <td className="px-4 py-3">
                 <StatusBadge state={container.state} />
@@ -301,7 +301,7 @@ function getContainerSortValue(
   apps: Record<string, AppResource>
 ) {
   if (key === "container") return container.name || ""
-  if (key === "group") return getComposeProject(container) || "Standalone"
+  if (key === "group") return getContainerGroupName(container)
   if (key === "status") return container.state
   if (key === "image") return container.image
 
@@ -324,11 +324,16 @@ function groupContainers(items: ContainerResource[]) {
   const groups = new Map<string, { key: string; name: string; items: ContainerResource[] }>()
 
   for (const container of items) {
+    const appId = getContainerAppId(container)
     const project = getComposeProject(container)
-    const key = project ? `compose:${project}` : "standalone"
+    const key = appId
+      ? "managed-by-apps"
+      : project
+        ? `compose:${project}`
+        : "standalone"
     const group = groups.get(key) || {
       key,
-      name: project || "Standalone",
+      name: appId ? "Managed by Apps" : project || "Standalone",
       items: [],
     }
     group.items.push(container)
@@ -336,8 +341,21 @@ function groupContainers(items: ContainerResource[]) {
   }
 
   return [...groups.values()].sort((left, right) => {
+    if (left.key === "managed-by-apps") return -1
+    if (right.key === "managed-by-apps") return 1
     if (left.key === "standalone") return -1
     if (right.key === "standalone") return 1
     return left.name.localeCompare(right.name)
   })
+}
+
+function getContainerGroupName(container: ContainerResource) {
+  if (getContainerAppId(container)) return "Managed by Apps"
+  return getComposeProject(container) || "Standalone"
+}
+
+function getContainerGroupRank(container: ContainerResource) {
+  if (getContainerAppId(container)) return 0
+  if (!getComposeProject(container)) return 1
+  return 2
 }

@@ -18,6 +18,7 @@ import { Link, useNavigate, useParams } from "react-router-dom"
 
 import { AppLogo } from "@/components/app-logo"
 import { ContainerAvatar } from "@/components/container-avatar"
+import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { MetricChart, type MetricPoint } from "@/components/metric-chart"
 import { ErrorState } from "@/components/resource-states"
 import { ResourceActions } from "@/components/resource-actions"
@@ -37,6 +38,7 @@ import type { AppResource, ContainerDetails, ContainerStats } from "@/lib/types"
 export function ContainerDetailsPage() {
   const { containerId = "" } = useParams()
   const navigate = useNavigate()
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [metricHistory, setMetricHistory] = useState<MetricPoint[]>([])
@@ -151,14 +153,6 @@ export function ContainerDetailsPage() {
   ]
 
   async function deleteContainer() {
-    if (
-      !window.confirm(
-        `Delete ${resource.name || "this container"}? This cannot be undone.`
-      )
-    ) {
-      return
-    }
-
     setDeleting(true)
     setDeleteError(null)
     try {
@@ -211,7 +205,10 @@ export function ContainerDetailsPage() {
               type="button"
               variant="destructive"
               disabled={deleting}
-              onClick={() => void deleteContainer()}
+              onClick={() => {
+                setDeleteError(null)
+                setConfirmingDelete(true)
+              }}
             >
               {deleting ? (
                 <LoaderCircle className="mr-2 size-4 animate-spin" />
@@ -221,7 +218,6 @@ export function ContainerDetailsPage() {
               Delete
             </Button>
           </div>
-          {deleteError && <p className="text-xs text-red-600">{deleteError}</p>}
         </div>
       </div>
 
@@ -315,6 +311,18 @@ export function ContainerDetailsPage() {
       </div>
 
       <ContainerLogs request={logs} />
+      <DeleteConfirmDialog
+        open={confirmingDelete}
+        title={`Delete ${resource.name || "container"}?`}
+        description="This permanently deletes the container. This action cannot be undone."
+        deleting={deleting}
+        error={deleteError}
+        onCancel={() => {
+          setConfirmingDelete(false)
+          setDeleteError(null)
+        }}
+        onConfirm={() => void deleteContainer()}
+      />
     </section>
   )
 }

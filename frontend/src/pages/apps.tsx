@@ -40,7 +40,7 @@ export function AppsPage() {
       <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
         <PageHeader
           title="Apps"
-          description="Services managed by Containarr and their current state."
+          description="Apps are containers managed by Containarr, and are reachable on their own subdomains."
         />
         <div className="flex items-center gap-2">
           <ViewToggle value={view} onChange={setView} />

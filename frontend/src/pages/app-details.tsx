@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react"
 import {
-  Activity,
   ArrowLeft,
   ArrowUpRight,
   Box,
+  Container,
   LoaderCircle,
   Network,
   Pencil,
@@ -15,6 +15,7 @@ import {
 import { Link, useNavigate, useParams } from "react-router-dom"
 
 import { AppLogo } from "@/components/app-logo"
+import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { EditAppDialog } from "@/components/install-app-dialog"
 import { ErrorState } from "@/components/resource-states"
 import { ResourceActions } from "@/components/resource-actions"
@@ -33,6 +34,7 @@ export function AppDetailsPage() {
   const navigate = useNavigate()
   const [editing, setEditing] = useState(false)
   const [recreatePrompt, setRecreatePrompt] = useState<AppResource | null>(null)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const app = useApi<AppResource>(`/api/v1/app/${appId}`, {
@@ -52,8 +54,6 @@ export function AppDetailsPage() {
   const state = resource.containerState || resource.state
 
   async function deleteApp() {
-    if (!window.confirm(`Delete ${resource.name || "this app"}? This also removes its container.`)) return
-
     setDeleting(true)
     setDeleteError(null)
     try {
@@ -108,7 +108,7 @@ export function AppDetailsPage() {
               id={resource.id}
               kind="app"
               state={state}
-              recreate
+              restartRecreates
               onComplete={app.reload}
             />
             <Button
@@ -123,7 +123,10 @@ export function AppDetailsPage() {
               type="button"
               variant="destructive"
               disabled={deleting}
-              onClick={() => void deleteApp()}
+              onClick={() => {
+                setDeleteError(null)
+                setConfirmingDelete(true)
+              }}
             >
               {deleting ? (
                 <LoaderCircle className="mr-2 size-4 animate-spin" />
@@ -133,7 +136,6 @@ export function AppDetailsPage() {
               Delete
             </Button>
           </div>
-          {deleteError && <p className="text-xs text-red-600">{deleteError}</p>}
         </div>
       </div>
 
@@ -157,8 +159,8 @@ export function AppDetailsPage() {
         <Card className="shadow-none">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Activity className="size-4 text-muted-foreground" />
-              Runtime
+              <Container className="size-4 text-muted-foreground" />
+              Container
             </CardTitle>
           </CardHeader>
           <CardContent className="mt-5 space-y-5">
@@ -217,6 +219,18 @@ export function AppDetailsPage() {
           }}
         />
       )}
+      <DeleteConfirmDialog
+        open={confirmingDelete}
+        title={`Delete ${resource.name || "app"}?`}
+        description="This also removes its container. This action cannot be undone."
+        deleting={deleting}
+        error={deleteError}
+        onCancel={() => {
+          setConfirmingDelete(false)
+          setDeleteError(null)
+        }}
+        onConfirm={() => void deleteApp()}
+      />
     </section>
   )
 }
@@ -275,14 +289,15 @@ function RecreateAppDialog({
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 id="recreate-app-title" className="text-lg font-semibold">
-              Recreate {app.name || "app"}?
+              Restart {app.name || "app"}?
             </h2>
             <p
               id="recreate-app-description"
               className="mt-2 text-sm leading-relaxed text-muted-foreground"
             >
-              The Docker settings were saved. Recreate the running container now
-              to apply them? The app will restart briefly.
+              The Docker settings were saved. Restart the app now to apply them?
+              The container will be recreated and the app will be unavailable
+              briefly.
             </p>
           </div>
           <button
@@ -317,7 +332,7 @@ function RecreateAppDialog({
             ) : (
               <RotateCcw className="mr-2 size-4" />
             )}
-            Recreate
+            Restart
           </Button>
         </div>
       </div>

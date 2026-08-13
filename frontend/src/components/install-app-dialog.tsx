@@ -556,7 +556,7 @@ function CustomAppForm({
       <div className="flex shrink-0 justify-end border-t bg-background px-5 py-4 sm:px-6">
         {editing && (
           <p className="mr-auto self-center text-xs text-muted-foreground">
-            Container changes require Recreate.
+            Container changes require a restart.
           </p>
         )}
         <Button type="submit" disabled={submitting}>
