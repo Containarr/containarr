@@ -42,12 +42,17 @@ export function ResourceActions({
 
   return (
     <div>
-      <div className="flex flex-wrap gap-2">
+      <div
+        role="group"
+        aria-label={`${kind === "app" ? "App" : "Container"} lifecycle actions`}
+        className="inline-flex overflow-hidden rounded-lg border bg-background shadow-xs"
+      >
         <Button
           type="button"
-          variant={running ? "outline" : "default"}
+          variant={running ? "ghost" : "default"}
           disabled={pending !== null}
           onClick={() => void run(primaryAction)}
+          className="rounded-none border-0 shadow-none focus-visible:z-10 focus-visible:ring-inset"
         >
           {pending === primaryAction ? (
             <LoaderCircle className="mr-2 size-4 animate-spin" />
@@ -60,9 +65,10 @@ export function ResourceActions({
         </Button>
         <Button
           type="button"
-          variant="outline"
+          variant="ghost"
           disabled={pending !== null}
           onClick={() => void run("restart")}
+          className="rounded-none border-l border-border shadow-none focus-visible:z-10 focus-visible:ring-inset"
         >
           {pending === "restart" ? (
             <LoaderCircle className="mr-2 size-4 animate-spin" />
@@ -74,9 +80,10 @@ export function ResourceActions({
         {recreate && (
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             disabled={pending !== null}
             onClick={() => void run("recreate")}
+            className="rounded-none border-l border-border shadow-none focus-visible:z-10 focus-visible:ring-inset"
           >
             {pending === "recreate" ? (
               <LoaderCircle className="mr-2 size-4 animate-spin" />

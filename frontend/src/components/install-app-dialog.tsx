@@ -7,6 +7,7 @@ import {
   LoaderCircle,
   Minus,
   Plus,
+  Save,
   X,
 } from "lucide-react"
 
@@ -85,6 +86,85 @@ const LINUX_CAPABILITIES = [
 export function InstallAppDialog(props: DialogProps) {
   if (!props.open) return null
   return <InstallAppDialogContent {...props} />
+}
+
+export function EditAppDialog({
+  app,
+  onClose,
+  onSaved,
+  open,
+}: {
+  app: AppResource
+  onClose: () => void
+  onSaved: (app: AppResource, dockerPropertiesChanged: boolean) => void
+  open: boolean
+}) {
+  if (!open) return null
+  return (
+    <EditAppDialogContent app={app} onClose={onClose} onSaved={onSaved} />
+  )
+}
+
+function EditAppDialogContent({
+  app,
+  onClose,
+  onSaved,
+}: {
+  app: AppResource
+  onClose: () => void
+  onSaved: (app: AppResource, dockerPropertiesChanged: boolean) => void
+}) {
+  const domainRequest = useApi<{ domain: string }>("/api/v1/ddns/domain")
+  const domain =
+    domainRequest.status === "success" ? domainRequest.data.domain : "…"
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose()
+    }
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [onClose])
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 p-0 sm:items-center sm:p-5"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose()
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="edit-app-title"
+        className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl border bg-background shadow-2xl sm:rounded-2xl"
+      >
+        <div className="flex items-center justify-between border-b px-5 py-4 sm:px-6">
+          <div>
+            <h2 id="edit-app-title" className="font-semibold">
+              Edit {app.name || "App"}
+            </h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Update routing and container configuration.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+            onClick={onClose}
+            aria-label="Close dialog"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+        <CustomAppForm
+          app={app}
+          domain={domain}
+          onSaved={onSaved}
+        />
+      </div>
+    </div>
+  )
 }
 
 function InstallAppDialogContent({ onClose, onCreated }: DialogProps) {
@@ -181,7 +261,7 @@ function InstallAppDialogContent({ onClose, onCreated }: DialogProps) {
             onCreated={onCreated}
           />
         ) : mode === "custom" ? (
-          <CustomAppForm domain={domain} onCreated={onCreated} />
+          <CustomAppForm domain={domain} onSaved={onCreated} />
         ) : (
           <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-6">
             {registry.status === "loading" ? (
@@ -298,19 +378,21 @@ function RegistryInstallForm({
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <SubdomainField
-              domain={domain}
-              tls={tls}
-              value={subdomain}
-              onChange={setSubdomain}
-              onTlsChange={setTls}
-            />
-            <NetworkModeField value={networkMode} onChange={setNetworkMode} />
-          </div>
+          <SubdomainField
+            domain={domain}
+            tls={tls}
+            value={subdomain}
+            onChange={setSubdomain}
+            onTlsChange={setTls}
+          />
+          <NetworkEditor
+            mode={networkMode}
+            onModeChange={setNetworkMode}
+            ports={ports}
+            onPortsChange={setPorts}
+          />
           <EnvironmentEditor value={environment} onChange={setEnvironment} />
           <VolumeEditor value={volumes} onChange={setVolumes} />
-          <PortEditor value={ports} onChange={setPorts} />
           <CapabilityEditor value={capabilities} onChange={setCapabilities} />
           {error && <p className="text-sm text-red-600">{error}</p>}
         </div>
@@ -330,26 +412,36 @@ function RegistryInstallForm({
 }
 
 function CustomAppForm({
+  app = null,
   domain,
-  onCreated,
+  onSaved,
 }: {
+  app?: AppResource | null
   domain: string
-  onCreated: (app: AppResource) => void
+  onSaved: (app: AppResource, dockerPropertiesChanged: boolean) => void
 }) {
-  const [name, setName] = useState("")
-  const [subdomain, setSubdomain] = useState("")
-  const [port, setPort] = useState("")
-  const [url, setUrl] = useState("")
-  const [tls, setTls] = useState("only_https")
-  const [dockerImage, setDockerImage] = useState("")
+  const editing = app !== null
+  const [name, setName] = useState(app?.name ?? "")
+  const [subdomain, setSubdomain] = useState(app?.subdomain ?? "")
+  const [port, setPort] = useState(app?.port ? String(app.port) : "")
+  const [tls, setTls] = useState(app?.tls ?? "only_https")
+  const [dockerImage, setDockerImage] = useState(app?.dockerImage ?? "")
   const [networkMode, setNetworkMode] = useState<AppResource["dockerNetworkMode"]>(
-    "bridge"
+    app?.dockerNetworkMode ?? "bridge"
   )
-  const [environment, setEnvironment] = useState<EnvironmentRow[]>([])
-  const [volumes, setVolumes] = useState<VolumeRow[]>([])
-  const [ports, setPorts] = useState<PortRow[]>([])
-  const [capabilities, setCapabilities] = useState<CapabilityRow[]>([])
-  const [privileged, setPrivileged] = useState(false)
+  const [environment, setEnvironment] = useState<EnvironmentRow[]>(() =>
+    environmentFromRecord(app?.dockerEnvironment ?? {})
+  )
+  const [volumes, setVolumes] = useState<VolumeRow[]>(() =>
+    volumesFromRegistry(app?.dockerVolumes ?? [])
+  )
+  const [ports, setPorts] = useState<PortRow[]>(() =>
+    portsFromDocker(app?.dockerPorts ?? [])
+  )
+  const [capabilities, setCapabilities] = useState<CapabilityRow[]>(() =>
+    capabilitiesFromValues(app?.dockerCapabilities ?? [])
+  )
+  const [privileged, setPrivileged] = useState(app?.dockerPrivileged ?? false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -358,13 +450,14 @@ function CustomAppForm({
     setSubmitting(true)
     setError(null)
     try {
-      const created = await apiRequest<AppResource>("/api/v1/app", {
-        method: "POST",
-        body: JSON.stringify({
+      const saved = await apiRequest<AppResource>(
+        editing ? `/api/v1/app/${app.id}` : "/api/v1/app",
+        {
+          method: editing ? "PUT" : "POST",
+          body: JSON.stringify({
           name,
           subdomain,
           port: port ? Number(port) : null,
-          url: url || null,
           tls,
           dockerImage,
           dockerNetworkMode: networkMode,
@@ -373,12 +466,15 @@ function CustomAppForm({
           dockerEnvironment: environmentToRecord(environment),
           dockerPrivileged: privileged,
           dockerCapabilities: capabilitiesToValues(capabilities),
-        }),
-      })
-      onCreated(created)
+          }),
+        }
+      )
+      onSaved(saved, editing && haveDockerPropertiesChanged(app, saved))
     } catch (requestError) {
       setError(
-        requestError instanceof Error ? requestError.message : "Creation failed."
+        requestError instanceof Error
+          ? requestError.message
+          : `App ${editing ? "update" : "creation"} failed.`
       )
     } finally {
       setSubmitting(false)
@@ -436,22 +532,14 @@ function CustomAppForm({
           className="font-mono text-xs"
         />
           </FormField>
-          <NetworkModeField value={networkMode} onChange={setNetworkMode} />
-          <FormField
-        label="Upstream URL"
-        hint="Optional. Overrides the container IP and port destination."
-      >
-        <Input
-          type="url"
-          value={url}
-          onChange={(event) => setUrl(event.target.value)}
-          placeholder={`http://192.168.1.10:${port || "8080"}`}
-          className="font-mono text-xs"
-        />
-          </FormField>
+          <NetworkEditor
+            mode={networkMode}
+            onModeChange={setNetworkMode}
+            ports={ports}
+            onPortsChange={setPorts}
+          />
           <EnvironmentEditor value={environment} onChange={setEnvironment} />
           <VolumeEditor value={volumes} onChange={setVolumes} />
-          <PortEditor value={ports} onChange={setPorts} />
           <CapabilityEditor value={capabilities} onChange={setCapabilities} />
           <label className="flex items-center gap-2 text-sm font-medium">
         <input
@@ -466,45 +554,154 @@ function CustomAppForm({
         </div>
       </div>
       <div className="flex shrink-0 justify-end border-t bg-background px-5 py-4 sm:px-6">
+        {editing && (
+          <p className="mr-auto self-center text-xs text-muted-foreground">
+            Container changes require Recreate.
+          </p>
+        )}
         <Button type="submit" disabled={submitting}>
           {submitting ? (
             <LoaderCircle className="mr-2 size-4 animate-spin" />
+          ) : editing ? (
+            <Save className="mr-2 size-4" />
           ) : (
             <Box className="mr-2 size-4" />
           )}
-          Create
+          {editing ? "Save" : "Create"}
         </Button>
       </div>
     </form>
   )
 }
 
-function NetworkModeField({
-  onChange,
-  value,
+function NetworkEditor({
+  mode,
+  onModeChange,
+  onPortsChange,
+  ports,
 }: {
-  onChange: (value: AppResource["dockerNetworkMode"]) => void
-  value: AppResource["dockerNetworkMode"]
+  mode: AppResource["dockerNetworkMode"]
+  onModeChange: (value: AppResource["dockerNetworkMode"]) => void
+  onPortsChange: (value: PortRow[]) => void
+  ports: PortRow[]
 }) {
   return (
-    <FormField
-      label="Network mode"
-      hint={
-        value === "host"
-          ? "Uses the host network directly. Published port mappings are ignored."
-          : "Connects the container to Containarr's private network."
-      }
-    >
-      <Select
-        value={value}
-        onChange={(event) =>
-          onChange(event.target.value as AppResource["dockerNetworkMode"])
-        }
-      >
-        <option value="bridge">Bridge</option>
-        <option value="host">Host</option>
-      </Select>
-    </FormField>
+    <section aria-label="Network" className="rounded-xl border p-4">
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-sm font-medium">Network</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {mode === "host"
+              ? "Uses the host network directly."
+              : "Connects the container to Containarr's private network."}
+          </p>
+        </div>
+        <div className="relative w-36 shrink-0">
+          <Select
+            aria-label="Network mode"
+            value={mode}
+            onChange={(event) =>
+              onModeChange(
+                event.target.value as AppResource["dockerNetworkMode"]
+              )
+            }
+            className="appearance-none pr-10"
+          >
+            <option value="bridge">Bridge</option>
+            <option value="host">Host</option>
+          </Select>
+          <ChevronDown
+            className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden="true"
+          />
+        </div>
+      </div>
+
+      {mode !== "host" && (
+        <div className="mt-4 border-t pt-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium">Ports</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Publish a container TCP or UDP port on the host.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() =>
+                onPortsChange([
+                  ...ports,
+                  {
+                    id: createRowId(),
+                    host: "",
+                    container: "",
+                    protocol: "tcp",
+                  },
+                ])
+              }
+              className="h-8"
+            >
+              <Plus className="mr-1.5 size-3.5" />
+              Add
+            </Button>
+          </div>
+          <div className="mt-3 space-y-2">
+            {ports.map((row) => (
+              <EditorRow
+                key={row.id}
+                onRemove={() =>
+                  onPortsChange(removeById(ports, row.id))
+                }
+                columns="grid-cols-[1fr_1fr_6rem_auto]"
+              >
+                <Input
+                  type="number"
+                  min="1"
+                  max="65535"
+                  value={row.host}
+                  onChange={(event) =>
+                    onPortsChange(
+                      updateById(ports, row.id, { host: event.target.value })
+                    )
+                  }
+                  placeholder="Host"
+                  className="appearance-none font-mono text-xs [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                />
+                <Input
+                  type="number"
+                  min="1"
+                  max="65535"
+                  value={row.container}
+                  onChange={(event) =>
+                    onPortsChange(
+                      updateById(ports, row.id, {
+                        container: event.target.value,
+                      })
+                    )
+                  }
+                  placeholder="Container"
+                  className="appearance-none font-mono text-xs [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                />
+                <Select
+                  value={row.protocol}
+                  onChange={(event) =>
+                    onPortsChange(
+                      updateById(ports, row.id, {
+                        protocol: event.target.value as "tcp" | "udp",
+                      })
+                    )
+                  }
+                >
+                  <option value="tcp">TCP</option>
+                  <option value="udp">UDP</option>
+                </Select>
+              </EditorRow>
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
   )
 }
 
@@ -646,73 +843,6 @@ function VolumeEditor({
             placeholder="/container/path"
             className="font-mono text-xs"
           />
-        </EditorRow>
-      ))}
-    </ListEditor>
-  )
-}
-
-function PortEditor({
-  onChange,
-  value,
-}: {
-  onChange: (value: PortRow[]) => void
-  value: PortRow[]
-}) {
-  return (
-    <ListEditor
-      title="Ports"
-      hint="Publish a container TCP or UDP port on the host."
-      onAdd={() =>
-        onChange([
-          ...value,
-          { id: createRowId(), host: "", container: "", protocol: "tcp" },
-        ])
-      }
-    >
-      {value.map((row) => (
-        <EditorRow
-          key={row.id}
-          onRemove={() => onChange(removeById(value, row.id))}
-          columns="grid-cols-[1fr_1fr_6rem_auto]"
-        >
-          <Input
-            type="number"
-            min="1"
-            max="65535"
-            value={row.host}
-            onChange={(event) =>
-              onChange(updateById(value, row.id, { host: event.target.value }))
-            }
-            placeholder="Host"
-            className="appearance-none font-mono text-xs [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-          />
-          <Input
-            type="number"
-            min="1"
-            max="65535"
-            value={row.container}
-            onChange={(event) =>
-              onChange(
-                updateById(value, row.id, { container: event.target.value })
-              )
-            }
-            placeholder="Container"
-            className="appearance-none font-mono text-xs [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-          />
-          <Select
-            value={row.protocol}
-            onChange={(event) =>
-              onChange(
-                updateById(value, row.id, {
-                  protocol: event.target.value as "tcp" | "udp",
-                })
-              )
-            }
-          >
-            <option value="tcp">TCP</option>
-            <option value="udp">UDP</option>
-          </Select>
         </EditorRow>
       ))}
     </ListEditor>
@@ -944,6 +1074,31 @@ function capabilitiesFromValues(value: string[]): CapabilityRow[] {
 
 function capabilitiesToValues(value: CapabilityRow[]) {
   return value.map((row) => row.value).filter(Boolean)
+}
+
+function haveDockerPropertiesChanged(
+  before: AppResource,
+  after: AppResource
+) {
+  return (
+    before.dockerImage !== after.dockerImage ||
+    before.dockerNetworkMode !== after.dockerNetworkMode ||
+    before.dockerPrivileged !== after.dockerPrivileged ||
+    JSON.stringify(before.dockerVolumes) !== JSON.stringify(after.dockerVolumes) ||
+    JSON.stringify(before.dockerPorts) !== JSON.stringify(after.dockerPorts) ||
+    JSON.stringify(before.dockerCapabilities) !==
+      JSON.stringify(after.dockerCapabilities) ||
+    JSON.stringify(
+      Object.entries(before.dockerEnvironment).sort(([left], [right]) =>
+        left.localeCompare(right)
+      )
+    ) !==
+      JSON.stringify(
+        Object.entries(after.dockerEnvironment).sort(([left], [right]) =>
+          left.localeCompare(right)
+        )
+      )
+  )
 }
 
 function removeById<T extends { id: string }>(value: T[], id: string) {

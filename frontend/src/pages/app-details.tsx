@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   Activity,
   ArrowLeft,
@@ -6,12 +6,16 @@ import {
   Box,
   LoaderCircle,
   Network,
+  Pencil,
+  RotateCcw,
   Settings2,
   Trash2,
+  X,
 } from "lucide-react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 
 import { AppLogo } from "@/components/app-logo"
+import { EditAppDialog } from "@/components/install-app-dialog"
 import { ErrorState } from "@/components/resource-states"
 import { ResourceActions } from "@/components/resource-actions"
 import { StatusBadge } from "@/components/status-badge"
@@ -27,6 +31,8 @@ import type { AppResource } from "@/lib/types"
 export function AppDetailsPage() {
   const { appId = "" } = useParams()
   const navigate = useNavigate()
+  const [editing, setEditing] = useState(false)
+  const [recreatePrompt, setRecreatePrompt] = useState<AppResource | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const app = useApi<AppResource>(`/api/v1/app/${appId}`, {
@@ -107,6 +113,14 @@ export function AppDetailsPage() {
             />
             <Button
               type="button"
+              variant="outline"
+              onClick={() => setEditing(true)}
+            >
+              <Pencil className="mr-2 size-4" />
+              Edit
+            </Button>
+            <Button
+              type="button"
               variant="destructive"
               disabled={deleting}
               onClick={() => void deleteApp()}
@@ -177,7 +191,137 @@ export function AppDetailsPage() {
           empty="No volumes configured."
         />
       </div>
+
+      <EditAppDialog
+        open={editing}
+        app={resource}
+        onClose={() => setEditing(false)}
+        onSaved={(saved, dockerPropertiesChanged) => {
+          setEditing(false)
+          app.reload()
+          if (
+            dockerPropertiesChanged &&
+            (saved.containerState || saved.state).toLowerCase() === "running"
+          ) {
+            setRecreatePrompt(saved)
+          }
+        }}
+      />
+      {recreatePrompt && (
+        <RecreateAppDialog
+          app={recreatePrompt}
+          onClose={() => setRecreatePrompt(null)}
+          onComplete={() => {
+            setRecreatePrompt(null)
+            app.reload()
+          }}
+        />
+      )}
     </section>
+  )
+}
+
+function RecreateAppDialog({
+  app,
+  onClose,
+  onComplete,
+}: {
+  app: AppResource
+  onClose: () => void
+  onComplete: () => void
+}) {
+  const [recreating, setRecreating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape" && !recreating) onClose()
+    }
+
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [onClose, recreating])
+
+  async function recreate() {
+    setRecreating(true)
+    setError(null)
+    try {
+      await apiRequest(`/api/v1/app/${app.id}/recreate`, { method: "POST" })
+      onComplete()
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "The app could not be recreated."
+      )
+      setRecreating(false)
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-5"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget && !recreating) onClose()
+      }}
+    >
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="recreate-app-title"
+        aria-describedby="recreate-app-description"
+        className="w-full max-w-md rounded-2xl border bg-background p-6 shadow-2xl"
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 id="recreate-app-title" className="text-lg font-semibold">
+              Recreate {app.name || "app"}?
+            </h2>
+            <p
+              id="recreate-app-description"
+              className="mt-2 text-sm leading-relaxed text-muted-foreground"
+            >
+              The Docker settings were saved. Recreate the running container now
+              to apply them? The app will restart briefly.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+            onClick={onClose}
+            disabled={recreating}
+            aria-label="Close dialog"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+
+        <div className="mt-6 flex justify-end gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClose}
+            disabled={recreating}
+          >
+            Not now
+          </Button>
+          <Button
+            type="button"
+            onClick={() => void recreate()}
+            disabled={recreating}
+          >
+            {recreating ? (
+              <LoaderCircle className="mr-2 size-4 animate-spin" />
+            ) : (
+              <RotateCcw className="mr-2 size-4" />
+            )}
+            Recreate
+          </Button>
+        </div>
+      </div>
+    </div>
   )
 }
 
