@@ -26,6 +26,12 @@
   --sidebar-accent-foreground: #171717;
   --sidebar-border: #e5e5e5;
   --sidebar-ring: #a3a3a3;
+  --chart-1: #0ea5e9;
+  --chart-2: #8b5cf6;
+  --chart-3: #f59e0b;
+  --chart-4: #f97316;
+  --chart-5: #10b981;
+  --chart-6: #14b8a6;
   --radius: 0.75rem;
 }
 
@@ -51,6 +57,12 @@
   --sidebar-accent-foreground: #f5f5f5;
   --sidebar-border: #303030;
   --sidebar-ring: #737373;
+  --chart-1: #38bdf8;
+  --chart-2: #a78bfa;
+  --chart-3: #fbbf24;
+  --chart-4: #fb923c;
+  --chart-5: #34d399;
+  --chart-6: #2dd4bf;
 }
 
 @theme inline {

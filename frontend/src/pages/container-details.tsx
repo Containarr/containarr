@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react"
+import Ansi from "ansi-to-react"
 import {
   ArrowLeft,
   Box,
@@ -17,7 +18,7 @@ import { Link, useNavigate, useParams } from "react-router-dom"
 
 import { AppLogo } from "@/components/app-logo"
 import { ContainerAvatar } from "@/components/container-avatar"
-import { MetricChart } from "@/components/metric-chart"
+import { MetricChart, type MetricPoint } from "@/components/metric-chart"
 import { ErrorState } from "@/components/resource-states"
 import { ResourceActions } from "@/components/resource-actions"
 import {
@@ -31,44 +32,15 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useApi } from "@/hooks/use-api"
 import { apiRequest } from "@/lib/api"
 import { getContainerAppId } from "@/lib/container-labels"
-import type { AppResource, ContainerDetails } from "@/lib/types"
-
-const metrics = [
-  {
-    title: "CPU",
-    value: "18.4%",
-    icon: Cpu,
-    color: "bg-sky-500",
-    data: [18, 24, 35, 28, 52, 46, 38, 65, 54, 42, 48, 36],
-  },
-  {
-    title: "Memory",
-    value: "824 MB",
-    icon: Database,
-    color: "bg-violet-500",
-    data: [42, 45, 44, 48, 52, 56, 54, 61, 64, 62, 68, 66],
-  },
-  {
-    title: "Disk",
-    value: "12.8 GB",
-    icon: HardDrive,
-    color: "bg-amber-500",
-    data: [26, 27, 28, 32, 34, 35, 38, 39, 42, 43, 45, 47],
-  },
-  {
-    title: "Network",
-    value: "4.2 MB/s",
-    icon: Network,
-    color: "bg-emerald-500",
-    data: [12, 38, 22, 64, 48, 72, 35, 58, 82, 46, 68, 54],
-  },
-]
+import type { AppResource, ContainerDetails, ContainerStats } from "@/lib/types"
 
 export function ContainerDetailsPage() {
   const { containerId = "" } = useParams()
   const navigate = useNavigate()
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [metricHistory, setMetricHistory] = useState<MetricPoint[]>([])
+  const previousStatsRef = useRef<ContainerStats | null>(null)
   const container = useApi<ContainerDetails>(`/api/v1/container/${containerId}`, {
     pollInterval: 1000,
   })
@@ -79,6 +51,44 @@ export function ContainerDetailsPage() {
     `/api/v1/container/${containerId}/logs?tail=200`,
     { pollInterval: 2000 }
   )
+  const stats = useApi<ContainerStats>(
+    `/api/v1/container/${containerId}/stats`,
+    { pollInterval: 1000 }
+  )
+
+  useEffect(() => {
+    if (stats.status !== "success") return
+
+    const sample = stats.data
+    const previous = previousStatsRef.current
+    const timestamp = parseDockerTimestamp(sample.read)
+    const sameContainer = previous?.id === sample.id
+    const elapsedSeconds = sameContainer
+      ? Math.max((timestamp - parseDockerTimestamp(previous.read)) / 1000, 0.001)
+      : 1
+    const point: MetricPoint = {
+      timestamp,
+      cpu: sample.cpuPercent,
+      memory: sample.memoryUsage,
+      diskRead: sameContainer
+        ? bytesPerSecond(sample.blockReadBytes, previous.blockReadBytes, elapsedSeconds)
+        : 0,
+      diskWrite: sameContainer
+        ? bytesPerSecond(sample.blockWriteBytes, previous.blockWriteBytes, elapsedSeconds)
+        : 0,
+      networkReceive: sameContainer
+        ? bytesPerSecond(sample.networkRxBytes, previous.networkRxBytes, elapsedSeconds)
+        : 0,
+      networkTransmit: sameContainer
+        ? bytesPerSecond(sample.networkTxBytes, previous.networkTxBytes, elapsedSeconds)
+        : 0,
+    }
+
+    setMetricHistory((current) =>
+      sameContainer ? [...current, point].slice(-60) : [point]
+    )
+    previousStatsRef.current = sample
+  }, [stats.status, stats.data])
 
   if (container.status === "loading") return <DetailsSkeleton />
   if (container.status === "error") {
@@ -89,6 +99,56 @@ export function ContainerDetailsPage() {
   const appId = getContainerAppId(resource)
   const linkedApp =
     appId && apps.status === "success" ? apps.data[appId] : null
+  const latestMetrics = metricHistory.at(-1)
+  const latestStats = stats.status === "success" ? stats.data : null
+  const metrics = [
+    {
+      title: "CPU",
+      value: latestMetrics ? formatPercent(latestMetrics.cpu) : "—",
+      icon: Cpu,
+      data: metricHistory,
+      domain: [0, 100] as [number, number],
+      formatValue: formatPercent,
+      series: [{ key: "cpu", label: "CPU", color: "var(--chart-1)" }],
+    },
+    {
+      title: "Memory",
+      value: latestStats
+        ? `${formatBytes(latestStats.memoryUsage)} / ${formatBytes(latestStats.memoryLimit)}`
+        : "—",
+      icon: Database,
+      data: metricHistory,
+      domain: [0, Math.max(latestStats?.memoryLimit ?? 0, 1)] as [number, number],
+      formatValue: formatBytes,
+      series: [{ key: "memory", label: "Used", color: "var(--chart-2)" }],
+    },
+    {
+      title: "Disk",
+      value: latestMetrics
+        ? formatRate(latestMetrics.diskRead + latestMetrics.diskWrite)
+        : "—",
+      icon: HardDrive,
+      data: metricHistory,
+      formatValue: formatRate,
+      series: [
+        { key: "diskRead", label: "Read", color: "var(--chart-3)" },
+        { key: "diskWrite", label: "Write", color: "var(--chart-4)" },
+      ],
+    },
+    {
+      title: "Network",
+      value: latestMetrics
+        ? formatRate(latestMetrics.networkReceive + latestMetrics.networkTransmit)
+        : "—",
+      icon: Network,
+      data: metricHistory,
+      formatValue: formatRate,
+      series: [
+        { key: "networkReceive", label: "Receive", color: "var(--chart-5)" },
+        { key: "networkTransmit", label: "Transmit", color: "var(--chart-6)" },
+      ],
+    },
+  ]
 
   async function deleteContainer() {
     if (
@@ -305,7 +365,7 @@ function ContainerLogs({
             onScroll={updateFollowState}
             className="max-h-[28rem] min-h-64 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-zinc-950 p-4 font-mono text-xs leading-relaxed text-zinc-100"
           >
-            {output}
+            <Ansi>{output}</Ansi>
           </pre>
         ) : (
           <p className="text-sm text-muted-foreground">
@@ -535,4 +595,33 @@ function elapsedSince(value: string) {
 
   const days = Math.floor(hours / 24)
   return `${days} ${days === 1 ? "day" : "days"}`
+}
+
+function bytesPerSecond(current: number, previous: number, elapsedSeconds: number) {
+  return Math.max(0, current - previous) / elapsedSeconds
+}
+
+function parseDockerTimestamp(value: string) {
+  const timestamp = Date.parse(value.replace(/(\.\d{3})\d+/, "$1"))
+  return Number.isFinite(timestamp) ? timestamp : Date.now()
+}
+
+function formatPercent(value: number) {
+  return `${value.toFixed(value >= 10 ? 1 : 2)}%`
+}
+
+function formatRate(value: number) {
+  return `${formatBytes(value)}/s`
+}
+
+function formatBytes(value: number) {
+  if (!Number.isFinite(value) || value <= 0) return "0 B"
+
+  const units = ["B", "KB", "MB", "GB", "TB"]
+  const exponent = Math.min(
+    Math.floor(Math.log(value) / Math.log(1024)),
+    units.length - 1
+  )
+  const scaled = value / 1024 ** exponent
+  return `${scaled.toFixed(scaled >= 10 || exponent === 0 ? 0 : 1)} ${units[exponent]}`
 }

@@ -70,4 +70,16 @@ export type ContainerDetails = ContainerResource & {
   environment: string[]
 }
 
+export type ContainerStats = {
+  id: string
+  read: string
+  cpuPercent: number
+  memoryUsage: number
+  memoryLimit: number
+  blockReadBytes: number
+  blockWriteBytes: number
+  networkRxBytes: number
+  networkTxBytes: number
+}
+
 export type ViewMode = "cards" | "table"
