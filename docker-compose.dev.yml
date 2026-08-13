@@ -13,3 +13,5 @@ services:
       - ./config.mjs:/app/config.mjs
       - ./package.json:/app/package.json
       - ./package-lock.json:/app/package-lock.json
+    ports:
+      - "81:81/tcp"
