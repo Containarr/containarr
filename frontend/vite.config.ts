@@ -8,6 +8,7 @@ const proxy = {
   "/api": {
     target: "http://localhost",
     changeOrigin: true,
+    ws: true,
   },
 }
 

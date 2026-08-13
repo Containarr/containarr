@@ -13,6 +13,7 @@
     "debug": "^4.4.3",
     "dockerode": "^5.0.1",
     "express": "^5.2.1",
-    "sequelize": "^6.37.8"
+    "sequelize": "^6.37.8",
+    "ws": "^8.21.3"
   }
 }

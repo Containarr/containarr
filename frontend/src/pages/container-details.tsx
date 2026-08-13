@@ -18,6 +18,7 @@ import { Link, useNavigate, useParams } from "react-router-dom"
 
 import { AppLogo } from "@/components/app-logo"
 import { ContainerAvatar } from "@/components/container-avatar"
+import { ContainerShellDialog } from "@/components/container-shell-dialog"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { MetricChart, type MetricPoint } from "@/components/metric-chart"
 import { ErrorState } from "@/components/resource-states"
@@ -38,6 +39,7 @@ import type { AppResource, ContainerDetails, ContainerStats } from "@/lib/types"
 export function ContainerDetailsPage() {
   const { containerId = "" } = useParams()
   const navigate = useNavigate()
+  const [shellOpen, setShellOpen] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
@@ -203,6 +205,15 @@ export function ContainerDetailsPage() {
             />
             <Button
               type="button"
+              variant="outline"
+              disabled={resource.state.toLowerCase() !== "running"}
+              onClick={() => setShellOpen(true)}
+            >
+              <Terminal className="mr-2 size-4" />
+              Shell
+            </Button>
+            <Button
+              type="button"
               variant="destructive"
               disabled={deleting}
               onClick={() => {
@@ -311,6 +322,12 @@ export function ContainerDetailsPage() {
       </div>
 
       <ContainerLogs request={logs} />
+      <ContainerShellDialog
+        open={shellOpen}
+        containerId={resource.id}
+        containerName={resource.name || "Container"}
+        onClose={() => setShellOpen(false)}
+      />
       <DeleteConfirmDialog
         open={confirmingDelete}
         title={`Delete ${resource.name || "container"}?`}
