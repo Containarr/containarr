@@ -19,6 +19,10 @@ import { ContainerAvatar } from "@/components/container-avatar"
 import { MetricChart } from "@/components/metric-chart"
 import { ErrorState } from "@/components/resource-states"
 import { ResourceActions } from "@/components/resource-actions"
+import {
+  SortableTableHeader,
+  type SortDirection,
+} from "@/components/sortable-table-header"
 import { StatusBadge } from "@/components/status-badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -216,7 +220,7 @@ export function ContainerDetailsPage() {
         </Card>
       </div>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+      <div className="mt-4 grid gap-4">
         <ValueList
           title="Mounts"
           icon={HardDrive}
@@ -228,18 +232,19 @@ export function ContainerDetailsPage() {
             .sort((left, right) => left.localeCompare(right))}
           empty="No mounts configured."
         />
-        <ValueList
+        <KeyValueTable
           title="Environment"
           icon={Box}
-          items={resource.environment}
+          rows={resource.environment.map(splitEnvironmentVariable)}
           empty="No environment variables configured."
         />
-        <ValueList
+        <KeyValueTable
           title="Labels"
           icon={Tag}
-          items={Object.entries(resource.labels)
-            .sort(([left], [right]) => left.localeCompare(right))
-            .map(([key, value]) => `${key}=${value}`)}
+          rows={Object.entries(resource.labels).map(([key, value]) => ({
+            key,
+            value,
+          }))}
           empty="No labels configured."
         />
       </div>
@@ -303,6 +308,106 @@ function ValueList({
       </CardContent>
     </Card>
   )
+}
+
+type KeyValueSort = {
+  key: "key" | "value"
+  direction: SortDirection
+}
+
+function KeyValueTable({
+  empty,
+  icon: Icon,
+  rows,
+  title,
+}: {
+  empty: string
+  icon: typeof Box
+  rows: Array<{ key: string; value: string }>
+  title: string
+}) {
+  const [sort, setSort] = useState<KeyValueSort>({
+    key: "key",
+    direction: "asc",
+  })
+  const sortedRows = [...rows].sort((left, right) => {
+    const comparison = left[sort.key].localeCompare(right[sort.key], undefined, {
+      numeric: true,
+      sensitivity: "base",
+    })
+    return sort.direction === "asc" ? comparison : -comparison
+  })
+
+  function changeSort(key: KeyValueSort["key"]) {
+    setSort((current) => ({
+      key,
+      direction:
+        current.key === key && current.direction === "asc" ? "desc" : "asc",
+    }))
+  }
+
+  return (
+    <Card className="overflow-hidden shadow-none">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Icon className="size-4 text-muted-foreground" />
+          {title}
+        </CardTitle>
+      </CardHeader>
+      {sortedRows.length ? (
+        <CardContent className="mt-5 px-0 pb-0">
+          <table className="w-full table-fixed text-left text-sm">
+            <colgroup>
+              <col className="w-1/3" />
+              <col />
+            </colgroup>
+            <thead className="border-y bg-muted/40 text-xs text-muted-foreground">
+              <tr>
+                <SortableTableHeader
+                  label="Key"
+                  active={sort.key === "key"}
+                  direction={sort.direction}
+                  onClick={() => changeSort("key")}
+                />
+                <SortableTableHeader
+                  label="Value"
+                  active={sort.key === "value"}
+                  direction={sort.direction}
+                  onClick={() => changeSort("value")}
+                />
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {sortedRows.map((row, index) => (
+                <tr key={`${row.key}-${index}`} className="hover:bg-muted/25">
+                  <td className="break-all px-4 py-3 font-mono text-xs font-medium">
+                    {row.key}
+                  </td>
+                  <td className="break-all px-4 py-3 font-mono text-xs text-muted-foreground">
+                    {row.value || "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </CardContent>
+      ) : (
+        <CardContent className="mt-5">
+          <p className="text-sm text-muted-foreground">{empty}</p>
+        </CardContent>
+      )}
+    </Card>
+  )
+}
+
+function splitEnvironmentVariable(variable: string) {
+  const separator = variable.indexOf("=")
+  return separator < 0
+    ? { key: variable, value: "" }
+    : {
+        key: variable.slice(0, separator),
+        value: variable.slice(separator + 1),
+      }
 }
 
 function DetailsSkeleton() {

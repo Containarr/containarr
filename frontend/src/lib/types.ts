@@ -11,6 +11,7 @@ export type AppResource = {
   containerId: string | null
   containerState: string | null
   dockerImage: string
+  dockerNetworkMode: "bridge" | "host"
   dockerVolumes: string[]
   dockerPorts: DockerPort[]
   dockerEnvironment: Record<string, string>
@@ -33,7 +34,7 @@ export type RegistryApp = {
   website: string
   dockerImage: string
   dockerPorts: DockerPort[]
-  dockerNetworkMode: string
+  dockerNetworkMode: "bridge" | "host"
   dockerVolumes: Record<string, string> | string[]
   dockerEnvironment: Record<string, string>
   dockerPrivileged?: boolean

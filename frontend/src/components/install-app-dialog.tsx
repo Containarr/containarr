@@ -237,6 +237,7 @@ function RegistryInstallForm({
 }) {
   const [subdomain, setSubdomain] = useState(registryId)
   const [tls, setTls] = useState("only_https")
+  const [networkMode, setNetworkMode] = useState(app.dockerNetworkMode || "bridge")
   const [environment, setEnvironment] = useState(() =>
     environmentFromRecord(app.dockerEnvironment)
   )
@@ -259,6 +260,7 @@ function RegistryInstallForm({
           registryId,
           subdomain,
           tls,
+          dockerNetworkMode: networkMode,
           dockerEnvironment: environmentToRecord(environment),
           dockerVolumes: volumesToBinds(volumes),
           dockerPorts: portsToDocker(ports),
@@ -304,6 +306,7 @@ function RegistryInstallForm({
               onChange={setSubdomain}
               onTlsChange={setTls}
             />
+            <NetworkModeField value={networkMode} onChange={setNetworkMode} />
           </div>
           <EnvironmentEditor value={environment} onChange={setEnvironment} />
           <VolumeEditor value={volumes} onChange={setVolumes} />
@@ -339,6 +342,9 @@ function CustomAppForm({
   const [url, setUrl] = useState("")
   const [tls, setTls] = useState("only_https")
   const [dockerImage, setDockerImage] = useState("")
+  const [networkMode, setNetworkMode] = useState<AppResource["dockerNetworkMode"]>(
+    "bridge"
+  )
   const [environment, setEnvironment] = useState<EnvironmentRow[]>([])
   const [volumes, setVolumes] = useState<VolumeRow[]>([])
   const [ports, setPorts] = useState<PortRow[]>([])
@@ -361,6 +367,7 @@ function CustomAppForm({
           url: url || null,
           tls,
           dockerImage,
+          dockerNetworkMode: networkMode,
           dockerVolumes: volumesToBinds(volumes),
           dockerPorts: portsToDocker(ports),
           dockerEnvironment: environmentToRecord(environment),
@@ -429,6 +436,7 @@ function CustomAppForm({
           className="font-mono text-xs"
         />
           </FormField>
+          <NetworkModeField value={networkMode} onChange={setNetworkMode} />
           <FormField
         label="Upstream URL"
         hint="Optional. Overrides the container IP and port destination."
@@ -468,6 +476,35 @@ function CustomAppForm({
         </Button>
       </div>
     </form>
+  )
+}
+
+function NetworkModeField({
+  onChange,
+  value,
+}: {
+  onChange: (value: AppResource["dockerNetworkMode"]) => void
+  value: AppResource["dockerNetworkMode"]
+}) {
+  return (
+    <FormField
+      label="Network mode"
+      hint={
+        value === "host"
+          ? "Uses the host network directly. Published port mappings are ignored."
+          : "Connects the container to Containarr's private network."
+      }
+    >
+      <Select
+        value={value}
+        onChange={(event) =>
+          onChange(event.target.value as AppResource["dockerNetworkMode"])
+        }
+      >
+        <option value="bridge">Bridge</option>
+        <option value="host">Host</option>
+      </Select>
+    </FormField>
   )
 }
 

@@ -135,6 +135,7 @@ export function AppDetailsPage() {
             <Detail label="Subdomain" value={resource.subdomain || "—"} />
             <Detail label="TLS" value={getTlsMenuLabel(resource.tls)} />
             <Detail label="Container port" value={resource.port ?? "—"} mono />
+            <Detail label="Network mode" value={resource.dockerNetworkMode} />
             <Detail label="Privileged" value={resource.dockerPrivileged ? "Yes" : "No"} />
           </CardContent>
         </Card>

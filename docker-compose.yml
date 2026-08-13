@@ -8,6 +8,8 @@ services:
     ports:
       - "80:80/tcp"
       - "443:443/tcp"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     tty: true
     networks:
       - containarr
