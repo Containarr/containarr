@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import {
   ArrowLeft,
   Box,
@@ -10,6 +10,7 @@ import {
   Network,
   Settings2,
   Tag,
+  Terminal,
   Trash2,
 } from "lucide-react"
 import { Link, useNavigate, useParams } from "react-router-dom"
@@ -74,6 +75,10 @@ export function ContainerDetailsPage() {
   const apps = useApi<Record<string, AppResource>>("/api/v1/app", {
     pollInterval: 1000,
   })
+  const logs = useApi<{ logs: string }>(
+    `/api/v1/container/${containerId}/logs?tail=200`,
+    { pollInterval: 2000 }
+  )
 
   if (container.status === "loading") return <DetailsSkeleton />
   if (container.status === "error") {
@@ -248,7 +253,67 @@ export function ContainerDetailsPage() {
           empty="No labels configured."
         />
       </div>
+
+      <ContainerLogs request={logs} />
     </section>
+  )
+}
+
+function ContainerLogs({
+  request,
+}: {
+  request: ReturnType<typeof useApi<{ logs: string }>>
+}) {
+  const viewerRef = useRef<HTMLPreElement>(null)
+  const followRef = useRef(true)
+  const output = request.status === "success" ? request.data.logs : ""
+
+  useEffect(() => {
+    const viewer = viewerRef.current
+    if (viewer && followRef.current) viewer.scrollTop = viewer.scrollHeight
+  }, [output])
+
+  function updateFollowState() {
+    const viewer = viewerRef.current
+    if (!viewer) return
+
+    followRef.current =
+      viewer.scrollHeight - viewer.scrollTop - viewer.clientHeight < 24
+  }
+
+  return (
+    <Card className="mt-4 overflow-hidden shadow-none">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Terminal className="size-4 text-muted-foreground" />
+          Logs
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="mt-5">
+        {request.status === "loading" ? (
+          <Skeleton className="h-64 w-full rounded-lg" />
+        ) : request.status === "error" ? (
+          <div className="flex min-h-28 flex-col items-start justify-center gap-3 rounded-lg border border-dashed p-4">
+            <p className="text-sm text-muted-foreground">{request.error}</p>
+            <Button type="button" variant="outline" onClick={request.reload}>
+              Try again
+            </Button>
+          </div>
+        ) : output ? (
+          <pre
+            ref={viewerRef}
+            onScroll={updateFollowState}
+            className="max-h-[28rem] min-h-64 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-zinc-950 p-4 font-mono text-xs leading-relaxed text-zinc-100"
+          >
+            {output}
+          </pre>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            This container has not written any logs yet.
+          </p>
+        )}
+      </CardContent>
+    </Card>
   )
 }
 
