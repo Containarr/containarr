@@ -5,6 +5,8 @@ import { AppDetailsPage } from "@/pages/app-details"
 import { AppsPage } from "@/pages/apps"
 import { ContainerDetailsPage } from "@/pages/container-details"
 import { ContainersPage } from "@/pages/containers"
+import { ProxiesPage } from "@/pages/proxies"
+import { ProxyDetailsPage } from "@/pages/proxy-details"
 
 export default function App() {
   return (
@@ -17,6 +19,8 @@ export default function App() {
           path="/containers/:containerId"
           element={<ContainerDetailsPage />}
         />
+        <Route path="/proxies" element={<ProxiesPage />} />
+        <Route path="/proxies/:proxyId" element={<ProxyDetailsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/apps" replace />} />
     </Routes>

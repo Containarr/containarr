@@ -82,4 +82,13 @@ export type ContainerStats = {
   networkTxBytes: number
 }
 
+export type ProxyResource = {
+  id: string
+  subdomain: string
+  tls: string
+  sourceUrl: string
+  createdAt: string
+  updatedAt: string
+}
+
 export type ViewMode = "cards" | "table"

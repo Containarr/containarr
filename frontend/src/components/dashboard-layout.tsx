@@ -1,4 +1,4 @@
-import { Boxes, Container, LayoutGrid } from "lucide-react"
+import { Boxes, Container, LayoutGrid, Waypoints } from "lucide-react"
 import { NavLink, Outlet } from "react-router-dom"
 
 import { ThemeSwitch } from "@/components/theme-switch"
@@ -6,6 +6,7 @@ import { ThemeSwitch } from "@/components/theme-switch"
 const navigation = [
   { label: "Apps", to: "/apps", icon: LayoutGrid },
   { label: "Containers", to: "/containers", icon: Container },
+  { label: "Proxies", to: "/proxies", icon: Waypoints },
 ]
 
 export function DashboardLayout() {

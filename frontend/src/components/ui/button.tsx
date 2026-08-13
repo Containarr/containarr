@@ -12,7 +12,8 @@ const buttonVariants = cva(
         outline: "border bg-background hover:bg-muted",
         secondary: "bg-secondary text-secondary-foreground hover:bg-muted",
         ghost: "hover:bg-muted",
-        destructive: "bg-red-600 text-white hover:bg-red-700",
+        destructive:
+          "border border-transparent bg-red-600 bg-clip-padding text-white hover:bg-red-700",
       },
     },
     defaultVariants: {
