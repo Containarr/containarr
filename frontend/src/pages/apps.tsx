@@ -127,23 +127,27 @@ function AppsCardGrid({
                   <CardTitle className="truncate text-base">
                     {app.name || "Unnamed app"}
                   </CardTitle>
-                  {publicUrl && (
-                    <a
-                      href={publicUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      onClick={(event) => event.stopPropagation()}
-                      onKeyDown={(event) => event.stopPropagation()}
-                      className="mt-1 inline-flex max-w-full items-center gap-1 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-                    >
-                      <span className="truncate">{publicUrl}</span>
-                      <ArrowUpRight className="size-3 shrink-0" />
-                    </a>
-                  )}
                 </div>
               </div>
               <AppStatusBadge app={app} />
             </CardHeader>
+            {publicUrl && (
+              <div
+                className="border-t px-5 pt-2 pb-3"
+                onClick={(event) => event.stopPropagation()}
+                onKeyDown={(event) => event.stopPropagation()}
+              >
+                <a
+                  href={publicUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex max-w-full items-center gap-1 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                >
+                  <span className="truncate">{publicUrl}</span>
+                  <ArrowUpRight className="size-3 shrink-0" />
+                </a>
+              </div>
+            )}
           </Card>
         )
       })}
