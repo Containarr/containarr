@@ -46,12 +46,14 @@ export type ContainerResource = {
   image: string
   state: string
   status: string
-  appId: string | null
+  labels: Record<string, string>
 }
 
 export type ContainerDetails = ContainerResource & {
   imageId: string
   created: string
+  startedAt: string
+  finishedAt: string
   platform: string
   restartCount: number
   networkMode: string

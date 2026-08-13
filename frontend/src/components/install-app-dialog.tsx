@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { useApi } from "@/hooks/use-api"
 import { apiRequest } from "@/lib/api"
+import { TLS_OPTIONS } from "@/lib/tls"
 import type { AppResource, DockerPort, RegistryApp } from "@/lib/types"
 
 type DialogProps = {
@@ -79,21 +80,6 @@ const LINUX_CAPABILITIES = [
   "CAP_SYS_TTY_CONFIG",
   "CAP_SYSLOG",
   "CAP_WAKE_ALARM",
-] as const
-
-const TLS_OPTIONS = [
-  { value: "only_http", label: "http://", menuLabel: "Only HTTP" },
-  { value: "only_https", label: "https://", menuLabel: "Only HTTPS" },
-  {
-    value: "redirect_http_to_https",
-    label: "http:// → https://",
-    menuLabel: "Redirect HTTP to HTTPS",
-  },
-  {
-    value: "both_http_and_https",
-    label: "http:// + https://",
-    menuLabel: "HTTP and HTTPS",
-  },
 ] as const
 
 export function InstallAppDialog(props: DialogProps) {

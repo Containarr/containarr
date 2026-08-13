@@ -20,6 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useApi } from "@/hooks/use-api"
 import { apiRequest } from "@/lib/api"
+import { getTlsMenuLabel } from "@/lib/tls"
 import { getPublicAppUrl } from "@/lib/apps"
 import type { AppResource } from "@/lib/types"
 
@@ -132,7 +133,7 @@ export function AppDetailsPage() {
           </CardHeader>
           <CardContent className="mt-5 grid gap-x-8 gap-y-5 sm:grid-cols-2">
             <Detail label="Subdomain" value={resource.subdomain || "—"} />
-            <Detail label="TLS" value={formatValue(resource.tls)} />
+            <Detail label="TLS" value={getTlsMenuLabel(resource.tls)} />
             <Detail label="Container port" value={resource.port ?? "—"} mono />
             <Detail label="Privileged" value={resource.dockerPrivileged ? "Yes" : "No"} />
           </CardContent>
@@ -264,8 +265,4 @@ function DetailsSkeleton() {
       <Skeleton className="h-64 w-full rounded-xl" />
     </div>
   )
-}
-
-function formatValue(value: string) {
-  return value.replace(/_/g, " ").replace(/^./, (letter: string) => letter.toUpperCase())
 }

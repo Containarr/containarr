@@ -18,7 +18,7 @@ export function StatusBadge({ state }: { state: string | null }) {
           : isTransitional
             ? "border-amber-200 bg-amber-50 text-amber-700"
             : isStopped
-              ? "border-zinc-200 bg-zinc-50 text-zinc-600"
+              ? "border-zinc-200 bg-zinc-50 text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
               : "border-sky-200 bg-sky-50 text-sky-700"
       }
     >
@@ -32,7 +32,7 @@ export function StatusBadge({ state }: { state: string | null }) {
         }`}
         aria-hidden="true"
       />
-      {normalized}
+      <span className="relative -top-px">{normalized}</span>
     </Badge>
   )
 }

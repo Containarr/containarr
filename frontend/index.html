@@ -7,6 +7,33 @@
     name="viewport"
     content="width=device-width, initial-scale=1.0"
   />
+  <meta name="color-scheme" content="light dark" />
+  <script>
+    (() => {
+      let theme = "system"
+      try {
+        theme = localStorage.getItem("containarr-theme") || "system"
+      } catch {
+        // Fall back to the system preference when storage is unavailable.
+      }
+
+      const dark =
+        theme === "dark" ||
+        (theme !== "light" && matchMedia("(prefers-color-scheme: dark)").matches)
+
+      document.documentElement.classList.toggle("dark", dark)
+      document.documentElement.style.colorScheme = dark ? "dark" : "light"
+    })()
+  </script>
+  <style>
+    html {
+      background: #ffffff;
+    }
+
+    html.dark {
+      background: #101010;
+    }
+  </style>
   <title>Containarr</title>
 </head>
 

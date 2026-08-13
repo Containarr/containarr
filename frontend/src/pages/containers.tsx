@@ -1,4 +1,4 @@
-import type { KeyboardEvent } from "react"
+import { useMemo, useState, type KeyboardEvent } from "react"
 import { Fingerprint, Link2, Package } from "lucide-react"
 import { Link, useNavigate } from "react-router-dom"
 
@@ -10,10 +10,15 @@ import {
   ErrorState,
 } from "@/components/resource-states"
 import { StatusBadge } from "@/components/status-badge"
+import {
+  SortableTableHeader,
+  type SortDirection,
+} from "@/components/sortable-table-header"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ViewToggle } from "@/components/view-toggle"
 import { useApi } from "@/hooks/use-api"
 import { useStoredViewMode } from "@/hooks/use-stored-view-mode"
+import { getComposeProject, getContainerAppId } from "@/lib/container-labels"
 import type { AppResource, ContainerResource } from "@/lib/types"
 
 export function ContainersPage() {
@@ -84,61 +89,74 @@ function ContainersCardGrid({
     }
   }
 
-  return (
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-      {items.map((container) => (
-        <Card
-          key={container.id}
-          role="link"
-          tabIndex={0}
-          onClick={() => navigate(`/containers/${container.id}`)}
-          onKeyDown={(event) => openFromKeyboard(event, container.id)}
-          className="cursor-pointer overflow-hidden shadow-none transition-all hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <CardHeader className="flex-row items-start justify-between gap-4">
-            <div className="flex min-w-0 items-center gap-3">
-              <ContainerAvatar
-                image={container.image}
-                alt=""
-                className="size-10"
-              />
-              <div className="min-w-0">
-                <CardTitle className="truncate text-base">
-                  {container.name || "Unnamed container"}
-                </CardTitle>
-                <p className="mt-1 truncate text-xs text-muted-foreground">
-                  {container.status}
-                </p>
-              </div>
-            </div>
-            <StatusBadge state={container.state} />
-          </CardHeader>
+  const groups = groupContainers(items)
 
-          <CardContent className="mt-5 space-y-2.5">
-            <DataRow icon={Package} label="Image" value={container.image} />
-            <DataRow
-              icon={Fingerprint}
-              label="ID"
-              value={container.id.slice(0, 12)}
-            />
-            <div className="flex min-w-0 items-center gap-2 text-sm">
-              <Link2 className="size-4 shrink-0 text-muted-foreground" />
-              <span className="shrink-0 text-muted-foreground">App</span>
-              {container.appId ? (
-                <Link
-                  to={`/apps/${container.appId}`}
-                  onClick={(event) => event.stopPropagation()}
-                  onKeyDown={(event) => event.stopPropagation()}
-                  className="ml-auto truncate text-xs font-medium hover:underline"
-                >
-                  {apps[container.appId]?.name || container.appId.slice(0, 12)}
-                </Link>
-              ) : (
-                <span className="ml-auto text-xs font-medium">Unmanaged</span>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+  return (
+    <div className="space-y-8">
+      {groups.map((group) => (
+        <section key={group.key}>
+          <GroupHeader name={group.name} count={group.items.length} />
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {group.items.map((container) => {
+              const appId = getContainerAppId(container)
+
+              return (
+              <Card
+                key={container.id}
+                role="link"
+                tabIndex={0}
+                onClick={() => navigate(`/containers/${container.id}`)}
+                onKeyDown={(event) => openFromKeyboard(event, container.id)}
+                className="cursor-pointer overflow-hidden shadow-none transition-all hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <CardHeader className="flex flex-row items-start justify-between gap-4">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <ContainerAvatar
+                      image={container.image}
+                      alt=""
+                      className="size-10"
+                    />
+                    <div className="min-w-0">
+                      <CardTitle className="truncate text-base">
+                        {container.name || "Unnamed container"}
+                      </CardTitle>
+                      <p className="mt-1 truncate text-xs text-muted-foreground">
+                        {container.status}
+                      </p>
+                    </div>
+                  </div>
+                  <StatusBadge state={container.state} />
+                </CardHeader>
+
+                <CardContent className="mt-5 space-y-2.5">
+                  <DataRow icon={Package} label="Image" value={container.image} />
+                  <DataRow
+                    icon={Fingerprint}
+                    label="ID"
+                    value={container.id.slice(0, 12)}
+                  />
+                  <div className="flex min-w-0 items-center gap-2 text-sm">
+                    <Link2 className="size-4 shrink-0 text-muted-foreground" />
+                    <span className="shrink-0 text-muted-foreground">App</span>
+                    {appId ? (
+                      <Link
+                        to={`/apps/${appId}`}
+                        onClick={(event) => event.stopPropagation()}
+                        onKeyDown={(event) => event.stopPropagation()}
+                        className="ml-auto truncate text-xs font-medium hover:underline"
+                      >
+                        {apps[appId]?.name || appId.slice(0, 12)}
+                      </Link>
+                    ) : (
+                      <span className="ml-auto text-xs font-medium">Unmanaged</span>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+              )
+            })}
+          </div>
+        </section>
       ))}
     </div>
   )
@@ -171,19 +189,59 @@ function ContainersTable({
   apps: Record<string, AppResource>
   items: ContainerResource[]
 }) {
+  const [sort, setSort] = useState<{
+    key: ContainerSortKey
+    direction: SortDirection
+  } | null>(null)
+  const groupedItems = useMemo(() => {
+    const defaultItems = groupContainers(items).flatMap((group) => group.items)
+    if (!sort) return defaultItems
+
+    return [...defaultItems].sort((left, right) => {
+      const leftStandalone = getComposeProject(left) ? 1 : 0
+      const rightStandalone = getComposeProject(right) ? 1 : 0
+      if (leftStandalone !== rightStandalone) return leftStandalone - rightStandalone
+
+      const comparison = getContainerSortValue(left, sort.key, apps).localeCompare(
+        getContainerSortValue(right, sort.key, apps),
+        undefined,
+        { numeric: true, sensitivity: "base" }
+      )
+      return sort.direction === "asc" ? comparison : -comparison
+    })
+  }, [apps, items, sort])
+
+  function changeSort(key: ContainerSortKey) {
+    setSort((current) => ({
+      key,
+      direction:
+        current?.key === key && current.direction === "asc" ? "desc" : "asc",
+    }))
+  }
+
   return (
     <div className="hidden overflow-hidden rounded-xl border bg-card shadow-xs sm:block">
       <table className="w-full text-left text-sm">
         <thead className="border-b bg-muted/40 text-xs text-muted-foreground">
           <tr>
-            <th className="px-4 py-3 font-medium">Container</th>
-            <th className="px-4 py-3 font-medium">Status</th>
-            <th className="px-4 py-3 font-medium">Image</th>
-            <th className="px-4 py-3 font-medium">App</th>
+            {(["container", "group", "status", "image", "app"] as const).map(
+              (key) => (
+                <SortableTableHeader
+                  key={key}
+                  label={key.charAt(0).toUpperCase() + key.slice(1)}
+                  active={sort?.key === key}
+                  direction={sort?.direction || "asc"}
+                  onClick={() => changeSort(key)}
+                />
+              )
+            )}
           </tr>
         </thead>
         <tbody className="divide-y">
-          {items.map((container) => (
+          {groupedItems.map((container) => {
+            const appId = getContainerAppId(container)
+
+            return (
             <tr key={container.id} className="hover:bg-muted/25">
               <td className="px-4 py-3">
                 <div className="flex items-center gap-3">
@@ -205,6 +263,9 @@ function ContainersTable({
                   </div>
                 </div>
               </td>
+              <td className="px-4 py-3 font-medium">
+                {getComposeProject(container) || "Standalone"}
+              </td>
               <td className="px-4 py-3">
                 <StatusBadge state={container.state} />
               </td>
@@ -212,21 +273,71 @@ function ContainersTable({
                 {container.image}
               </td>
               <td className="px-4 py-3">
-                {container.appId ? (
+                {appId ? (
                   <Link
-                    to={`/apps/${container.appId}`}
+                    to={`/apps/${appId}`}
                     className="font-medium hover:underline"
                   >
-                    {apps[container.appId]?.name || container.appId.slice(0, 12)}
+                    {apps[appId]?.name || appId.slice(0, 12)}
                   </Link>
                 ) : (
                   <span className="text-muted-foreground">Unmanaged</span>
                 )}
               </td>
             </tr>
-          ))}
+            )
+          })}
         </tbody>
       </table>
     </div>
   )
+}
+
+type ContainerSortKey = "container" | "group" | "status" | "image" | "app"
+
+function getContainerSortValue(
+  container: ContainerResource,
+  key: ContainerSortKey,
+  apps: Record<string, AppResource>
+) {
+  if (key === "container") return container.name || ""
+  if (key === "group") return getComposeProject(container) || "Standalone"
+  if (key === "status") return container.state
+  if (key === "image") return container.image
+
+  const appId = getContainerAppId(container)
+  return appId ? apps[appId]?.name || appId : "Unmanaged"
+}
+
+function GroupHeader({ count, name }: { count: number; name: string }) {
+  return (
+    <div className="mb-3 flex items-baseline gap-2">
+      <h2 className="text-base font-semibold">{name}</h2>
+      <span className="text-xs text-muted-foreground">
+        {count} {count === 1 ? "container" : "containers"}
+      </span>
+    </div>
+  )
+}
+
+function groupContainers(items: ContainerResource[]) {
+  const groups = new Map<string, { key: string; name: string; items: ContainerResource[] }>()
+
+  for (const container of items) {
+    const project = getComposeProject(container)
+    const key = project ? `compose:${project}` : "standalone"
+    const group = groups.get(key) || {
+      key,
+      name: project || "Standalone",
+      items: [],
+    }
+    group.items.push(container)
+    groups.set(key, group)
+  }
+
+  return [...groups.values()].sort((left, right) => {
+    if (left.key === "standalone") return -1
+    if (right.key === "standalone") return 1
+    return left.name.localeCompare(right.name)
+  })
 }

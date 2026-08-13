@@ -9,6 +9,7 @@ import {
   LoaderCircle,
   Network,
   Settings2,
+  Tag,
   Trash2,
 } from "lucide-react"
 import { Link, useNavigate, useParams } from "react-router-dom"
@@ -24,6 +25,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useApi } from "@/hooks/use-api"
 import { apiRequest } from "@/lib/api"
+import { getContainerAppId } from "@/lib/container-labels"
 import type { AppResource, ContainerDetails } from "@/lib/types"
 
 const metrics = [
@@ -75,8 +77,9 @@ export function ContainerDetailsPage() {
   }
 
   const resource = container.data
+  const appId = getContainerAppId(resource)
   const linkedApp =
-    resource.appId && apps.status === "success" ? apps.data[resource.appId] : null
+    appId && apps.status === "success" ? apps.data[appId] : null
 
   async function deleteContainer() {
     if (
@@ -122,8 +125,8 @@ export function ContainerDetailsPage() {
               </h1>
               <StatusBadge state={resource.state} />
             </div>
-            <p className="mt-1 font-mono text-xs text-muted-foreground">
-              {resource.id}
+            <p className="mt-1 text-sm text-muted-foreground">
+              {formatRuntimeStatus(resource)}
             </p>
           </div>
         </div>
@@ -185,13 +188,13 @@ export function ContainerDetailsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="mt-5">
-            {resource.appId ? (
+            {appId ? (
               <Link
-                to={`/apps/${resource.appId}`}
+                to={`/apps/${appId}`}
                 className="flex items-center gap-3 rounded-lg border bg-muted/25 p-3 hover:bg-muted/50"
               >
                 <AppLogo
-                  appId={resource.appId}
+                  appId={appId}
                   alt={`${linkedApp?.name || "App"} logo`}
                   className="size-10"
                 />
@@ -200,33 +203,44 @@ export function ContainerDetailsPage() {
                     {linkedApp?.name || "Containarr app"}
                   </p>
                   <p className="mt-1 truncate font-mono text-[11px] text-muted-foreground">
-                    {resource.appId}
+                    {appId}
                   </p>
                 </div>
               </Link>
             ) : (
               <p className="text-sm text-muted-foreground">
-                This container is not linked to a Containarr app.
+                This container is not managed by an app.
               </p>
             )}
           </CardContent>
         </Card>
       </div>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+      <div className="mt-4 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
         <ValueList
-          title="Volumes"
+          title="Mounts"
           icon={HardDrive}
-          items={resource.mounts.map(
-            (mount) => `${mount.Source} → ${mount.Destination}${mount.RW ? "" : " (read-only)"}`
-          )}
-          empty="No volumes configured."
+          items={resource.mounts
+            .map(
+              (mount) =>
+                `${mount.Source} → ${mount.Destination}${mount.RW ? "" : " (read-only)"}`
+            )
+            .sort((left, right) => left.localeCompare(right))}
+          empty="No mounts configured."
         />
         <ValueList
           title="Environment"
           icon={Box}
           items={resource.environment}
           empty="No environment variables configured."
+        />
+        <ValueList
+          title="Labels"
+          icon={Tag}
+          items={Object.entries(resource.labels)
+            .sort(([left], [right]) => left.localeCompare(right))
+            .map(([key, value]) => `${key}=${value}`)}
+          empty="No labels configured."
         />
       </div>
     </section>
@@ -317,4 +331,38 @@ function formatDate(value: string) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value))
+}
+
+function formatRuntimeStatus(resource: ContainerDetails) {
+  const state = resource.state.toLowerCase()
+
+  if (state === "running") {
+    const elapsed = elapsedSince(resource.startedAt)
+    return elapsed ? `Running for ${elapsed}` : "Running"
+  }
+
+  if (["exited", "stopped", "dead"].includes(state)) {
+    const elapsed = elapsedSince(resource.finishedAt)
+    const label = state.charAt(0).toUpperCase() + state.slice(1)
+    return elapsed ? `${label} ${elapsed} ago` : label
+  }
+
+  return state.charAt(0).toUpperCase() + state.slice(1)
+}
+
+function elapsedSince(value: string) {
+  const timestamp = Date.parse(value)
+  if (!Number.isFinite(timestamp) || timestamp < Date.UTC(2000, 0, 1)) return null
+
+  const seconds = Math.max(0, Math.floor((Date.now() - timestamp) / 1000))
+  if (seconds < 60) return "less than a minute"
+
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes} ${minutes === 1 ? "minute" : "minutes"}`
+
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours} ${hours === 1 ? "hour" : "hours"}`
+
+  const days = Math.floor(hours / 24)
+  return `${days} ${days === 1 ? "day" : "days"}`
 }

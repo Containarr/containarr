@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent } from "react"
+import { useMemo, useState, type KeyboardEvent } from "react"
 import { ArrowUpRight, Plus } from "lucide-react"
 import { Link, useNavigate } from "react-router-dom"
 
@@ -11,6 +11,10 @@ import {
   ErrorState,
 } from "@/components/resource-states"
 import { StatusBadge } from "@/components/status-badge"
+import {
+  SortableTableHeader,
+  type SortDirection,
+} from "@/components/sortable-table-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle } from "@/components/ui/card"
 import { ViewToggle } from "@/components/view-toggle"
@@ -155,18 +159,56 @@ function AppsTable({
   domain: string | null
   items: AppResource[]
 }) {
+  const [sort, setSort] = useState<{ key: AppSortKey; direction: SortDirection } | null>(null)
+  const sortedItems = useMemo(() => {
+    if (!sort) return items
+
+    return [...items].sort((left, right) => {
+      const comparison = getAppSortValue(left, sort.key, domain).localeCompare(
+        getAppSortValue(right, sort.key, domain),
+        undefined,
+        { numeric: true, sensitivity: "base" }
+      )
+      return sort.direction === "asc" ? comparison : -comparison
+    })
+  }, [domain, items, sort])
+
+  function changeSort(key: AppSortKey) {
+    setSort((current) => ({
+      key,
+      direction:
+        current?.key === key && current.direction === "asc" ? "desc" : "asc",
+    }))
+  }
+
   return (
     <div className="hidden overflow-hidden rounded-xl border bg-card shadow-xs sm:block">
       <table className="w-full text-left text-sm">
         <thead className="border-b bg-muted/40 text-xs text-muted-foreground">
           <tr>
-            <th className="px-4 py-3 font-medium">App</th>
-            <th className="px-4 py-3 font-medium">Public URL</th>
-            <th className="px-4 py-3 text-right font-medium">Status</th>
+            <SortableTableHeader
+              label="App"
+              active={sort?.key === "app"}
+              direction={sort?.direction || "asc"}
+              onClick={() => changeSort("app")}
+            />
+            <SortableTableHeader
+              label="Public URL"
+              active={sort?.key === "url"}
+              direction={sort?.direction || "asc"}
+              onClick={() => changeSort("url")}
+            />
+            <SortableTableHeader
+              label="Status"
+              align="right"
+              active={sort?.key === "status"}
+              direction={sort?.direction || "asc"}
+              onClick={() => changeSort("status")}
+            />
           </tr>
         </thead>
         <tbody className="divide-y">
-          {items.map((app) => {
+          {sortedItems.map((app) => {
             const publicUrl = getPublicAppUrl(app, domain)
             return (
               <tr key={app.id} className="hover:bg-muted/25">
@@ -206,4 +248,12 @@ function AppsTable({
       </table>
     </div>
   )
+}
+
+type AppSortKey = "app" | "url" | "status"
+
+function getAppSortValue(app: AppResource, key: AppSortKey, domain: string | null) {
+  if (key === "app") return app.name || ""
+  if (key === "url") return getPublicAppUrl(app, domain) || ""
+  return app.containerState || app.state || ""
 }
