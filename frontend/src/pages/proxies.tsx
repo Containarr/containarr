@@ -3,6 +3,7 @@ import { ArrowRight, ArrowUpRight, Plus, Waypoints } from "lucide-react"
 import { Link, useNavigate } from "react-router-dom"
 
 import { ProxyDialog } from "@/components/new-proxy-dialog"
+import { MobileHeaderAction } from "@/components/mobile-header-action"
 import { CertificateBadge } from "@/components/certificate-badge"
 import { PageHeader } from "@/components/page-header"
 import {
@@ -43,12 +44,23 @@ export function ProxiesPage() {
         />
         <div className="flex items-center gap-2">
           <ViewToggle value={view} onChange={setView} />
-          <Button type="button" onClick={() => setNewProxyOpen(true)}>
+          <Button
+            type="button"
+            onClick={() => setNewProxyOpen(true)}
+            className="hidden md:inline-flex"
+          >
             <Plus className="mr-1.5 size-4" />
             Proxy
           </Button>
         </div>
       </div>
+
+      <MobileHeaderAction>
+        <Button type="button" className="h-9" onClick={() => setNewProxyOpen(true)}>
+          <Plus className="mr-1.5 size-4" />
+          Proxy
+        </Button>
+      </MobileHeaderAction>
 
       {proxies.status === "loading" && <CardGridSkeleton />}
       {proxies.status === "error" && (

@@ -5,6 +5,7 @@ import { Link, useNavigate } from "react-router-dom"
 import { AppLogo } from "@/components/app-logo"
 import { CertificateBadge } from "@/components/certificate-badge"
 import { InstallAppDialog } from "@/components/install-app-dialog"
+import { MobileHeaderAction } from "@/components/mobile-header-action"
 import { PageHeader } from "@/components/page-header"
 import {
   CardGridSkeleton,
@@ -45,12 +46,23 @@ export function AppsPage() {
         />
         <div className="flex items-center gap-2">
           <ViewToggle value={view} onChange={setView} />
-          <Button type="button" onClick={() => setInstallOpen(true)}>
+          <Button
+            type="button"
+            onClick={() => setInstallOpen(true)}
+            className="hidden md:inline-flex"
+          >
             <Plus className="mr-1.5 size-4" />
             App
           </Button>
         </div>
       </div>
+
+      <MobileHeaderAction>
+        <Button type="button" className="h-9" onClick={() => setInstallOpen(true)}>
+          <Plus className="mr-1.5 size-4" />
+          App
+        </Button>
+      </MobileHeaderAction>
 
       {apps.status === "loading" && <CardGridSkeleton />}
       {apps.status === "error" && (
