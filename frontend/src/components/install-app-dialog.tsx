@@ -1,0 +1,936 @@
+import { useEffect, useState, type FormEvent, type ReactNode } from "react"
+import {
+  ArrowLeft,
+  Box,
+  ChevronDown,
+  Info,
+  LoaderCircle,
+  Minus,
+  Plus,
+  X,
+} from "lucide-react"
+
+import { AppLogo } from "@/components/app-logo"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Select } from "@/components/ui/select"
+import { useApi } from "@/hooks/use-api"
+import { apiRequest } from "@/lib/api"
+import type { AppResource, DockerPort, RegistryApp } from "@/lib/types"
+
+type DialogProps = {
+  onClose: () => void
+  onCreated: (app: AppResource) => void
+  open: boolean
+}
+
+type EnvironmentRow = { id: string; key: string; value: string }
+type VolumeRow = { id: string; host: string; container: string }
+type PortRow = {
+  id: string
+  host: string
+  container: string
+  protocol: "tcp" | "udp"
+}
+type CapabilityRow = { id: string; value: string }
+
+let nextRowId = 0
+const createRowId = () => `row-${++nextRowId}`
+
+const LINUX_CAPABILITIES = [
+  "CAP_AUDIT_CONTROL",
+  "CAP_AUDIT_READ",
+  "CAP_AUDIT_WRITE",
+  "CAP_BLOCK_SUSPEND",
+  "CAP_BPF",
+  "CAP_CHECKPOINT_RESTORE",
+  "CAP_CHOWN",
+  "CAP_DAC_OVERRIDE",
+  "CAP_DAC_READ_SEARCH",
+  "CAP_FOWNER",
+  "CAP_FSETID",
+  "CAP_IPC_LOCK",
+  "CAP_IPC_OWNER",
+  "CAP_KILL",
+  "CAP_LEASE",
+  "CAP_LINUX_IMMUTABLE",
+  "CAP_MAC_ADMIN",
+  "CAP_MAC_OVERRIDE",
+  "CAP_MKNOD",
+  "CAP_NET_ADMIN",
+  "CAP_NET_BIND_SERVICE",
+  "CAP_NET_BROADCAST",
+  "CAP_NET_RAW",
+  "CAP_PERFMON",
+  "CAP_SETFCAP",
+  "CAP_SETGID",
+  "CAP_SETPCAP",
+  "CAP_SETUID",
+  "CAP_SYS_ADMIN",
+  "CAP_SYS_BOOT",
+  "CAP_SYS_CHROOT",
+  "CAP_SYS_MODULE",
+  "CAP_SYS_NICE",
+  "CAP_SYS_PACCT",
+  "CAP_SYS_PTRACE",
+  "CAP_SYS_RAWIO",
+  "CAP_SYS_RESOURCE",
+  "CAP_SYS_TIME",
+  "CAP_SYS_TTY_CONFIG",
+  "CAP_SYSLOG",
+  "CAP_WAKE_ALARM",
+] as const
+
+const TLS_OPTIONS = [
+  { value: "only_http", label: "http://", menuLabel: "Only HTTP" },
+  { value: "only_https", label: "https://", menuLabel: "Only HTTPS" },
+  {
+    value: "redirect_http_to_https",
+    label: "http:// → https://",
+    menuLabel: "Redirect HTTP to HTTPS",
+  },
+  {
+    value: "both_http_and_https",
+    label: "http:// + https://",
+    menuLabel: "HTTP and HTTPS",
+  },
+] as const
+
+export function InstallAppDialog(props: DialogProps) {
+  if (!props.open) return null
+  return <InstallAppDialogContent {...props} />
+}
+
+function InstallAppDialogContent({ onClose, onCreated }: DialogProps) {
+  const [mode, setMode] = useState<"registry" | "custom">("registry")
+  const [selected, setSelected] = useState<{
+    id: string
+    app: RegistryApp
+  } | null>(null)
+  const registry = useApi<Record<string, RegistryApp>>("/api/v1/app/registry")
+  const domainRequest = useApi<{ domain: string }>("/api/v1/ddns/domain")
+  const domain =
+    domainRequest.status === "success" ? domainRequest.data.domain : "…"
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose()
+    }
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [onClose])
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 p-0 sm:items-center sm:p-5"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose()
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="install-app-title"
+        className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl border bg-background shadow-2xl sm:rounded-2xl"
+      >
+        <div className="flex items-center justify-between border-b px-5 py-4 sm:px-6">
+          <div className="flex items-center gap-3">
+            {selected && (
+              <button
+                type="button"
+                className="flex size-8 items-center justify-center rounded-lg hover:bg-muted"
+                onClick={() => setSelected(null)}
+                aria-label="Back to registry"
+              >
+                <ArrowLeft className="size-4" />
+              </button>
+            )}
+            <div>
+              <h2 id="install-app-title" className="font-semibold">
+                {selected ? `Install ${selected.app.name}` : "Add an app"}
+              </h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {selected
+                  ? "Review the defaults and add optional overrides."
+                  : "Choose a registry app or configure your own container."}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+            onClick={onClose}
+            aria-label="Close dialog"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        {!selected && (
+          <div className="border-b px-5 pt-3 sm:px-6">
+            <div className="flex gap-5">
+              {(["registry", "custom"] as const).map((option) => (
+                <button
+                  type="button"
+                  key={option}
+                  onClick={() => setMode(option)}
+                  className={`border-b-2 px-0.5 pb-3 text-sm font-medium capitalize transition-colors ${
+                    mode === option
+                      ? "border-foreground text-foreground"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {selected ? (
+          <RegistryInstallForm
+            registryId={selected.id}
+            app={selected.app}
+            domain={domain}
+            onCreated={onCreated}
+          />
+        ) : mode === "custom" ? (
+          <CustomAppForm domain={domain} onCreated={onCreated} />
+        ) : (
+          <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-6">
+            {registry.status === "loading" ? (
+              <LoadingRegistry />
+            ) : registry.status === "error" ? (
+              <RegistryError error={registry.error} retry={registry.reload} />
+            ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {Object.entries(registry.data).map(([id, app]) => (
+                <button
+                  type="button"
+                  key={id}
+                  onClick={() => setSelected({ id, app })}
+                  className="flex flex-col rounded-xl border p-4 text-left transition-all hover:-translate-y-0.5 hover:border-foreground/25 hover:bg-muted/20 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <div className="flex items-start gap-3">
+                    <AppLogo
+                      registryId={id}
+                      alt={`${app.name} logo`}
+                      className="size-11"
+                    />
+                    <div className="min-w-0">
+                      <p className="font-medium">{app.name}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {app.category}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="mt-3 flex-1 text-sm leading-relaxed text-muted-foreground">
+                    {app.description}
+                  </p>
+                </button>
+              ))}
+            </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function RegistryInstallForm({
+  app,
+  domain,
+  onCreated,
+  registryId,
+}: {
+  app: RegistryApp
+  domain: string
+  onCreated: (app: AppResource) => void
+  registryId: string
+}) {
+  const [subdomain, setSubdomain] = useState(registryId)
+  const [tls, setTls] = useState("only_https")
+  const [environment, setEnvironment] = useState(() =>
+    environmentFromRecord(app.dockerEnvironment)
+  )
+  const [volumes, setVolumes] = useState(() => volumesFromRegistry(app.dockerVolumes))
+  const [ports, setPorts] = useState(() => portsFromDocker(app.dockerPorts))
+  const [capabilities, setCapabilities] = useState(() =>
+    capabilitiesFromValues(app.dockerCapabilities || [])
+  )
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function submit(event: FormEvent) {
+    event.preventDefault()
+    setSubmitting(true)
+    setError(null)
+    try {
+      const created = await apiRequest<AppResource>("/api/v1/app/registry", {
+        method: "POST",
+        body: JSON.stringify({
+          registryId,
+          subdomain,
+          tls,
+          dockerEnvironment: environmentToRecord(environment),
+          dockerVolumes: volumesToBinds(volumes),
+          dockerPorts: portsToDocker(ports),
+          dockerCapabilities: capabilitiesToValues(capabilities),
+        }),
+      })
+      onCreated(created)
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error ? requestError.message : "Install failed."
+      )
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <form
+      onSubmit={(event) => void submit(event)}
+      className="flex min-h-0 flex-1 flex-col overflow-hidden"
+    >
+      <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-6">
+        <div className="space-y-6">
+          <div className="flex items-start gap-4 rounded-xl border bg-muted/20 p-4">
+            <AppLogo
+              registryId={registryId}
+              alt={`${app.name} logo`}
+              className="size-14"
+            />
+            <div className="min-w-0">
+              <p className="font-medium">{app.name}</p>
+              <p className="mt-1 truncate text-sm text-muted-foreground">
+                {app.dockerImage}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <SubdomainField
+              domain={domain}
+              tls={tls}
+              value={subdomain}
+              onChange={setSubdomain}
+              onTlsChange={setTls}
+            />
+          </div>
+          <EnvironmentEditor value={environment} onChange={setEnvironment} />
+          <VolumeEditor value={volumes} onChange={setVolumes} />
+          <PortEditor value={ports} onChange={setPorts} />
+          <CapabilityEditor value={capabilities} onChange={setCapabilities} />
+          {error && <p className="text-sm text-red-600">{error}</p>}
+        </div>
+      </div>
+      <div className="flex shrink-0 justify-end border-t bg-background px-5 py-4 sm:px-6">
+        <Button type="submit" disabled={submitting}>
+          {submitting ? (
+            <LoaderCircle className="mr-2 size-4 animate-spin" />
+          ) : (
+            <Plus className="mr-2 size-4" />
+          )}
+          Install {app.name}
+        </Button>
+      </div>
+    </form>
+  )
+}
+
+function CustomAppForm({
+  domain,
+  onCreated,
+}: {
+  domain: string
+  onCreated: (app: AppResource) => void
+}) {
+  const [name, setName] = useState("")
+  const [subdomain, setSubdomain] = useState("")
+  const [port, setPort] = useState("")
+  const [url, setUrl] = useState("")
+  const [tls, setTls] = useState("only_https")
+  const [dockerImage, setDockerImage] = useState("")
+  const [environment, setEnvironment] = useState<EnvironmentRow[]>([])
+  const [volumes, setVolumes] = useState<VolumeRow[]>([])
+  const [ports, setPorts] = useState<PortRow[]>([])
+  const [capabilities, setCapabilities] = useState<CapabilityRow[]>([])
+  const [privileged, setPrivileged] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function submit(event: FormEvent) {
+    event.preventDefault()
+    setSubmitting(true)
+    setError(null)
+    try {
+      const created = await apiRequest<AppResource>("/api/v1/app", {
+        method: "POST",
+        body: JSON.stringify({
+          name,
+          subdomain,
+          port: port ? Number(port) : null,
+          url: url || null,
+          tls,
+          dockerImage,
+          dockerVolumes: volumesToBinds(volumes),
+          dockerPorts: portsToDocker(ports),
+          dockerEnvironment: environmentToRecord(environment),
+          dockerPrivileged: privileged,
+          dockerCapabilities: capabilitiesToValues(capabilities),
+        }),
+      })
+      onCreated(created)
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error ? requestError.message : "Creation failed."
+      )
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <form
+      onSubmit={(event) => void submit(event)}
+      className="flex min-h-0 flex-1 flex-col overflow-hidden"
+    >
+      <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-6">
+        <div className="space-y-6">
+          <div className="grid gap-4 sm:grid-cols-2">
+        <FormField label="Name">
+          <Input
+            required
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="My App"
+          />
+        </FormField>
+        <SubdomainField
+          domain={domain}
+          tls={tls}
+          value={subdomain}
+          onChange={setSubdomain}
+          onTlsChange={setTls}
+        />
+        <FormField
+          label={
+            <span className="inline-flex items-center gap-1.5">
+              Port
+              <InfoTooltip text="The internal HTTP port of the container, that will be mapped to the app's subdomain." />
+            </span>
+          }
+        >
+          <Input
+            type="number"
+            min="1"
+            max="65535"
+            value={port}
+            onChange={(event) => setPort(event.target.value)}
+            placeholder="8080"
+            className="appearance-none font-mono text-xs [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          />
+        </FormField>
+          </div>
+          <FormField label="Docker image">
+        <Input
+          required
+          value={dockerImage}
+          onChange={(event) => setDockerImage(event.target.value)}
+          placeholder="ghcr.io/example/app:latest"
+          className="font-mono text-xs"
+        />
+          </FormField>
+          <FormField
+        label="Upstream URL"
+        hint="Optional. Overrides the container IP and port destination."
+      >
+        <Input
+          type="url"
+          value={url}
+          onChange={(event) => setUrl(event.target.value)}
+          placeholder={`http://192.168.1.10:${port || "8080"}`}
+          className="font-mono text-xs"
+        />
+          </FormField>
+          <EnvironmentEditor value={environment} onChange={setEnvironment} />
+          <VolumeEditor value={volumes} onChange={setVolumes} />
+          <PortEditor value={ports} onChange={setPorts} />
+          <CapabilityEditor value={capabilities} onChange={setCapabilities} />
+          <label className="flex items-center gap-2 text-sm font-medium">
+        <input
+          type="checkbox"
+          checked={privileged}
+          onChange={(event) => setPrivileged(event.target.checked)}
+          className="size-4 rounded border"
+        />
+        Run container in privileged mode
+          </label>
+          {error && <p className="text-sm text-red-600">{error}</p>}
+        </div>
+      </div>
+      <div className="flex shrink-0 justify-end border-t bg-background px-5 py-4 sm:px-6">
+        <Button type="submit" disabled={submitting}>
+          {submitting ? (
+            <LoaderCircle className="mr-2 size-4 animate-spin" />
+          ) : (
+            <Box className="mr-2 size-4" />
+          )}
+          Create
+        </Button>
+      </div>
+    </form>
+  )
+}
+
+function SubdomainField({
+  domain,
+  onChange,
+  onTlsChange,
+  tls,
+  value,
+}: {
+  domain: string
+  onChange: (value: string) => void
+  onTlsChange: (value: string) => void
+  tls: string
+  value: string
+}) {
+  const selectedTlsLabel =
+    TLS_OPTIONS.find((option) => option.value === tls)?.label ??
+    TLS_OPTIONS[0].label
+
+  return (
+    <div className="sm:col-span-2">
+      <FormField label="Subdomain">
+        <div className="flex">
+          <div className="relative shrink-0">
+            <span
+              aria-hidden="true"
+              className="invisible block h-10 w-max whitespace-nowrap pr-11 pl-3 font-mono text-xs"
+            >
+              {selectedTlsLabel}
+            </span>
+            <Select
+              value={tls}
+              onChange={(event) => onTlsChange(event.target.value)}
+              aria-label="TLS mode"
+              className="absolute inset-0 h-10 appearance-none rounded-r-none pr-11 font-mono text-xs text-transparent [&>option]:text-foreground"
+            >
+              {TLS_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.menuLabel}
+                </option>
+              ))}
+            </Select>
+            <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 font-mono text-xs">
+              {selectedTlsLabel}
+            </span>
+            <ChevronDown
+              className="pointer-events-none absolute top-1/2 right-4 size-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
+          </div>
+          <div className="flex h-10 min-w-0 flex-1 rounded-r-lg border border-l-0 bg-background shadow-xs focus-within:border-foreground/30 focus-within:ring-2 focus-within:ring-ring/30">
+            <Input
+              required
+              value={value}
+              onChange={(event) => onChange(event.target.value)}
+              placeholder="my-app"
+              className="h-full min-w-0 rounded-none border-0 font-mono text-xs shadow-none focus:ring-0"
+            />
+            <span className="flex shrink-0 items-center whitespace-nowrap border-l px-3 font-mono text-xs text-muted-foreground">
+              .{domain}
+            </span>
+          </div>
+        </div>
+      </FormField>
+    </div>
+  )
+}
+
+function EnvironmentEditor({
+  onChange,
+  value,
+}: {
+  onChange: (value: EnvironmentRow[]) => void
+  value: EnvironmentRow[]
+}) {
+  return (
+    <ListEditor
+      title="Environment"
+      hint="Environment variables passed to the container."
+      onAdd={() => onChange([...value, { id: createRowId(), key: "", value: "" }])}
+    >
+      {value.map((row) => (
+        <EditorRow key={row.id} onRemove={() => onChange(removeById(value, row.id))}>
+          <Input
+            value={row.key}
+            onChange={(event) =>
+              onChange(updateById(value, row.id, { key: event.target.value }))
+            }
+            placeholder="KEY"
+            className="font-mono text-xs"
+          />
+          <Input
+            value={row.value}
+            onChange={(event) =>
+              onChange(updateById(value, row.id, { value: event.target.value }))
+            }
+            placeholder="Value"
+            className="font-mono text-xs"
+          />
+        </EditorRow>
+      ))}
+    </ListEditor>
+  )
+}
+
+function VolumeEditor({
+  onChange,
+  value,
+}: {
+  onChange: (value: VolumeRow[]) => void
+  value: VolumeRow[]
+}) {
+  return (
+    <ListEditor
+      title="Volumes"
+      hint="Bind a host path to a path inside the container."
+      onAdd={() =>
+        onChange([...value, { id: createRowId(), host: "", container: "" }])
+      }
+    >
+      {value.map((row) => (
+        <EditorRow key={row.id} onRemove={() => onChange(removeById(value, row.id))}>
+          <Input
+            value={row.host}
+            onChange={(event) =>
+              onChange(updateById(value, row.id, { host: event.target.value }))
+            }
+            placeholder="/host/path"
+            className="font-mono text-xs"
+          />
+          <Input
+            value={row.container}
+            onChange={(event) =>
+              onChange(
+                updateById(value, row.id, { container: event.target.value })
+              )
+            }
+            placeholder="/container/path"
+            className="font-mono text-xs"
+          />
+        </EditorRow>
+      ))}
+    </ListEditor>
+  )
+}
+
+function PortEditor({
+  onChange,
+  value,
+}: {
+  onChange: (value: PortRow[]) => void
+  value: PortRow[]
+}) {
+  return (
+    <ListEditor
+      title="Ports"
+      hint="Publish a container TCP or UDP port on the host."
+      onAdd={() =>
+        onChange([
+          ...value,
+          { id: createRowId(), host: "", container: "", protocol: "tcp" },
+        ])
+      }
+    >
+      {value.map((row) => (
+        <EditorRow
+          key={row.id}
+          onRemove={() => onChange(removeById(value, row.id))}
+          columns="grid-cols-[1fr_1fr_6rem_auto]"
+        >
+          <Input
+            type="number"
+            min="1"
+            max="65535"
+            value={row.host}
+            onChange={(event) =>
+              onChange(updateById(value, row.id, { host: event.target.value }))
+            }
+            placeholder="Host"
+            className="appearance-none font-mono text-xs [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          />
+          <Input
+            type="number"
+            min="1"
+            max="65535"
+            value={row.container}
+            onChange={(event) =>
+              onChange(
+                updateById(value, row.id, { container: event.target.value })
+              )
+            }
+            placeholder="Container"
+            className="appearance-none font-mono text-xs [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          />
+          <Select
+            value={row.protocol}
+            onChange={(event) =>
+              onChange(
+                updateById(value, row.id, {
+                  protocol: event.target.value as "tcp" | "udp",
+                })
+              )
+            }
+          >
+            <option value="tcp">TCP</option>
+            <option value="udp">UDP</option>
+          </Select>
+        </EditorRow>
+      ))}
+    </ListEditor>
+  )
+}
+
+function CapabilityEditor({
+  onChange,
+  value,
+}: {
+  onChange: (value: CapabilityRow[]) => void
+  value: CapabilityRow[]
+}) {
+  return (
+    <ListEditor
+      title="Capabilities"
+      hint="Grant specific Linux capabilities to the container."
+      onAdd={() =>
+        onChange([...value, { id: createRowId(), value: "CAP_NET_ADMIN" }])
+      }
+    >
+      {value.map((row) => (
+        <EditorRow
+          key={row.id}
+          onRemove={() => onChange(removeById(value, row.id))}
+          columns="grid-cols-[1fr_auto]"
+        >
+          <Select
+            value={row.value}
+            onChange={(event) =>
+              onChange(updateById(value, row.id, { value: event.target.value }))
+            }
+            className="font-mono text-xs"
+          >
+            {LINUX_CAPABILITIES.map((capability) => (
+              <option key={capability} value={capability}>
+                {capability}
+              </option>
+            ))}
+          </Select>
+        </EditorRow>
+      ))}
+    </ListEditor>
+  )
+}
+
+function ListEditor({
+  children,
+  hint,
+  onAdd,
+  title,
+}: {
+  children: ReactNode
+  hint: string
+  onAdd: () => void
+  title: string
+}) {
+  return (
+    <fieldset className="space-y-3 rounded-xl border p-4">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <legend className="text-sm font-medium">{title}</legend>
+          <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>
+        </div>
+        <Button type="button" variant="outline" onClick={onAdd} className="h-8">
+          <Plus className="mr-1.5 size-3.5" />
+          Add
+        </Button>
+      </div>
+      <div className="space-y-2">{children}</div>
+    </fieldset>
+  )
+}
+
+function EditorRow({
+  children,
+  columns = "grid-cols-[1fr_1fr_auto]",
+  onRemove,
+}: {
+  children: ReactNode
+  columns?: string
+  onRemove: () => void
+}) {
+  return (
+    <div className={`grid items-center gap-2 ${columns}`}>
+      {children}
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label="Remove row"
+        className="flex size-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30"
+      >
+        <Minus className="size-4" />
+      </button>
+    </div>
+  )
+}
+
+function FormField({
+  children,
+  hint,
+  label,
+}: {
+  children: ReactNode
+  hint?: string
+  label: ReactNode
+}) {
+  return (
+    <label className="block space-y-1.5">
+      <span className="text-sm font-medium">{label}</span>
+      {children}
+      {hint && <span className="block text-xs text-muted-foreground">{hint}</span>}
+    </label>
+  )
+}
+
+function InfoTooltip({ text }: { text: string }) {
+  return (
+    <span
+      className="group relative inline-flex text-muted-foreground"
+      tabIndex={0}
+      aria-label={text}
+    >
+      <Info className="size-3.5" aria-hidden="true" />
+      <span
+        role="tooltip"
+        className="invisible absolute top-full left-0 z-20 mt-2 w-72 rounded-lg bg-foreground px-3 py-2 text-xs leading-relaxed font-normal text-background opacity-0 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100 group-focus:visible group-focus:opacity-100"
+      >
+        {text}
+      </span>
+    </span>
+  )
+}
+
+function LoadingRegistry() {
+  return (
+    <div className="flex min-h-64 items-center justify-center text-sm text-muted-foreground">
+      <LoaderCircle className="mr-2 size-4 animate-spin" />
+      Loading registry…
+    </div>
+  )
+}
+
+function RegistryError({ error, retry }: { error: string; retry: () => void }) {
+  return (
+    <div className="flex min-h-64 flex-col items-center justify-center text-center">
+      <p className="font-medium">Unable to load the registry</p>
+      <p className="mt-1 text-sm text-muted-foreground">{error}</p>
+      <Button type="button" variant="outline" className="mt-4" onClick={retry}>
+        Try again
+      </Button>
+    </div>
+  )
+}
+
+function environmentFromRecord(value: Record<string, string>): EnvironmentRow[] {
+  return Object.entries(value).map(([key, environmentValue]) => ({
+    id: createRowId(),
+    key,
+    value: resolveEnvironmentValue(environmentValue),
+  }))
+}
+
+function environmentToRecord(value: EnvironmentRow[]) {
+  return Object.fromEntries(
+    value
+      .filter((row) => row.key.trim())
+      .map((row) => [row.key.trim(), resolveEnvironmentValue(row.value)])
+  )
+}
+
+function resolveEnvironmentValue(value: string) {
+  if (value !== "$TIMEZONE") return value
+
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"
+  } catch {
+    return "UTC"
+  }
+}
+
+function volumesFromRegistry(value: Record<string, string> | string[]): VolumeRow[] {
+  if (!Array.isArray(value)) {
+    return Object.entries(value).map(([host, container]) => ({
+      id: createRowId(),
+      host,
+      container,
+    }))
+  }
+
+  return value.map((bind) => {
+    const separator = bind.indexOf(":")
+    return {
+      id: createRowId(),
+      host: separator < 0 ? bind : bind.slice(0, separator),
+      container: separator < 0 ? "" : bind.slice(separator + 1),
+    }
+  })
+}
+
+function volumesToBinds(value: VolumeRow[]) {
+  return value
+    .filter((row) => row.host.trim() && row.container.trim())
+    .map((row) => `${row.host.trim()}:${row.container.trim()}`)
+}
+
+function portsFromDocker(value: DockerPort[]): PortRow[] {
+  return value.map((port) => ({
+    id: createRowId(),
+    host: String(port.host),
+    container: String(port.container),
+    protocol: port.protocol,
+  }))
+}
+
+function portsToDocker(value: PortRow[]): DockerPort[] {
+  return value
+    .filter((row) => row.host && row.container)
+    .map((row) => ({
+      host: Number(row.host),
+      container: Number(row.container),
+      protocol: row.protocol,
+    }))
+}
+
+function capabilitiesFromValues(value: string[]): CapabilityRow[] {
+  return value.map((capability) => ({ id: createRowId(), value: capability }))
+}
+
+function capabilitiesToValues(value: CapabilityRow[]) {
+  return value.map((row) => row.value).filter(Boolean)
+}
+
+function removeById<T extends { id: string }>(value: T[], id: string) {
+  return value.filter((row) => row.id !== id)
+}
+
+function updateById<T extends { id: string }>(
+  value: T[],
+  id: string,
+  patch: Partial<T>
+) {
+  return value.map((row) => (row.id === id ? { ...row, ...patch } : row))
+}

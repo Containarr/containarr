@@ -1,3 +1,13 @@
+FROM node:24.19.0-bookworm-slim AS frontend-builder
+
+WORKDIR /build/frontend
+
+COPY ./frontend/package.json ./frontend/package-lock.json ./
+RUN npm ci
+
+COPY ./frontend ./
+RUN npm run build
+
 FROM debian:bookworm-slim
 
 ARG TRAEFIK_VERSION=3.7.10
@@ -27,7 +37,7 @@ RUN ARCH=$(dpkg --print-architecture) && \
 
 # Copy & Install Application
 WORKDIR /app
-COPY ./www /app/www
+COPY --from=frontend-builder /build/public /app/public
 COPY ./lib /app/lib
 COPY ./services /app/services
 COPY ./server.mjs /app/server.mjs
