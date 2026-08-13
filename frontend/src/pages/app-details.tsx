@@ -4,9 +4,11 @@ import {
   ArrowUpRight,
   Box,
   Container,
+  Download,
   LoaderCircle,
   Network,
   Pencil,
+  RefreshCw,
   RotateCcw,
   Settings2,
   Trash2,
@@ -187,6 +189,7 @@ export function AppDetailsPage() {
             />
             <Detail label="Internal URL" value={resource.url || "—"} mono />
             <Detail label="Image" value={resource.dockerImage} mono />
+            <ImageUpdateControls app={resource} onReload={app.reload} />
           </CardContent>
         </Card>
       </div>
@@ -247,6 +250,137 @@ export function AppDetailsPage() {
       />
     </section>
   )
+}
+
+function ImageUpdateControls({
+  app,
+  onReload,
+}: {
+  app: AppResource
+  onReload: () => void
+}) {
+  const [autoUpdate, setAutoUpdate] = useState(app.autoUpdate)
+  const [pending, setPending] = useState<"setting" | "checking" | "updating" | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => setAutoUpdate(app.autoUpdate), [app.autoUpdate])
+
+  async function changeAutoUpdate(enabled: boolean) {
+    setAutoUpdate(enabled)
+    setPending("setting")
+    setError(null)
+    try {
+      await apiRequest(`/api/v1/app/${app.id}/auto-update`, {
+        method: "PUT",
+        body: JSON.stringify({ enabled }),
+      })
+      onReload()
+    } catch (requestError) {
+      setAutoUpdate(!enabled)
+      setError(getRequestError(requestError))
+    } finally {
+      setPending(null)
+    }
+  }
+
+  async function checkForUpdates(apply = false) {
+    setPending(apply ? "updating" : "checking")
+    setError(null)
+    try {
+      await apiRequest(
+        `/api/v1/app/${app.id}/update/${apply ? "apply" : "check"}`,
+        { method: "POST" }
+      )
+      onReload()
+    } catch (requestError) {
+      setError(getRequestError(requestError))
+    } finally {
+      setPending(null)
+    }
+  }
+
+  const status = pending === "checking"
+    ? "Checking for updates…"
+    : pending === "updating"
+      ? "Updating app…"
+      : getImageUpdateStatus(app)
+
+  return (
+    <div className="border-t pt-5">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <label className="flex cursor-pointer items-start gap-2.5">
+          <input
+            type="checkbox"
+            checked={autoUpdate}
+            disabled={pending !== null}
+            onChange={(event) => void changeAutoUpdate(event.target.checked)}
+            className="mt-0.5 size-4 rounded border"
+          />
+          <span>
+            <span className="block text-sm font-medium">Auto-update</span>
+            <span className="mt-0.5 block text-xs text-muted-foreground">
+              Recreate this app automatically when its image changes.
+            </span>
+          </span>
+        </label>
+        <div className="flex flex-wrap gap-2">
+          {app.imageUpdate.status === "available" && !app.autoUpdate && (
+            <Button
+              type="button"
+              onClick={() => void checkForUpdates(true)}
+              disabled={pending !== null}
+              className="h-8"
+            >
+              <Download className="mr-1.5 size-3.5" />
+              Update now
+            </Button>
+          )}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => void checkForUpdates()}
+            disabled={pending !== null}
+            className="h-8"
+          >
+            <RefreshCw
+              className={`mr-1.5 size-3.5 ${pending === "checking" ? "animate-spin" : ""}`}
+            />
+            Check for Updates
+          </Button>
+        </div>
+      </div>
+      <p
+        className={`mt-3 text-xs ${
+          error || app.imageUpdate.status === "error"
+            ? "text-red-600 dark:text-red-400"
+            : "text-muted-foreground"
+        }`}
+      >
+        {error || status}
+      </p>
+    </div>
+  )
+}
+
+function getImageUpdateStatus(app: AppResource) {
+  const update = app.imageUpdate
+  if (update.status === "checking") return "Checking for updates…"
+  if (update.status === "updating") return "Updating app…"
+  if (update.status === "available") return "An image update is available."
+  if (update.status === "error") return update.error || "Update check failed."
+  if (update.status === "not_checked") return "Not checked yet."
+
+  const checkedAt = update.checkedAt
+    ? new Intl.DateTimeFormat(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }).format(new Date(update.checkedAt))
+    : null
+  return checkedAt ? `Up to date. Checked ${checkedAt}.` : "Up to date."
+}
+
+function getRequestError(error: unknown) {
+  return error instanceof Error ? error.message : "Request failed."
 }
 
 function RecreateAppDialog({

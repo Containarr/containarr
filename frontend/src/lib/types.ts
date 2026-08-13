@@ -11,6 +11,18 @@ export type AppResource = {
   containerId: string | null
   containerState: string | null
   dockerImage: string
+  autoUpdate: boolean
+  imageUpdate: {
+    status:
+      | "not_checked"
+      | "checking"
+      | "available"
+      | "updating"
+      | "up_to_date"
+      | "error"
+    checkedAt: string | null
+    error: string | null
+  }
   dockerNetworkMode: "bridge" | "host"
   dockerVolumes: string[]
   dockerPorts: DockerPort[]
