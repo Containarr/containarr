@@ -1,7 +1,8 @@
 import type { KeyboardEvent } from "react"
-import { Container as ContainerIcon, Fingerprint, Link2, Package } from "lucide-react"
+import { Fingerprint, Link2, Package } from "lucide-react"
 import { Link, useNavigate } from "react-router-dom"
 
+import { ContainerAvatar } from "@/components/container-avatar"
 import { PageHeader } from "@/components/page-header"
 import {
   CardGridSkeleton,
@@ -96,9 +97,11 @@ function ContainersCardGrid({
         >
           <CardHeader className="flex-row items-start justify-between gap-4">
             <div className="flex min-w-0 items-center gap-3">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-sky-950 text-white">
-                <ContainerIcon className="size-5" aria-hidden="true" />
-              </div>
+              <ContainerAvatar
+                image={container.image}
+                alt=""
+                className="size-10"
+              />
               <div className="min-w-0">
                 <CardTitle className="truncate text-base">
                   {container.name || "Unnamed container"}
@@ -183,15 +186,24 @@ function ContainersTable({
           {items.map((container) => (
             <tr key={container.id} className="hover:bg-muted/25">
               <td className="px-4 py-3">
-                <Link
-                  to={`/containers/${container.id}`}
-                  className="font-medium hover:underline"
-                >
-                  {container.name || "Unnamed container"}
-                </Link>
-                <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
-                  {container.id.slice(0, 12)}
-                </p>
+                <div className="flex items-center gap-3">
+                  <ContainerAvatar
+                    image={container.image}
+                    alt=""
+                    className="size-8"
+                  />
+                  <div className="min-w-0">
+                    <Link
+                      to={`/containers/${container.id}`}
+                      className="font-medium hover:underline"
+                    >
+                      {container.name || "Unnamed container"}
+                    </Link>
+                    <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
+                      {container.id.slice(0, 12)}
+                    </p>
+                  </div>
+                </div>
               </td>
               <td className="px-4 py-3">
                 <StatusBadge state={container.state} />

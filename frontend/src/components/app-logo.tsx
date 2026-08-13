@@ -28,7 +28,7 @@ export function AppLogo({
   return (
     <div
       className={cn(
-        "flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border bg-card text-card-foreground shadow-xs",
+        "flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-card p-1.5 text-card-foreground shadow-xs",
         className
       )}
     >
@@ -36,7 +36,7 @@ export function AppLogo({
         <img
           src={src}
           alt={alt}
-          className="size-full object-contain p-1.5"
+          className="size-full object-contain"
           onError={() => setFailed(true)}
         />
       ) : (

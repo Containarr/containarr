@@ -73,7 +73,7 @@ export function AppDetailsPage() {
           <AppLogo
             appId={resource.id}
             alt={`${resource.name || "App"} logo`}
-            className="size-16 rounded-2xl"
+            className="size-14"
           />
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2.5">

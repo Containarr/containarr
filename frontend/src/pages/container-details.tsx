@@ -1,6 +1,5 @@
 import { useState } from "react"
 import {
-  Activity,
   ArrowLeft,
   Box,
   Cpu,
@@ -15,6 +14,7 @@ import {
 import { Link, useNavigate, useParams } from "react-router-dom"
 
 import { AppLogo } from "@/components/app-logo"
+import { ContainerAvatar } from "@/components/container-avatar"
 import { MetricChart } from "@/components/metric-chart"
 import { ErrorState } from "@/components/resource-states"
 import { ResourceActions } from "@/components/resource-actions"
@@ -110,9 +110,11 @@ export function ContainerDetailsPage() {
 
       <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-start">
         <div className="flex min-w-0 items-center gap-4">
-          <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-sky-950 text-white shadow-sm">
-            <Activity className="size-6" />
-          </div>
+          <ContainerAvatar
+            image={resource.image}
+            alt=""
+            className="size-14"
+          />
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2.5">
               <h1 className="truncate text-2xl font-semibold tracking-tight">
@@ -191,7 +193,7 @@ export function ContainerDetailsPage() {
                 <AppLogo
                   appId={resource.appId}
                   alt={`${linkedApp?.name || "App"} logo`}
-                  className="size-10 rounded-lg"
+                  className="size-10"
                 />
                 <div className="min-w-0">
                   <p className="text-sm font-medium">

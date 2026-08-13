@@ -116,7 +116,7 @@ function AppsCardGrid({
                 <AppLogo
                   appId={app.id}
                   alt={`${app.name || "App"} logo`}
-                  className="size-11"
+                  className="size-10"
                 />
                 <div className="min-w-0">
                   <CardTitle className="truncate text-base">
@@ -175,7 +175,7 @@ function AppsTable({
                     to={`/apps/${app.id}`}
                     className="flex items-center gap-3 font-medium hover:underline"
                   >
-                    <AppLogo appId={app.id} alt="" className="size-8 rounded-lg" />
+                    <AppLogo appId={app.id} alt="" className="size-8" />
                     {app.name || "Unnamed app"}
                   </Link>
                 </td>
