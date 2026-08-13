@@ -6,6 +6,7 @@ import {
   Info,
   LoaderCircle,
   Minus,
+  Play,
   Plus,
   Save,
   X,
@@ -328,37 +329,44 @@ function RegistryInstallForm({
   )
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [createdApp, setCreatedApp] = useState<AppResource | null>(null)
+  const [startError, setStartError] = useState<string | null>(null)
 
   async function submit(event: FormEvent) {
     event.preventDefault()
     setSubmitting(true)
     setError(null)
+    let created = createdApp
     try {
-      const created = await apiRequest<AppResource>("/api/v1/app/registry", {
-        method: "POST",
-        body: JSON.stringify({
-          registryId,
-          subdomain,
-          tls,
-          dockerNetworkMode: networkMode,
-          dockerEnvironment: environmentToRecord(environment),
-          dockerVolumes: volumesToBinds(volumes),
-          dockerPorts: portsToDocker(ports),
-          dockerCapabilities: capabilitiesToValues(capabilities),
-        }),
-      })
+      if (!created) {
+        created = await apiRequest<AppResource>("/api/v1/app/registry", {
+          method: "POST",
+          body: JSON.stringify({
+            registryId,
+            subdomain,
+            tls,
+            dockerNetworkMode: networkMode,
+            dockerEnvironment: environmentToRecord(environment),
+            dockerVolumes: volumesToBinds(volumes),
+            dockerPorts: portsToDocker(ports),
+            dockerCapabilities: capabilitiesToValues(capabilities),
+          }),
+        })
+        setCreatedApp(created)
+      }
+      await startApp(created)
       onCreated(created)
     } catch (requestError) {
-      setError(
-        requestError instanceof Error ? requestError.message : "Install failed."
-      )
+      if (created) setStartError(getErrorMessage(requestError))
+      else setError(getErrorMessage(requestError, "Install failed."))
     } finally {
       setSubmitting(false)
     }
   }
 
   return (
-    <form
+    <>
+      <form
       onSubmit={(event) => void submit(event)}
       className="flex min-h-0 flex-1 flex-col overflow-hidden"
     >
@@ -404,10 +412,19 @@ function RegistryInstallForm({
           ) : (
             <Plus className="mr-2 size-4" />
           )}
-          Install {app.name}
+          {submitting ? "Installing…" : `Install ${app.name}`}
         </Button>
       </div>
-    </form>
+      </form>
+      {createdApp && startError && (
+        <StartAppErrorDialog
+          app={createdApp}
+          error={startError}
+          onView={() => onCreated(createdApp)}
+          onStarted={() => onCreated(createdApp)}
+        />
+      )}
+    </>
   )
 }
 
@@ -444,45 +461,57 @@ function CustomAppForm({
   const [privileged, setPrivileged] = useState(app?.dockerPrivileged ?? false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [createdApp, setCreatedApp] = useState<AppResource | null>(null)
+  const [startError, setStartError] = useState<string | null>(null)
 
   async function submit(event: FormEvent) {
     event.preventDefault()
     setSubmitting(true)
     setError(null)
+    let saved = createdApp
     try {
-      const saved = await apiRequest<AppResource>(
-        editing ? `/api/v1/app/${app.id}` : "/api/v1/app",
-        {
-          method: editing ? "PUT" : "POST",
-          body: JSON.stringify({
-          name,
-          subdomain,
-          port: port ? Number(port) : null,
-          tls,
-          dockerImage,
-          dockerNetworkMode: networkMode,
-          dockerVolumes: volumesToBinds(volumes),
-          dockerPorts: portsToDocker(ports),
-          dockerEnvironment: environmentToRecord(environment),
-          dockerPrivileged: privileged,
-          dockerCapabilities: capabilitiesToValues(capabilities),
-          }),
-        }
-      )
+      if (!saved) {
+        saved = await apiRequest<AppResource>(
+          editing ? `/api/v1/app/${app.id}` : "/api/v1/app",
+          {
+            method: editing ? "PUT" : "POST",
+            body: JSON.stringify({
+            name,
+            subdomain,
+            port: port ? Number(port) : null,
+            tls,
+            dockerImage,
+            dockerNetworkMode: networkMode,
+            dockerVolumes: volumesToBinds(volumes),
+            dockerPorts: portsToDocker(ports),
+            dockerEnvironment: environmentToRecord(environment),
+            dockerPrivileged: privileged,
+            dockerCapabilities: capabilitiesToValues(capabilities),
+            }),
+          }
+        )
+        if (!editing) setCreatedApp(saved)
+      }
+      if (!editing) await startApp(saved)
       onSaved(saved, editing && haveDockerPropertiesChanged(app, saved))
     } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : `App ${editing ? "update" : "creation"} failed.`
-      )
+      if (!editing && saved) setStartError(getErrorMessage(requestError))
+      else {
+        setError(
+          getErrorMessage(
+            requestError,
+            `App ${editing ? "update" : "creation"} failed.`
+          )
+        )
+      }
     } finally {
       setSubmitting(false)
     }
   }
 
   return (
-    <form
+    <>
+      <form
       onSubmit={(event) => void submit(event)}
       className="flex min-h-0 flex-1 flex-col overflow-hidden"
     >
@@ -567,10 +596,25 @@ function CustomAppForm({
           ) : (
             <Box className="mr-2 size-4" />
           )}
-          {editing ? "Save" : "Create"}
+          {submitting
+            ? editing
+              ? "Saving…"
+              : "Creating…"
+            : editing
+              ? "Save"
+              : "Create"}
         </Button>
       </div>
-    </form>
+      </form>
+      {createdApp && startError && (
+        <StartAppErrorDialog
+          app={createdApp}
+          error={startError}
+          onView={() => onSaved(createdApp, false)}
+          onStarted={() => onSaved(createdApp, false)}
+        />
+      )}
+    </>
   )
 }
 
@@ -702,6 +746,114 @@ function NetworkEditor({
         </div>
       )}
     </section>
+  )
+}
+
+function StartAppErrorDialog({
+  app,
+  error,
+  onStarted,
+  onView,
+}: {
+  app: AppResource
+  error: string
+  onStarted: () => void
+  onView: () => void
+}) {
+  const [retrying, setRetrying] = useState(false)
+  const [message, setMessage] = useState(error)
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape" || retrying) return
+      event.stopImmediatePropagation()
+      onView()
+    }
+
+    window.addEventListener("keydown", onKeyDown, { capture: true })
+    return () => window.removeEventListener("keydown", onKeyDown, { capture: true })
+  }, [onView, retrying])
+
+  async function retry() {
+    setRetrying(true)
+    try {
+      await startApp(app)
+      onStarted()
+    } catch (requestError) {
+      setMessage(getErrorMessage(requestError))
+      setRetrying(false)
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/55 p-5"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget && !retrying) onView()
+      }}
+    >
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="start-app-error-title"
+        aria-describedby="start-app-error-description"
+        className="w-full max-w-md rounded-2xl border bg-background p-6 shadow-2xl"
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 id="start-app-error-title" className="text-lg font-semibold">
+              App could not be started
+            </h2>
+            <p
+              id="start-app-error-description"
+              className="mt-2 text-sm leading-relaxed text-muted-foreground"
+            >
+              {app.name || "The app"} was created successfully, but its
+              container could not be started.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+            onClick={onView}
+            disabled={retrying}
+            aria-label="View app"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        <p
+          className="mt-4 break-words rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300"
+          role="alert"
+        >
+          {message}
+        </p>
+
+        <div className="mt-6 flex justify-end gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onView}
+            disabled={retrying}
+          >
+            View app
+          </Button>
+          <Button
+            type="button"
+            onClick={() => void retry()}
+            disabled={retrying}
+          >
+            {retrying ? (
+              <LoaderCircle className="mr-2 size-4 animate-spin" />
+            ) : (
+              <Play className="mr-2 size-4" />
+            )}
+            Retry start
+          </Button>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -996,6 +1148,14 @@ function RegistryError({ error, retry }: { error: string; retry: () => void }) {
       </Button>
     </div>
   )
+}
+
+async function startApp(app: AppResource) {
+  await apiRequest(`/api/v1/app/${app.id}/start`, { method: "POST" })
+}
+
+function getErrorMessage(error: unknown, fallback = "Request failed.") {
+  return error instanceof Error ? error.message : fallback
 }
 
 function environmentFromRecord(value: Record<string, string>): EnvironmentRow[] {

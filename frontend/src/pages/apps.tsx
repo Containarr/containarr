@@ -3,6 +3,7 @@ import { ArrowUpRight, Plus } from "lucide-react"
 import { Link, useNavigate } from "react-router-dom"
 
 import { AppLogo } from "@/components/app-logo"
+import { CertificateBadge } from "@/components/certificate-badge"
 import { InstallAppDialog } from "@/components/install-app-dialog"
 import { PageHeader } from "@/components/page-header"
 import {
@@ -141,9 +142,7 @@ function AppsCardGrid({
                   )}
                 </div>
               </div>
-              <div className="shrink-0">
-                <StatusBadge state={app.containerState || app.state} />
-              </div>
+              <AppStatusBadge app={app} />
             </CardHeader>
           </Card>
         )
@@ -238,7 +237,7 @@ function AppsTable({
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex justify-end">
-                    <StatusBadge state={app.containerState || app.state} />
+                    <AppStatusBadge app={app} />
                   </div>
                 </td>
               </tr>
@@ -255,5 +254,27 @@ type AppSortKey = "app" | "url" | "status"
 function getAppSortValue(app: AppResource, key: AppSortKey, domain: string | null) {
   if (key === "app") return app.name || ""
   if (key === "url") return getPublicAppUrl(app, domain) || ""
-  return app.containerState || app.state || ""
+  return getAppStatus(app)
+}
+
+function AppStatusBadge({ app }: { app: AppResource }) {
+  if (["provisioning", "error"].includes(app.certificate.status)) {
+    return <CertificateBadge certificate={app.certificate} />
+  }
+
+  const state = app.containerState || app.state
+  return state.toLowerCase() === "running" ? (
+    <StatusBadge state={state} label="Live" />
+  ) : (
+    <StatusBadge state={state} />
+  )
+}
+
+function getAppStatus(app: AppResource) {
+  if (["provisioning", "error"].includes(app.certificate.status)) {
+    return app.certificate.status
+  }
+
+  const state = app.containerState || app.state || "unknown"
+  return state.toLowerCase() === "running" ? "live" : state
 }

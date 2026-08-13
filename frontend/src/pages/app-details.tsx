@@ -15,6 +15,7 @@ import {
 import { Link, useNavigate, useParams } from "react-router-dom"
 
 import { AppLogo } from "@/components/app-logo"
+import { CertificateDetail } from "@/components/certificate-badge"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { EditAppDialog } from "@/components/install-app-dialog"
 import { ErrorState } from "@/components/resource-states"
@@ -52,6 +53,7 @@ export function AppDetailsPage() {
     domainRequest.status === "success" ? domainRequest.data.domain : null
   const publicUrl = getPublicAppUrl(resource, domain)
   const state = resource.containerState || resource.state
+  const live = state.toLowerCase() === "running"
 
   async function deleteApp() {
     setDeleting(true)
@@ -87,7 +89,7 @@ export function AppDetailsPage() {
               <h1 className="truncate text-2xl font-semibold tracking-tight">
                 {resource.name || "Unnamed app"}
               </h1>
-              <StatusBadge state={state} />
+              <StatusBadge state={state} label={live ? "Live" : undefined} />
             </div>
             {publicUrl && (
               <a
@@ -150,8 +152,20 @@ export function AppDetailsPage() {
           <CardContent className="mt-5 grid gap-x-8 gap-y-5 sm:grid-cols-2">
             <Detail label="Subdomain" value={resource.subdomain || "—"} />
             <Detail label="TLS" value={getTlsMenuLabel(resource.tls)} />
+            <CertificateDetail
+              certificate={resource.certificate}
+              onRetry={async () => {
+                await apiRequest(`/api/v1/app/${resource.id}/certificate/retry`, {
+                  method: "POST",
+                })
+                app.reload()
+              }}
+            />
             <Detail label="Container port" value={resource.port ?? "—"} mono />
-            <Detail label="Network mode" value={resource.dockerNetworkMode} />
+            <Detail
+              label="Network"
+              value={resource.dockerNetworkMode === "host" ? "Host" : "Bridge"}
+            />
             <Detail label="Privileged" value={resource.dockerPrivileged ? "Yes" : "No"} />
           </CardContent>
         </Card>
@@ -164,7 +178,7 @@ export function AppDetailsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="mt-5 space-y-5">
-            <Detail label="State" value={state || "Unknown"} />
+            <Detail label="State" value={live ? "Live" : state || "Unknown"} />
             <Detail
               label="Container ID"
               value={resource.containerId || "Not created"}

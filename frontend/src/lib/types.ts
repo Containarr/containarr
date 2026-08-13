@@ -17,6 +17,14 @@ export type AppResource = {
   dockerEnvironment: Record<string, string>
   dockerPrivileged: boolean
   dockerCapabilities: string[]
+  certificate: CertificateStatus
+}
+
+export type CertificateStatus = {
+  hostname: string | null
+  status: "not_required" | "provisioning" | "renewing" | "ready" | "error"
+  expiresAt: string | null
+  error: string | null
 }
 
 export type DockerPort = {
@@ -89,6 +97,7 @@ export type ProxyResource = {
   sourceUrl: string
   createdAt: string
   updatedAt: string
+  certificate: CertificateStatus
 }
 
 export type ViewMode = "cards" | "table"

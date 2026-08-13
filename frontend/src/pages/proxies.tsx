@@ -3,6 +3,7 @@ import { ArrowRight, ArrowUpRight, Plus, Waypoints } from "lucide-react"
 import { Link, useNavigate } from "react-router-dom"
 
 import { ProxyDialog } from "@/components/new-proxy-dialog"
+import { CertificateBadge } from "@/components/certificate-badge"
 import { PageHeader } from "@/components/page-header"
 import {
   CardGridSkeleton,
@@ -22,7 +23,9 @@ import { getPublicProxyUrl } from "@/lib/proxies"
 import type { ProxyResource } from "@/lib/types"
 
 export function ProxiesPage() {
-  const proxies = useApi<Record<string, ProxyResource>>("/api/v1/proxy")
+  const proxies = useApi<Record<string, ProxyResource>>("/api/v1/proxy", {
+    pollInterval: 1000,
+  })
   const domainRequest = useApi<{ domain: string }>("/api/v1/ddns/domain")
   const [view, setView] = useStoredViewMode("containarr-proxies-view")
   const [newProxyOpen, setNewProxyOpen] = useState(false)
@@ -108,28 +111,31 @@ function ProxyCardGrid({
             onKeyDown={(event) => openFromKeyboard(event, proxy.id)}
             className="cursor-pointer overflow-hidden shadow-none transition-all hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <CardHeader className="flex flex-row items-center gap-3 pb-4">
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-lg border bg-muted/30">
-                <Waypoints className="size-5 text-muted-foreground" />
-              </span>
-              <div className="min-w-0">
-                <CardTitle className="truncate text-base">
-                  {proxy.subdomain}
-                </CardTitle>
-                {publicUrl && (
-                  <a
-                    href={publicUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={(event) => event.stopPropagation()}
-                    onKeyDown={(event) => event.stopPropagation()}
-                    className="mt-1 inline-flex max-w-full items-center gap-1 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-                  >
-                    <span className="truncate">{publicUrl}</span>
-                    <ArrowUpRight className="size-3 shrink-0" />
-                  </a>
-                )}
+            <CardHeader className="flex flex-row items-start justify-between gap-3 pb-4">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-lg border bg-muted/30">
+                  <Waypoints className="size-5 text-muted-foreground" />
+                </span>
+                <div className="min-w-0">
+                  <CardTitle className="truncate text-base">
+                    {proxy.subdomain}
+                  </CardTitle>
+                  {publicUrl && (
+                    <a
+                      href={publicUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={(event) => event.stopPropagation()}
+                      onKeyDown={(event) => event.stopPropagation()}
+                      className="mt-1 inline-flex max-w-full items-center gap-1 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                    >
+                      <span className="truncate">{publicUrl}</span>
+                      <ArrowUpRight className="size-3 shrink-0" />
+                    </a>
+                  )}
+                </div>
               </div>
+              <CertificateBadge certificate={proxy.certificate} />
             </CardHeader>
             <CardContent>
               <div className="flex min-w-0 items-center gap-2 rounded-lg bg-muted/40 px-3 py-2 font-mono text-xs text-muted-foreground">
@@ -193,6 +199,12 @@ function ProxyTable({
               onClick={() => changeSort("publicUrl")}
             />
             <SortableTableHeader
+              label="Certificate"
+              active={sort?.key === "certificate"}
+              direction={sort?.direction || "asc"}
+              onClick={() => changeSort("certificate")}
+            />
+            <SortableTableHeader
               label="Source URL"
               active={sort?.key === "sourceUrl"}
               direction={sort?.direction || "asc"}
@@ -221,6 +233,9 @@ function ProxyTable({
                     "—"
                   )}
                 </td>
+                <td className="px-4 py-3">
+                  <CertificateBadge certificate={proxy.certificate} />
+                </td>
                 <td className="max-w-72 px-4 py-3">
                   <ExternalLink href={proxy.sourceUrl} mono />
                 </td>
@@ -247,7 +262,7 @@ function ExternalLink({ href, mono = false }: { href: string; mono?: boolean }) 
   )
 }
 
-type ProxySortKey = "proxy" | "publicUrl" | "sourceUrl"
+type ProxySortKey = "proxy" | "publicUrl" | "certificate" | "sourceUrl"
 
 function getProxySortValue(
   proxy: ProxyResource,
@@ -256,5 +271,6 @@ function getProxySortValue(
 ) {
   if (key === "proxy") return proxy.subdomain
   if (key === "publicUrl") return getPublicProxyUrl(proxy, domain) || ""
+  if (key === "certificate") return proxy.certificate.status
   return proxy.sourceUrl
 }

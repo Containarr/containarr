@@ -11,6 +11,7 @@ import {
 import { Link, useNavigate, useParams } from "react-router-dom"
 
 import { ProxyDialog } from "@/components/new-proxy-dialog"
+import { CertificateDetail } from "@/components/certificate-badge"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { ErrorState } from "@/components/resource-states"
 import { Button } from "@/components/ui/button"
@@ -29,7 +30,9 @@ export function ProxyDetailsPage() {
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
-  const proxy = useApi<ProxyResource>(`/api/v1/proxy/${proxyId}`)
+  const proxy = useApi<ProxyResource>(`/api/v1/proxy/${proxyId}`, {
+    pollInterval: 1000,
+  })
   const domainRequest = useApi<{ domain: string }>("/api/v1/ddns/domain")
 
   if (proxy.status === "loading") return <DetailsSkeleton />
@@ -126,6 +129,15 @@ export function ProxyDetailsPage() {
         <CardContent className="mt-5 grid gap-x-8 gap-y-5 sm:grid-cols-2">
           <Detail label="Subdomain" value={resource.subdomain} mono />
           <Detail label="TLS" value={getTlsMenuLabel(resource.tls)} />
+          <CertificateDetail
+            certificate={resource.certificate}
+            onRetry={async () => {
+              await apiRequest(`/api/v1/proxy/${resource.id}/certificate/retry`, {
+                method: "POST",
+              })
+              proxy.reload()
+            }}
+          />
           <Detail label="Source URL" value={resource.sourceUrl} href={resource.sourceUrl} mono />
           {publicUrl && (
             <Detail label="Public URL" value={publicUrl} href={publicUrl} mono />

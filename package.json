@@ -2,14 +2,15 @@
   "name": "@containarr/containarr",
   "version": "0.1.0",
   "scripts": {
-    "start": "DEBUG=HTTPServer,Traefik,Docker,Settings,SQLite,DDNS,Apps,App:*,Proxies node server.mjs",
-    "serve": "DEBUG=HTTPServer,Traefik,Docker,Settings,SQLite,DDNS,Apps,App:*,Proxies node --watch --watch-kill-signal SIGINT server.mjs",
+    "start": "DEBUG=HTTPServer,Traefik,Docker,Settings,SQLite,DDNS,LetsEncrypt,Apps,App:*,Proxies node server.mjs",
+    "serve": "DEBUG=HTTPServer,Traefik,Docker,Settings,SQLite,DDNS,LetsEncrypt,Apps,App:*,Proxies node --watch --watch-kill-signal SIGINT server.mjs",
     "start:docker": "docker compose -f docker-compose.yml up",
     "serve:docker": "docker compose -f docker-compose.yml -f docker-compose.dev.yml up",
     "build:docker": "docker build -t containarr ."
   },
   "dependencies": {
     "@sequelize/sqlite3": "^7.0.0-alpha.48",
+    "acme-client": "^5.4.0",
     "debug": "^4.4.3",
     "dockerode": "^5.0.1",
     "express": "^5.2.1",

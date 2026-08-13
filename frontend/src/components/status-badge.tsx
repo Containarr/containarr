@@ -3,7 +3,13 @@ import { Badge } from "@/components/ui/badge"
 const healthyStates = new Set(["running", "created"])
 const transitionalStates = new Set(["creating", "starting", "restarting"])
 
-export function StatusBadge({ state }: { state: string | null }) {
+export function StatusBadge({
+  label,
+  state,
+}: {
+  label?: string
+  state: string | null
+}) {
   const normalized = (state || "unknown").toLowerCase()
   const isHealthy = healthyStates.has(normalized)
   const isTransitional = transitionalStates.has(normalized)
@@ -14,7 +20,7 @@ export function StatusBadge({ state }: { state: string | null }) {
       variant="outline"
       className={
         isHealthy
-          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+          ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300"
           : isTransitional
             ? "border-amber-200 bg-amber-50 text-amber-700"
             : isStopped
@@ -32,7 +38,7 @@ export function StatusBadge({ state }: { state: string | null }) {
         }`}
         aria-hidden="true"
       />
-      <span className="relative -top-px">{normalized}</span>
+      <span className="relative -top-px">{label ?? normalized}</span>
     </Badge>
   )
 }
