@@ -28,9 +28,14 @@ RUN ARCH=$(dpkg --print-architecture) && \
 
 # Install Node.js
 RUN ARCH=$(dpkg --print-architecture) && \
-    curl -L https://nodejs.org/dist/v${NODEJS_VERSION}/node-v${NODEJS_VERSION}-linux-${ARCH}.tar.gz -o node.tar.gz && \
+    case "${ARCH}" in \
+      amd64) NODE_ARCH=x64 ;; \
+      arm64) NODE_ARCH=arm64 ;; \
+      *) echo "Unsupported architecture: ${ARCH}" >&2; exit 1 ;; \
+    esac && \
+    curl -fL https://nodejs.org/dist/v${NODEJS_VERSION}/node-v${NODEJS_VERSION}-linux-${NODE_ARCH}.tar.gz -o node.tar.gz && \
     tar -xvzf node.tar.gz && \
-    mv node-v${NODEJS_VERSION}-linux-${ARCH} /usr/local/node && \
+    mv node-v${NODEJS_VERSION}-linux-${NODE_ARCH} /usr/local/node && \
     ln -s /usr/local/node/bin/node /usr/local/bin/node && \
     ln -s /usr/local/node/bin/npm /usr/local/bin/npm && \
     rm node.tar.gz
