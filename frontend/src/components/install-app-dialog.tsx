@@ -6,9 +6,9 @@ import {
   Info,
   LoaderCircle,
   Minus,
-  Play,
   Plus,
   Save,
+  Search,
   X,
 } from "lucide-react"
 
@@ -170,6 +170,7 @@ function EditAppDialogContent({
 
 function InstallAppDialogContent({ onClose, onCreated }: DialogProps) {
   const [mode, setMode] = useState<"registry" | "custom">("registry")
+  const [registryFilter, setRegistryFilter] = useState("")
   const [selected, setSelected] = useState<{
     id: string
     app: RegistryApp
@@ -178,6 +179,15 @@ function InstallAppDialogContent({ onClose, onCreated }: DialogProps) {
   const domainRequest = useApi<{ domain: string }>("/api/v1/ddns/domain")
   const domain =
     domainRequest.status === "success" ? domainRequest.data.domain : "…"
+  const normalizedRegistryFilter = registryFilter.trim().toLowerCase()
+  const filteredRegistry =
+    registry.status === "success"
+      ? Object.entries(registry.data).filter(([id, app]) =>
+          [id, app.name, app.category, app.description, app.dockerImage].some(
+            (value) => value.toLowerCase().includes(normalizedRegistryFilter)
+          )
+        )
+      : []
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -270,33 +280,62 @@ function InstallAppDialogContent({ onClose, onCreated }: DialogProps) {
             ) : registry.status === "error" ? (
               <RegistryError error={registry.error} retry={registry.reload} />
             ) : (
-            <div className="grid gap-3 sm:grid-cols-2">
-              {Object.entries(registry.data).map(([id, app]) => (
-                <button
-                  type="button"
-                  key={id}
-                  onClick={() => setSelected({ id, app })}
-                  className="flex flex-col rounded-xl border p-4 text-left transition-all hover:-translate-y-0.5 hover:border-foreground/25 hover:bg-muted/20 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <div className="flex items-start gap-3">
-                    <AppLogo
-                      registryId={id}
-                      alt={`${app.name} logo`}
-                      className="size-11"
-                    />
-                    <div className="min-w-0">
-                      <p className="font-medium">{app.name}</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        {app.category}
+              <>
+                <div className="relative mb-4">
+                  <Search
+                    className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+                    aria-hidden="true"
+                  />
+                  <Input
+                    type="search"
+                    value={registryFilter}
+                    onChange={(event) => setRegistryFilter(event.target.value)}
+                    placeholder="Search apps…"
+                    aria-label="Search app registry"
+                    className="pl-9"
+                    autoFocus
+                  />
+                </div>
+
+                {filteredRegistry.length ? (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {filteredRegistry.map(([id, app]) => (
+                      <button
+                        type="button"
+                        key={id}
+                        onClick={() => setSelected({ id, app })}
+                        className="flex flex-col rounded-xl border p-4 text-left transition-all hover:-translate-y-0.5 hover:border-foreground/25 hover:bg-muted/20 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <div className="flex items-start gap-3">
+                          <AppLogo
+                            registryId={id}
+                            alt={`${app.name} logo`}
+                            className="size-11"
+                          />
+                          <div className="min-w-0">
+                            <p className="font-medium">{app.name}</p>
+                            <p className="mt-0.5 text-xs text-muted-foreground">
+                              {app.category}
+                            </p>
+                          </div>
+                        </div>
+                        <p className="mt-3 flex-1 text-sm leading-relaxed text-muted-foreground">
+                          {app.description}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex min-h-48 items-center justify-center rounded-xl border border-dashed text-center">
+                    <div>
+                      <p className="text-sm font-medium">No apps found</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Try a different search.
                       </p>
                     </div>
                   </div>
-                  <p className="mt-3 flex-1 text-sm leading-relaxed text-muted-foreground">
-                    {app.description}
-                  </p>
-                </button>
-              ))}
-            </div>
+                )}
+              </>
             )}
           </div>
         )}
@@ -329,36 +368,29 @@ function RegistryInstallForm({
   )
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [createdApp, setCreatedApp] = useState<AppResource | null>(null)
-  const [startError, setStartError] = useState<string | null>(null)
 
   async function submit(event: FormEvent) {
     event.preventDefault()
     setSubmitting(true)
     setError(null)
-    let created = createdApp
     try {
-      if (!created) {
-        created = await apiRequest<AppResource>("/api/v1/app/registry", {
-          method: "POST",
-          body: JSON.stringify({
-            registryId,
-            subdomain,
-            tls,
-            dockerNetworkMode: networkMode,
-            dockerEnvironment: environmentToRecord(environment),
-            dockerVolumes: volumesToBinds(volumes),
-            dockerPorts: portsToDocker(ports),
-            dockerCapabilities: capabilitiesToValues(capabilities),
-          }),
-        })
-        setCreatedApp(created)
-      }
-      await startApp(created)
+      const created = await apiRequest<AppResource>("/api/v1/app/registry", {
+        method: "POST",
+        body: JSON.stringify({
+          registryId,
+          subdomain,
+          tls,
+          dockerNetworkMode: networkMode,
+          dockerEnvironment: environmentToRecord(environment),
+          dockerVolumes: volumesToBinds(volumes),
+          dockerPorts: portsToDocker(ports),
+          dockerCapabilities: capabilitiesToValues(capabilities),
+        }),
+      })
       onCreated(created)
+      void startApp(created).catch(() => {})
     } catch (requestError) {
-      if (created) setStartError(getErrorMessage(requestError))
-      else setError(getErrorMessage(requestError, "Install failed."))
+      setError(getErrorMessage(requestError, "Install failed."))
     } finally {
       setSubmitting(false)
     }
@@ -416,14 +448,6 @@ function RegistryInstallForm({
         </Button>
       </div>
       </form>
-      {createdApp && startError && (
-        <StartAppErrorDialog
-          app={createdApp}
-          error={startError}
-          onView={() => onCreated(createdApp)}
-          onStarted={() => onCreated(createdApp)}
-        />
-      )}
     </>
   )
 }
@@ -461,21 +485,17 @@ function CustomAppForm({
   const [privileged, setPrivileged] = useState(app?.dockerPrivileged ?? false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [createdApp, setCreatedApp] = useState<AppResource | null>(null)
-  const [startError, setStartError] = useState<string | null>(null)
 
   async function submit(event: FormEvent) {
     event.preventDefault()
     setSubmitting(true)
     setError(null)
-    let saved = createdApp
     try {
-      if (!saved) {
-        saved = await apiRequest<AppResource>(
-          editing ? `/api/v1/app/${app.id}` : "/api/v1/app",
-          {
-            method: editing ? "PUT" : "POST",
-            body: JSON.stringify({
+      const saved = await apiRequest<AppResource>(
+        editing ? `/api/v1/app/${app.id}` : "/api/v1/app",
+        {
+          method: editing ? "PUT" : "POST",
+          body: JSON.stringify({
             name,
             subdomain,
             port: port ? Number(port) : null,
@@ -487,23 +507,18 @@ function CustomAppForm({
             dockerEnvironment: environmentToRecord(environment),
             dockerPrivileged: privileged,
             dockerCapabilities: capabilitiesToValues(capabilities),
-            }),
-          }
-        )
-        if (!editing) setCreatedApp(saved)
-      }
-      if (!editing) await startApp(saved)
+          }),
+        }
+      )
       onSaved(saved, editing && haveDockerPropertiesChanged(app, saved))
+      if (!editing) void startApp(saved).catch(() => {})
     } catch (requestError) {
-      if (!editing && saved) setStartError(getErrorMessage(requestError))
-      else {
-        setError(
-          getErrorMessage(
-            requestError,
-            `App ${editing ? "update" : "creation"} failed.`
-          )
+      setError(
+        getErrorMessage(
+          requestError,
+          `App ${editing ? "update" : "creation"} failed.`
         )
-      }
+      )
     } finally {
       setSubmitting(false)
     }
@@ -606,14 +621,6 @@ function CustomAppForm({
         </Button>
       </div>
       </form>
-      {createdApp && startError && (
-        <StartAppErrorDialog
-          app={createdApp}
-          error={startError}
-          onView={() => onSaved(createdApp, false)}
-          onStarted={() => onSaved(createdApp, false)}
-        />
-      )}
     </>
   )
 }
@@ -746,114 +753,6 @@ function NetworkEditor({
         </div>
       )}
     </section>
-  )
-}
-
-function StartAppErrorDialog({
-  app,
-  error,
-  onStarted,
-  onView,
-}: {
-  app: AppResource
-  error: string
-  onStarted: () => void
-  onView: () => void
-}) {
-  const [retrying, setRetrying] = useState(false)
-  const [message, setMessage] = useState(error)
-
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key !== "Escape" || retrying) return
-      event.stopImmediatePropagation()
-      onView()
-    }
-
-    window.addEventListener("keydown", onKeyDown, { capture: true })
-    return () => window.removeEventListener("keydown", onKeyDown, { capture: true })
-  }, [onView, retrying])
-
-  async function retry() {
-    setRetrying(true)
-    try {
-      await startApp(app)
-      onStarted()
-    } catch (requestError) {
-      setMessage(getErrorMessage(requestError))
-      setRetrying(false)
-    }
-  }
-
-  return (
-    <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/55 p-5"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget && !retrying) onView()
-      }}
-    >
-      <div
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="start-app-error-title"
-        aria-describedby="start-app-error-description"
-        className="w-full max-w-md rounded-2xl border bg-background p-6 shadow-2xl"
-      >
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 id="start-app-error-title" className="text-lg font-semibold">
-              App could not be started
-            </h2>
-            <p
-              id="start-app-error-description"
-              className="mt-2 text-sm leading-relaxed text-muted-foreground"
-            >
-              {app.name || "The app"} was created successfully, but its
-              container could not be started.
-            </p>
-          </div>
-          <button
-            type="button"
-            className="flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
-            onClick={onView}
-            disabled={retrying}
-            aria-label="View app"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
-
-        <p
-          className="mt-4 break-words rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300"
-          role="alert"
-        >
-          {message}
-        </p>
-
-        <div className="mt-6 flex justify-end gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onView}
-            disabled={retrying}
-          >
-            View app
-          </Button>
-          <Button
-            type="button"
-            onClick={() => void retry()}
-            disabled={retrying}
-          >
-            {retrying ? (
-              <LoaderCircle className="mr-2 size-4 animate-spin" />
-            ) : (
-              <Play className="mr-2 size-4" />
-            )}
-            Retry start
-          </Button>
-        </div>
-      </div>
-    </div>
   )
 }
 
