@@ -8,6 +8,7 @@ import {
 } from "react"
 
 import { apiRequest } from "@/lib/api"
+import { clearApiCache } from "@/hooks/use-api"
 
 export type AuthUser = {
   id: string
@@ -63,6 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     function unauthorized() {
+      clearApiCache()
       setState((current) => ({
         status: "ready",
         data: {
@@ -90,11 +92,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       method: "POST",
       body: JSON.stringify(credentials),
     })
+    clearApiCache()
     setState({ status: "ready", data, error: null })
   }
 
   async function logout() {
     await apiRequest<void>("/api/v1/auth/logout", { method: "POST" })
+    clearApiCache()
     setState({
       status: "ready",
       data: {
