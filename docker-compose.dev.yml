@@ -8,7 +8,6 @@ services:
     #   - LETS_ENCRYPT_DIRECTORY_URL=https://acme-staging-v02.api.letsencrypt.org/directory
     volumes:
       - ./volumes/containarr:/data
-      - ./www/:/app/www/
       - ./lib/:/app/lib/
       - ./services/:/app/services/
       - ./server.mjs:/app/server.mjs
