@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react"
 import {
-  Boxes,
   Container,
   LayoutGrid,
   Menu,
@@ -111,9 +110,12 @@ function Brand({ onNavigate }: { onNavigate?: () => void }) {
       onClick={onNavigate}
       className="flex items-center gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
     >
-      <span className="flex size-9 items-center justify-center rounded-xl bg-foreground text-background shadow-sm">
-        <Boxes className="size-5" aria-hidden="true" />
-      </span>
+      <img
+        src="/logo.svg"
+        alt=""
+        className="size-11 shrink-0 object-contain"
+        aria-hidden="true"
+      />
       <span>
         <span className="block text-base leading-none font-semibold tracking-tight">
           Containarr
