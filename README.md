@@ -2,6 +2,8 @@
 
 👋 Welcome to Containarr, the easiest way to self-host Docker containers on your homelab server!
 
+<img src="./frontend/public/logo.png" width="128" height="128" />
+
 Containarr includes everything you need to:
 
 * Easily set up, run, and update Docker containers.
