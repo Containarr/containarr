@@ -1,6 +1,7 @@
 export async function apiRequest<T>(path: string, init?: RequestInit) {
   const response = await fetch(path, {
     ...init,
+    credentials: "same-origin",
     headers: {
       Accept: "application/json",
       ...(init?.body ? { "Content-Type": "application/json" } : {}),
@@ -10,8 +11,20 @@ export async function apiRequest<T>(path: string, init?: RequestInit) {
 
   if (!response.ok) {
     const detail = await response.text().catch(() => "")
+    if (response.status === 401) {
+      window.dispatchEvent(new Event("containarr:unauthorized"))
+    }
+
+    let message = detail
+    try {
+      const body = JSON.parse(detail) as { error?: unknown }
+      if (typeof body.error === "string") message = body.error
+    } catch {
+      // Keep the plain-text response.
+    }
+
     throw new Error(
-      detail || `The server returned ${response.status} ${response.statusText}.`
+      message || `The server returned ${response.status} ${response.statusText}.`
     )
   }
 

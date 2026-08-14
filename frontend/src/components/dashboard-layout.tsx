@@ -2,13 +2,16 @@ import { useEffect, useState } from "react"
 import {
   Container,
   LayoutGrid,
+  LogOut,
   Menu,
+  UserRound,
   Waypoints,
   X,
 } from "lucide-react"
 import { NavLink, Outlet, useLocation } from "react-router-dom"
 
 import { ThemeSwitch } from "@/components/theme-switch"
+import { useAuth } from "@/hooks/use-auth"
 
 const navigation = [
   { label: "Apps", to: "/apps", icon: LayoutGrid },
@@ -41,9 +44,7 @@ export function DashboardLayout() {
           <Brand />
         </div>
         <SidebarNavigation />
-        <div className="border-t p-3">
-          <ThemeSwitch />
-        </div>
+        <SidebarFooter />
       </aside>
 
       <div className="min-w-0">
@@ -86,9 +87,7 @@ export function DashboardLayout() {
                 </button>
               </div>
               <SidebarNavigation onNavigate={() => setMenuOpen(false)} />
-              <div className="border-t p-3">
-                <ThemeSwitch />
-              </div>
+              <SidebarFooter />
             </aside>
           </div>
         )}
@@ -158,5 +157,48 @@ function SidebarNavigation({ onNavigate }: { onNavigate?: () => void }) {
         ))}
       </div>
     </nav>
+  )
+}
+
+function SidebarFooter() {
+  const { state, logout } = useAuth()
+  const [loggingOut, setLoggingOut] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const username = state.status === "ready" ? state.data.user?.username : null
+
+  async function signOut() {
+    setLoggingOut(true)
+    setError(null)
+    try {
+      await logout()
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error ? requestError.message : "Sign out failed."
+      )
+      setLoggingOut(false)
+    }
+  }
+
+  return (
+    <div className="space-y-3 border-t p-3">
+      <div className="flex items-center gap-2 px-1">
+        <UserRound className="size-4 shrink-0 text-muted-foreground" />
+        <span className="min-w-0 flex-1 truncate text-sm font-medium">
+          {username}
+        </span>
+        <button
+          type="button"
+          title="Sign out"
+          aria-label="Sign out"
+          disabled={loggingOut}
+          onClick={() => void signOut()}
+          className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground disabled:opacity-50"
+        >
+          <LogOut className="size-4" />
+        </button>
+      </div>
+      {error && <p className="px-1 text-xs text-red-600 dark:text-red-400">{error}</p>}
+      <ThemeSwitch />
+    </div>
   )
 }
