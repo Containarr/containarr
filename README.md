@@ -70,11 +70,13 @@ Open http://localhost in your web browser to set-up Containarr, and run your fir
 
 # Screenshots
 
-[Screenshot 1]
+<img alt="" src="./screenshots/Apps — Grid.png">
 
-[Screenshot 2]
+<img alt="" src="./screenshots/Container 1.png">
 
-[Screenshot 3]
+<img alt="" src="./screenshots/Settings — Domain (Custom).png">
+
+[View more screenshots »](https://github.com/Containarr/containarr/tree/main/screenshots)
 
 # Architecture
 
