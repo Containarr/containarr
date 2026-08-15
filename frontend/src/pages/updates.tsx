@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { Check, CircleAlert, Download, RefreshCw } from "lucide-react"
+import { Check, CircleAlert, Download, LoaderCircle, RefreshCw } from "lucide-react"
 
 import { PageHeader } from "@/components/page-header"
 import { ErrorState } from "@/components/resource-states"
@@ -146,22 +146,28 @@ export function UpdatesPage() {
           </dl>
 
           <div className="flex flex-wrap justify-end gap-3 border-t pt-6">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => void checkForUpdates()}
-              disabled={checking || installing || status.installing}
-            >
-              <RefreshCw className={`mr-2 size-4 ${checking ? "animate-spin" : ""}`} />
-              {checking ? "Checking for Updates…" : "Check for Updates"}
-            </Button>
+            {!installing && !status.installing ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => void checkForUpdates()}
+                disabled={checking}
+              >
+                <RefreshCw className={`mr-2 size-4 ${checking ? "animate-spin" : ""}`} />
+                {checking ? "Checking for Updates…" : "Check for Updates"}
+              </Button>
+            ) : null}
             {status.updateAvailable ? (
               <Button
                 type="button"
                 onClick={() => void installUpdate()}
                 disabled={checking || installing || status.installing}
               >
-                <Download className={`mr-2 size-4 ${installing || status.installing ? "animate-pulse" : ""}`} />
+                {installing || status.installing ? (
+                  <LoaderCircle className="mr-2 size-4 animate-spin" />
+                ) : (
+                  <Download className="mr-2 size-4" />
+                )}
                 {installing || status.installing ? "Installing Update…" : "Install Update"}
               </Button>
             ) : null}

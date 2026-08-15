@@ -5,7 +5,8 @@ services:
       dockerfile: Dockerfile
     command: npm run serve
     # environment:
-    #   - LETS_ENCRYPT_DIRECTORY_URL=https://acme-staging-v02.api.letsencrypt.org/directory
+    # - CONTAINARR_VERSION=0.0.0-dev
+    # - LETS_ENCRYPT_DIRECTORY_URL=https://acme-staging-v02.api.letsencrypt.org/directory
     volumes:
       - ./volumes/containarr:/data
       - ./lib/:/app/lib/

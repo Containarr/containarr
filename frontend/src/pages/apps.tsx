@@ -163,9 +163,12 @@ function AppsCardGrid({
               onClick={(event) => event.stopPropagation()}
               onKeyDown={(event) => event.stopPropagation()}
             >
-              <span className="shrink-0 font-medium">
+              <Link
+                to={app.policyId === "public" ? "/firewall" : `/firewall?edit=${encodeURIComponent(app.policyId)}`}
+                className="shrink-0 font-medium underline-offset-4 hover:text-foreground hover:underline"
+              >
                 {policyNames[app.policyId] ?? "Unknown"}
-              </span>
+              </Link>
               {publicUrl && (
                 <>
                   <span aria-hidden="true">・</span>
@@ -281,7 +284,12 @@ function AppsTable({
                   )}
                 </td>
                 <td className="px-4 py-3 text-muted-foreground">
-                  {policyNames[app.policyId] ?? "Unknown"}
+                  <Link
+                    to={app.policyId === "public" ? "/firewall" : `/firewall?edit=${encodeURIComponent(app.policyId)}`}
+                    className="underline-offset-4 hover:text-foreground hover:underline"
+                  >
+                    {policyNames[app.policyId] ?? "Unknown"}
+                  </Link>
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex justify-end">

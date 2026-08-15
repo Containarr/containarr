@@ -2,11 +2,12 @@ import { useEffect, useRef, useState } from "react"
 import Ansi from "ansi-to-react"
 import {
   ArrowLeft,
+  ArrowUpRight,
   Box,
   Cpu,
   Database,
   HardDrive,
-  Link2,
+  LayoutGrid,
   LoaderCircle,
   Network,
   Settings2,
@@ -33,6 +34,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useApi } from "@/hooks/use-api"
 import { apiRequest } from "@/lib/api"
+import { getPublicAppUrl } from "@/lib/apps"
 import { getContainerAppId } from "@/lib/container-labels"
 import type { AppResource, ContainerDetails, ContainerStats } from "@/lib/types"
 
@@ -51,6 +53,7 @@ export function ContainerDetailsPage() {
   const apps = useApi<Record<string, AppResource>>("/api/v1/app", {
     pollInterval: 1000,
   })
+  const domain = useApi<{ domain: string }>("/api/v1/ddns/domain")
   const logs = useApi<{ logs: string }>(
     `/api/v1/container/${containerId}/logs?tail=200`,
     { pollInterval: 2000 }
@@ -103,6 +106,9 @@ export function ContainerDetailsPage() {
   const appId = getContainerAppId(resource)
   const linkedApp =
     appId && apps.status === "success" ? apps.data[appId] : null
+  const publicUrl = linkedApp && domain.status === "success"
+    ? getPublicAppUrl(linkedApp, domain.data.domain)
+    : null
   const latestMetrics = metricHistory.at(-1)
   const latestStats = stats.status === "success" ? stats.data : null
   const metrics = [
@@ -243,7 +249,7 @@ export function ContainerDetailsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Settings2 className="size-4 text-muted-foreground" />
-              Container details
+              Details
             </CardTitle>
           </CardHeader>
           <CardContent className="mt-5 grid gap-x-8 gap-y-5 sm:grid-cols-2">
@@ -259,30 +265,38 @@ export function ContainerDetailsPage() {
         <Card className="shadow-none">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Link2 className="size-4 text-muted-foreground" />
-              Managed by
+              <LayoutGrid className="size-4 text-muted-foreground" />
+              App
             </CardTitle>
           </CardHeader>
           <CardContent className="mt-5">
             {appId ? (
-              <Link
-                to={`/apps/${appId}`}
-                className="flex items-center gap-3 rounded-lg border bg-muted/25 p-3 hover:bg-muted/50"
-              >
+              <div className="flex items-center gap-3 rounded-lg border bg-muted/25 p-3">
                 <AppLogo
                   appId={appId}
                   alt={`${linkedApp?.name || "App"} logo`}
                   className="size-10"
                 />
                 <div className="min-w-0">
-                  <p className="text-sm font-medium">
+                  <Link
+                    to={`/apps/${appId}`}
+                    className="text-sm font-medium hover:underline"
+                  >
                     {linkedApp?.name || "Containarr app"}
-                  </p>
-                  <p className="mt-1 truncate font-mono text-[11px] text-muted-foreground">
-                    {appId}
-                  </p>
+                  </Link>
+                  {publicUrl ? (
+                    <a
+                      href={publicUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-1 flex min-w-0 items-center gap-1 font-mono text-[11px] text-muted-foreground hover:text-foreground hover:underline"
+                    >
+                      <span className="truncate">{publicUrl}</span>
+                      <ArrowUpRight className="size-3 shrink-0" />
+                    </a>
+                  ) : null}
                 </div>
-              </Link>
+              </div>
             ) : (
               <p className="text-sm text-muted-foreground">
                 This container is not managed by an app.

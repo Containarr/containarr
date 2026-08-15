@@ -53,7 +53,12 @@ export function StatusBadge({
         }`}
         aria-hidden="true"
       />
-      <span className="relative -top-px">{label ?? normalized}</span>
+      <span className="relative -top-px">
+        {label ?? normalized
+          .split(/[-_\s]+/)
+          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(" ")}
+      </span>
     </Badge>
   )
 }

@@ -96,7 +96,7 @@ export function TailscaleSettingsPage() {
     <section>
       <PageHeader
         title="Tailscale"
-        description="Use devices on your tailnet in firewall policies."
+        description="Allow Tailnet devices in your firewall policies."
       />
 
       <div className="mt-8 max-w-3xl space-y-5">
@@ -104,9 +104,9 @@ export function TailscaleSettingsPage() {
           <CardContent className="pt-6">
             <h2 className="font-medium">Create a Tailscale Credential</h2>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              In the Tailscale admin console, create a trust credential named
+              In the Tailscale admin console, create an OAuth Credential named
               <span className="font-medium text-foreground"> Containarr</span> with
-              <span className="font-medium text-foreground"> All - Read</span> permission.
+              <span className="font-medium text-foreground"> Devices → Core (Read)</span> permission.
             </p>
             <a
               href="https://console.tailscale.com/admin/settings/trust-credentials/add"
@@ -161,7 +161,6 @@ export function TailscaleSettingsPage() {
                 <label htmlFor="tailscale-client-id" className="text-sm font-medium">Client ID</label>
                 <Input
                   id="tailscale-client-id"
-                  required
                   value={clientId}
                   onChange={(event) => setClientId(event.target.value)}
                   placeholder="k123…"
@@ -172,7 +171,6 @@ export function TailscaleSettingsPage() {
                 <label htmlFor="tailscale-client-secret" className="text-sm font-medium">Client Secret</label>
                 <Input
                   id="tailscale-client-secret"
-                  required={!settings.data.clientSecretConfigured}
                   type="password"
                   value={
                     settings.data.clientSecretConfigured && !secretFocused && !clientSecret

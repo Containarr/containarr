@@ -53,8 +53,8 @@ export function DashboardLayout() {
   }, [menuOpen])
 
   return (
-    <div className="min-h-screen bg-muted/25 md:grid md:grid-cols-[15rem_minmax(0,1fr)]">
-      <aside className="sticky top-0 hidden h-screen flex-col border-r bg-sidebar text-sidebar-foreground md:flex">
+    <div className="min-h-dvh bg-muted/25 md:grid md:grid-cols-[15rem_minmax(0,1fr)]">
+      <aside className="sticky top-0 hidden h-dvh flex-col border-r bg-sidebar text-sidebar-foreground md:flex">
         <div className="flex h-20 items-center px-5">
           <Brand />
         </div>
@@ -155,7 +155,7 @@ function SidebarNavigation({ onNavigate }: { onNavigate?: () => void }) {
     <nav
       id={onNavigate ? undefined : "desktop-navigation"}
       aria-label="Main navigation"
-      className="flex-1 px-3 py-2"
+      className="min-h-0 flex-1 overflow-y-auto px-3 py-2"
     >
       <p className="mb-2 px-2 text-[11px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
         Manage
@@ -283,7 +283,7 @@ function SidebarFooter() {
   }
 
   return (
-    <div className="space-y-3 border-t p-3">
+    <div className="shrink-0 space-y-3 border-t px-3 pt-3 pb-5">
       <div className="flex items-center gap-2 px-1">
         <UserRound className="size-4 shrink-0 text-muted-foreground" />
         <span className="min-w-0 flex-1 truncate text-sm font-medium">
