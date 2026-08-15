@@ -62,6 +62,13 @@ $ docker run -d \
       ports:
         - "80:80"
         - "443:443"
+      networks:
+        - containarr
+
+  networks:
+    containarr:
+      name: containarr
+      driver: bridge
   ```
 </details>
 
@@ -85,6 +92,23 @@ Open http://localhost in your web browser to set-up Containarr, and run your fir
 - Create a native iOS app. _Maybe Android?_
 - Create a Command-Line Interface `@containarr/cli`.
 - Expand the [Apps Registry](https://github.com/Containarr/containarr.com/tree/main/apps).
+- Automatic Backups
+
+# Architecture
+
+Containarr embeds Traefik, a reverse proxy webserver, that listens on port 80 (HTTP) and port 443 (HTTPS).
+
+```
+Internet → Router → Host → Traefik inside Containarr → App
+```
+
+For example:
+
+```
+https://plex.mydomain.com → Router → 192.168.1.100:443 → Traefik → http://plex:32400
+```
+
+> Containarr's own web ui is hosted on port 81, but it does not need to be exposed outside of Docker, because Traefik also proxies that.
 
 # Contributing
 
