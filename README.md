@@ -77,9 +77,12 @@ Open http://localhost in your web browser to set-up Containarr, and run your fir
 
 [View more screenshots »](https://github.com/Containarr/containarr/tree/main/screenshots)
 
-# Architecture
+# Roadmap
 
-[Image of multiple containers, Containarr, and incoming HTTP]
+- Protect services with `Sign in with Google`.
+- Create a native iOS app. _Maybe Android?_
+- Create a Command-Line Interface `@containarr/cli`.
+- Expand the [Apps Registry](https://github.com/Containarr/containarr.com/tree/main/apps).
 
 # Contributing
 
@@ -91,4 +94,4 @@ The easiest way to help is to [buy the author a beer](https://github.com/sponsor
 
 At this time, please report any issues, or create small pull requests for bugs you've found.
 
-For new features, please discuss first before opening a pull request to prevent disappointment.
+For new features, please discuss first before opening a pull request to avoid disappointment.
