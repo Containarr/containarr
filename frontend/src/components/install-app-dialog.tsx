@@ -383,6 +383,7 @@ function RegistryInstallForm({
   const [capabilities, setCapabilities] = useState(() =>
     capabilitiesFromValues(app.dockerCapabilities || [])
   )
+  const [privileged, setPrivileged] = useState(app.dockerPrivileged ?? false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -403,6 +404,7 @@ function RegistryInstallForm({
           dockerVolumes: volumesToBinds(volumes),
           dockerDevices: volumesToBinds(devices),
           dockerPorts: portsToDocker(ports),
+          dockerPrivileged: privileged,
           dockerCapabilities: capabilitiesToValues(capabilities),
         }),
       })
@@ -464,6 +466,18 @@ function RegistryInstallForm({
           />
           <DeviceEditor value={devices} onChange={setDevices} />
           <CapabilityEditor value={capabilities} onChange={setCapabilities} />
+          <label className="flex items-center gap-2 text-sm font-medium">
+            <input
+              type="checkbox"
+              checked={privileged}
+              onChange={(event) => setPrivileged(event.target.checked)}
+              className="size-4 rounded border"
+            />
+            <span className="inline-flex items-center gap-1.5">
+              Run container in privileged mode
+              <InfoTooltip text="Privileged mode gives the container nearly unrestricted access to host devices and kernel capabilities. Only enable it for images you trust." />
+            </span>
+          </label>
           {error && <p className="text-sm text-red-600">{error}</p>}
         </div>
       </div>
