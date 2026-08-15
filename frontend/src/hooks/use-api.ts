@@ -16,6 +16,10 @@ export function clearApiCache() {
   cacheGeneration += 1
 }
 
+export function cacheApiResponse<T>(path: string, data: T) {
+  responseCache.set(path, data)
+}
+
 export function useApi<T>(
   path: string,
   { pollInterval = 0 }: { pollInterval?: number } = {}

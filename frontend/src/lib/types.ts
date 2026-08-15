@@ -113,3 +113,27 @@ export type ProxyResource = {
 }
 
 export type ViewMode = "cards" | "table"
+
+export type DomainSettings = {
+  domain: string
+  customDomain: string | null
+  generatedDomain: string
+}
+
+export type DomainReachability = {
+  hostname: string
+  expectedTarget: string
+  dns: {
+    configured: boolean
+    target: string | null
+    error: string | null
+  }
+  http: ProtocolReachability
+  https: ProtocolReachability
+}
+
+type ProtocolReachability = {
+  reachable: boolean
+  statusCode: number | null
+  error: string | null
+}

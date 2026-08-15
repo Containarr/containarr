@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react"
 import {
+  ArrowRight,
   Container,
+  Globe2,
   LayoutGrid,
   LogOut,
   Menu,
+  Settings2,
   UserRound,
   Waypoints,
   X,
@@ -11,12 +14,15 @@ import {
 import { NavLink, Outlet, useLocation } from "react-router-dom"
 
 import { ThemeSwitch } from "@/components/theme-switch"
+import { useApi } from "@/hooks/use-api"
 import { useAuth } from "@/hooks/use-auth"
+import type { DomainSettings } from "@/lib/types"
 
 const navigation = [
   { label: "Apps", to: "/apps", icon: LayoutGrid },
   { label: "Containers", to: "/containers", icon: Container },
   { label: "Proxies", to: "/proxies", icon: Waypoints },
+  { label: "Settings", to: "/settings", icon: Settings2 },
 ]
 
 export function DashboardLayout() {
@@ -44,6 +50,7 @@ export function DashboardLayout() {
           <Brand />
         </div>
         <SidebarNavigation />
+        <SidebarDomainPrompt />
         <SidebarFooter />
       </aside>
 
@@ -87,6 +94,7 @@ export function DashboardLayout() {
                 </button>
               </div>
               <SidebarNavigation onNavigate={() => setMenuOpen(false)} />
+              <SidebarDomainPrompt onNavigate={() => setMenuOpen(false)} />
               <SidebarFooter />
             </aside>
           </div>
@@ -157,6 +165,57 @@ function SidebarNavigation({ onNavigate }: { onNavigate?: () => void }) {
         ))}
       </div>
     </nav>
+  )
+}
+
+function SidebarDomainPrompt({ onNavigate }: { onNavigate?: () => void }) {
+  const domainRequest = useApi<DomainSettings>("/api/v1/ddns/domain")
+  const [dismissed, setDismissed] = useState(
+    () => window.localStorage.getItem("containarr-domain-prompt-dismissed") === "true"
+  )
+
+  if (
+    dismissed ||
+    domainRequest.status !== "success" ||
+    domainRequest.data.customDomain
+  ) {
+    return null
+  }
+
+  return (
+    <div className="mx-3 mb-3 rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-3 dark:border-cyan-400/25 dark:bg-cyan-400/10">
+      <div className="flex items-start gap-2">
+        <Globe2 className="mt-0.5 size-4 shrink-0 text-cyan-700 dark:text-cyan-400" />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-cyan-950 dark:text-cyan-100">
+            Bring your own domain!
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-cyan-950/65 dark:text-cyan-100/65">
+            Make your apps available on your own domain.
+          </p>
+        </div>
+        <button
+          type="button"
+          title="Dismiss"
+          aria-label="Dismiss custom domain prompt"
+          onClick={() => {
+            window.localStorage.setItem("containarr-domain-prompt-dismissed", "true")
+            setDismissed(true)
+          }}
+          className="-mt-1 -mr-1 flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-cyan-900/60 hover:bg-cyan-500/15 hover:text-cyan-950 dark:text-cyan-100/60 dark:hover:bg-cyan-400/15 dark:hover:text-cyan-100"
+        >
+          <X className="size-3.5" />
+        </button>
+      </div>
+      <NavLink
+        to="/settings?domain=custom"
+        onClick={onNavigate}
+        className="mt-3 flex items-center justify-between rounded-lg bg-cyan-500/20 px-3 py-2 text-xs font-medium text-cyan-950 transition-colors hover:bg-cyan-500/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 dark:bg-cyan-400/15 dark:text-cyan-100 dark:hover:bg-cyan-400/25"
+      >
+        Set up Domain
+        <ArrowRight className="size-3.5" />
+      </NavLink>
+    </div>
   )
 }
 

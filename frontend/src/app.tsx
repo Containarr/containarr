@@ -14,6 +14,7 @@ import { LoginPage } from "@/pages/login"
 import { OnboardingPage } from "@/pages/onboarding"
 import { ProxiesPage } from "@/pages/proxies"
 import { ProxyDetailsPage } from "@/pages/proxy-details"
+import { SettingsPage } from "@/pages/settings"
 
 export default function App() {
   return (
@@ -85,6 +86,7 @@ function AppRoutes() {
         />
         <Route path="/proxies" element={<ProxiesPage />} />
         <Route path="/proxies/:proxyId" element={<ProxyDetailsPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
       </Route>
       <Route path="/login" element={<Navigate to="/apps" replace />} />
       <Route path="/onboarding" element={<Navigate to="/apps" replace />} />

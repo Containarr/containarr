@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react"
-import { ArrowLeft, ArrowRight } from "lucide-react"
+import { ArrowRight, Eye, EyeOff } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 
 import { AuthLogo } from "@/components/auth-logo"
@@ -9,14 +9,14 @@ import { Input } from "@/components/ui/input"
 import { useAuth } from "@/hooks/use-auth"
 
 export function OnboardingPage() {
-  const [step, setStep] = useState<"welcome" | "account">("welcome")
+  const [started, setStarted] = useState(false)
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-muted/25 p-5">
-      {step === "welcome" ? (
-        <WelcomeStep onContinue={() => setStep("account")} />
+      {started ? (
+        <AccountStep />
       ) : (
-        <AccountStep onBack={() => setStep("welcome")} />
+        <WelcomeStep onContinue={() => setStarted(true)} />
       )}
     </main>
   )
@@ -45,28 +45,23 @@ function WelcomeStep({ onContinue }: { onContinue: () => void }) {
   )
 }
 
-function AccountStep({ onBack }: { onBack: () => void }) {
-  const [username, setUsername] = useState("admin")
+function AccountStep() {
+  const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
   const [passwordFocused, setPasswordFocused] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const { onboard } = useAuth()
+  const { onboard, completeOnboarding } = useAuth()
   const navigate = useNavigate()
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError(null)
-
-    if (password !== confirmPassword) {
-      setError("Passwords do not match.")
-      return
-    }
-
     setSubmitting(true)
+
     try {
-      await onboard({ username, password })
+      completeOnboarding(await onboard({ username, password }))
       navigate("/apps", { replace: true })
     } catch (requestError) {
       setError(
@@ -74,7 +69,6 @@ function AccountStep({ onBack }: { onBack: () => void }) {
           ? requestError.message
           : "Account creation failed."
       )
-    } finally {
       setSubmitting(false)
     }
   }
@@ -87,7 +81,7 @@ function AccountStep({ onBack }: { onBack: () => void }) {
       />
       <CardHeader className="items-center px-6 pt-20 text-center">
         <CardTitle className="text-xl font-semibold tracking-tight">
-          Create administrator
+          Create your Account
         </CardTitle>
         <p className="mt-2 text-sm text-muted-foreground">
           This account will have full access to Containarr.
@@ -96,8 +90,8 @@ function AccountStep({ onBack }: { onBack: () => void }) {
 
       <CardContent className="px-6 pt-6 pb-7">
         <form onSubmit={submit} className="space-y-4">
-          <div className="space-y-2">
-            <label htmlFor="onboarding-username" className="text-sm font-medium">
+          <div>
+            <label htmlFor="onboarding-username" className="block h-5 text-sm font-medium">
               Username
             </label>
             <Input
@@ -108,56 +102,53 @@ function AccountStep({ onBack }: { onBack: () => void }) {
               minLength={3}
               maxLength={64}
               required
+              placeholder="admin"
+              className="mt-1.5"
               value={username}
               onChange={(event) => setUsername(event.target.value)}
               disabled={submitting}
             />
           </div>
 
-          <div className="space-y-2">
-            <label htmlFor="onboarding-password" className="text-sm font-medium">
-              Password
-            </label>
+          <div>
+            <div className="flex h-5 items-center justify-between gap-3">
+              <label htmlFor="onboarding-password" className="text-sm font-medium">
+                Password
+              </label>
+              <button
+                type="button"
+                className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
+                aria-pressed={showPassword}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => setShowPassword((visible) => !visible)}
+              >
+                {showPassword ? (
+                  <EyeOff className="size-3.5" />
+                ) : (
+                  <Eye className="size-3.5" />
+                )}
+                {showPassword ? "Hide" : "Show"}
+              </button>
+            </div>
             <Input
               id="onboarding-password"
               name="password"
-              type="password"
+              type={showPassword ? "text" : "password"}
               autoComplete="new-password"
               minLength={8}
               maxLength={1024}
               required
+              placeholder="Enter a password"
+              className="mt-1.5"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               onFocus={() => setPasswordFocused(true)}
               onBlur={() => setPasswordFocused(false)}
               disabled={submitting}
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="mt-2.5 text-xs text-muted-foreground">
               Use at least 8 characters.
             </p>
-          </div>
-
-          <div className="space-y-2">
-            <label
-              htmlFor="onboarding-confirm-password"
-              className="text-sm font-medium"
-            >
-              Confirm password
-            </label>
-            <Input
-              id="onboarding-confirm-password"
-              name="confirmPassword"
-              type="password"
-              autoComplete="new-password"
-              minLength={8}
-              maxLength={1024}
-              required
-              value={confirmPassword}
-              onChange={(event) => setConfirmPassword(event.target.value)}
-              onFocus={() => setPasswordFocused(true)}
-              onBlur={() => setPasswordFocused(false)}
-              disabled={submitting}
-            />
           </div>
 
           {error && (
@@ -166,20 +157,9 @@ function AccountStep({ onBack }: { onBack: () => void }) {
             </p>
           )}
 
-          <div className="flex gap-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onBack}
-              disabled={submitting}
-              aria-label="Back"
-            >
-              <ArrowLeft className="size-4" />
-            </Button>
-            <Button type="submit" className="flex-1" disabled={submitting}>
-              {submitting ? "Creating account…" : "Create account"}
-            </Button>
-          </div>
+          <Button type="submit" className="w-full" disabled={submitting}>
+            {submitting ? "Creating account…" : "Create account"}
+          </Button>
         </form>
       </CardContent>
     </Card>

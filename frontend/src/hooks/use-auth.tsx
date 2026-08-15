@@ -28,7 +28,8 @@ type AuthContextValue = {
     | { status: "ready"; data: AuthState; error: null }
   reload: () => Promise<void>
   login: (credentials: { username: string; password: string }) => Promise<void>
-  onboard: (credentials: { username: string; password: string }) => Promise<void>
+  onboard: (credentials: { username: string; password: string }) => Promise<AuthState>
+  completeOnboarding: (state: AuthState) => void
   logout: () => Promise<void>
 }
 
@@ -85,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   async function authenticate(
-    path: "/api/v1/auth/login" | "/api/v1/auth/onboarding",
+    path: "/api/v1/auth/login",
     credentials: { username: string; password: string }
   ) {
     const data = await apiRequest<AuthState>(path, {
@@ -94,6 +95,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
     clearApiCache()
     setState({ status: "ready", data, error: null })
+  }
+
+  async function onboard(credentials: { username: string; password: string }) {
+    const data = await apiRequest<AuthState>("/api/v1/auth/onboarding", {
+      method: "POST",
+      body: JSON.stringify(credentials),
+    })
+    clearApiCache()
+    return data
   }
 
   async function logout() {
@@ -117,8 +127,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         reload,
         login: (credentials) =>
           authenticate("/api/v1/auth/login", credentials),
-        onboard: (credentials) =>
-          authenticate("/api/v1/auth/onboarding", credentials),
+        onboard,
+        completeOnboarding: (data) =>
+          setState({ status: "ready", data, error: null }),
         logout,
       }}
     >
