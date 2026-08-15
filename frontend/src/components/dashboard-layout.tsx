@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import {
   ArrowRight,
   Container,
+  Download,
   Globe2,
   LayoutGrid,
   LogOut,
@@ -16,7 +17,7 @@ import { NavLink, Outlet, useLocation } from "react-router-dom"
 import { ThemeSwitch } from "@/components/theme-switch"
 import { useApi } from "@/hooks/use-api"
 import { useAuth } from "@/hooks/use-auth"
-import type { DomainSettings } from "@/lib/types"
+import type { ContainarrUpdateStatus, DomainSettings } from "@/lib/types"
 
 const navigation = [
   { label: "Apps", to: "/apps", icon: LayoutGrid },
@@ -28,6 +29,7 @@ const navigation = [
 const settingsNavigation = [
   { label: "Domain", to: "/domain", icon: Globe2 },
   { label: "Tailscale", to: "/tailscale", icon: Waypoints },
+  { label: "Updates", to: "/updates", icon: Download },
 ]
 
 export function DashboardLayout() {
@@ -143,6 +145,12 @@ function Brand({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 function SidebarNavigation({ onNavigate }: { onNavigate?: () => void }) {
+  const updateRequest = useApi<ContainarrUpdateStatus>("/api/v1/update", {
+    pollInterval: 1000 * 60 * 60,
+  })
+  const updateAvailable =
+    updateRequest.status === "success" && updateRequest.data.updateAvailable
+
   return (
     <nav
       id={onNavigate ? undefined : "desktop-navigation"}
@@ -189,7 +197,14 @@ function SidebarNavigation({ onNavigate }: { onNavigate?: () => void }) {
             }
           >
             <Icon className="size-4" aria-hidden="true" />
-            {label}
+            <span>{label}</span>
+            {label === "Updates" && updateAvailable && (
+              <span
+                className="ml-auto size-2 rounded-full bg-blue-500 shadow-[0_0_0_3px_rgba(59,130,246,0.14)]"
+                title="Update available"
+                aria-label="Update available"
+              />
+            )}
           </NavLink>
         ))}
       </div>

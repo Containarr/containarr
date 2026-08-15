@@ -40,6 +40,14 @@ export type CertificateStatus = {
   error: string | null
 }
 
+export type ContainarrUpdateStatus = {
+  currentVersion: string
+  latestVersion: string | null
+  updateAvailable: boolean
+  checkedAt: string | null
+  error: string | null
+}
+
 export type DockerPort = {
   host: number
   container: number

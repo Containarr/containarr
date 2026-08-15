@@ -35,6 +35,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Read Containarr version
+        id: version
+        run: node -p '"version=" + require("./package.json").version' >> "$GITHUB_OUTPUT"
+
       - name: Build and publish
         uses: docker/build-push-action@v6
         with:
@@ -42,5 +46,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ghcr.io/containarr/containarr:latest
+          build-args: |
+            CONTAINARR_VERSION=${{ steps.version.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

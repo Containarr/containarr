@@ -35,7 +35,7 @@ And log in again.
 ```bash
 docker run -d \
   --name=containarr \
-  -v ~/.containarr/:/config/ \
+  -v ~/.containarr/:/data/ \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -p 80:80 \
   -p 443:443 \
@@ -56,7 +56,7 @@ docker run -d \
       container_name: containarr
       restart: unless-stopped
       volumes:
-        - ~/.containarr:/config
+        - ~/.containarr:/data
         - /var/run/docker.sock:/var/run/docker.sock
       ports:
         - "80:80"
