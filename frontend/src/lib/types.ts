@@ -46,6 +46,8 @@ export type ContainarrUpdateStatus = {
   updateAvailable: boolean
   checkedAt: string | null
   error: string | null
+  installing: boolean
+  installError: string | null
 }
 
 export type DockerPort = {

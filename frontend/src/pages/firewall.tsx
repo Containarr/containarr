@@ -10,7 +10,6 @@ import { SortableTableHeader, type SortDirection } from "@/components/sortable-t
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Select } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ViewToggle } from "@/components/view-toggle"
 import { useApi } from "@/hooks/use-api"
@@ -180,8 +179,16 @@ function PolicyCardGrid({
                   <span key={entry} className="rounded-md bg-muted px-2 py-1 font-mono text-xs">{entry}</span>
                 ))}
                 {(policy.tailscaleDevices ?? []).map((device) => (
-                  <span key={device.id} title={device.address} className="rounded-md bg-muted px-2 py-1 text-xs">
+                  <span
+                    key={device.id}
+                    tabIndex={0}
+                    aria-label={`${device.name}, ${device.address}`}
+                    className="group relative rounded-md bg-muted px-2 py-1 text-xs outline-none focus:ring-2 focus:ring-ring/30"
+                  >
                     {device.name}
+                    <span aria-hidden="true" className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-foreground px-2 py-1 font-mono text-[10px] text-background opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus:opacity-100">
+                      {device.address}
+                    </span>
                   </span>
                 ))}
                 {policy.allowedIps.length === 0 && (policy.tailscaleDevices?.length ?? 0) === 0 && (
@@ -278,7 +285,19 @@ function PolicyTable({
                 ) : (
                   <div className="flex flex-wrap gap-1.5">
                     {policy.allowedIps.map((entry) => <span key={entry} className="rounded-md bg-muted px-2 py-1 font-mono text-xs">{entry}</span>)}
-                    {(policy.tailscaleDevices ?? []).map((device) => <span key={device.id} title={device.address} className="rounded-md bg-muted px-2 py-1 text-xs">{device.name}</span>)}
+                    {(policy.tailscaleDevices ?? []).map((device) => (
+                      <span
+                        key={device.id}
+                        tabIndex={0}
+                        aria-label={`${device.name}, ${device.address}`}
+                        className="group relative rounded-md bg-muted px-2 py-1 text-xs outline-none focus:ring-2 focus:ring-ring/30"
+                      >
+                        {device.name}
+                        <span aria-hidden="true" className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-foreground px-2 py-1 font-mono text-[10px] text-background opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus:opacity-100">
+                          {device.address}
+                        </span>
+                      </span>
+                    ))}
                     {policy.allowedIps.length === 0 && (policy.tailscaleDevices?.length ?? 0) === 0 && <span className="text-muted-foreground">None</span>}
                   </div>
                 )}
@@ -401,7 +420,7 @@ function PolicyDialog({
             <div>
               <label htmlFor="policy-address" className="text-sm font-medium">Allowed IPs</label>
               <div className="mt-1.5 rounded-xl border p-2 focus-within:border-foreground/30 focus-within:ring-2 focus-within:ring-ring/30">
-                {allowedIps.length + tailscaleDevices.length > 0 && (
+                {allowedIps.length > 0 && (
                   <div className="mb-2 flex flex-wrap gap-1.5">
                     {allowedIps.map((ip) => {
                       const device = availableTailscaleDevices.find((item) => item.address === ip)
@@ -414,14 +433,6 @@ function PolicyDialog({
                       </span>
                       )
                     })}
-                    {tailscaleDevices.map((device) => (
-                      <span key={device.id} title={device.address} className="inline-flex items-center gap-1 rounded-md bg-muted py-1 pr-1 pl-2 text-xs">
-                        {device.name}
-                        <button type="button" aria-label={`Remove ${device.name}`} className="flex size-5 items-center justify-center rounded hover:bg-background" onClick={() => setTailscaleDevices(tailscaleDevices.filter((item) => item.id !== device.id))}>
-                          <X className="size-3" />
-                        </button>
-                      </span>
-                    ))}
                   </div>
                 )}
                 <div className="flex gap-2">
@@ -446,12 +457,12 @@ function PolicyDialog({
 
             <TailscaleDevicePicker
               onDevicesLoaded={setAvailableTailscaleDevices}
-              onSelect={(device) => {
-                setAllowedIps(allowedIps.filter((ip) => ip !== device.address))
-                setTailscaleDevices([
-                  ...tailscaleDevices.filter((item) => item.id !== device.id),
-                  device,
-                ])
+              selectedDevices={tailscaleDevices}
+              onChange={(devices) => {
+                setAllowedIps(allowedIps.filter((ip) =>
+                  !devices.some((device) => device.address === ip)
+                ))
+                setTailscaleDevices(devices)
               }}
             />
 
@@ -472,10 +483,12 @@ function PolicyDialog({
 
 function TailscaleDevicePicker({
   onDevicesLoaded,
-  onSelect,
+  selectedDevices,
+  onChange,
 }: {
   onDevicesLoaded: (devices: Array<{ id: string; name: string; address: string }>) => void
-  onSelect: (device: { id: string; name: string; address: string }) => void
+  selectedDevices: Array<{ id: string; name: string; address: string }>
+  onChange: (devices: Array<{ id: string; name: string; address: string }>) => void
 }) {
   const settings = useApi<TailscaleSettings>("/api/v1/tailscale")
 
@@ -487,15 +500,23 @@ function TailscaleDevicePicker({
     )
   }
 
-  return <ConfiguredTailscaleDevicePicker onDevicesLoaded={onDevicesLoaded} onSelect={onSelect} />
+  return (
+    <ConfiguredTailscaleDevicePicker
+      onDevicesLoaded={onDevicesLoaded}
+      selectedDevices={selectedDevices}
+      onChange={onChange}
+    />
+  )
 }
 
 function ConfiguredTailscaleDevicePicker({
   onDevicesLoaded,
-  onSelect,
+  selectedDevices,
+  onChange,
 }: {
   onDevicesLoaded: (devices: Array<{ id: string; name: string; address: string }>) => void
-  onSelect: (device: { id: string; name: string; address: string }) => void
+  selectedDevices: Array<{ id: string; name: string; address: string }>
+  onChange: (devices: Array<{ id: string; name: string; address: string }>) => void
 }) {
   const devices = useApi<TailscaleDevice[]>("/api/v1/tailscale/devices")
 
@@ -520,29 +541,39 @@ function ConfiguredTailscaleDevicePicker({
   }
 
   return (
-    <div>
-      <label htmlFor="tailscale-device" className="text-sm font-medium">Tailscale device</label>
-      <Select
-        id="tailscale-device"
-        value=""
-        className="mt-1.5"
-        onChange={(event) => {
-          const device = devices.data.find((item) => item.id === event.target.value)
-          const address = device?.addresses.find((item) => item.includes("."))
-          if (device && address) onSelect({
-            id: device.id,
-            name: (device.hostname || device.name).split(".")[0],
-            address,
-          })
-        }}
-      >
-        <option value="">Select a device…</option>
+    <fieldset>
+      <legend className="text-sm font-medium">Allowed Tailscale Devices</legend>
+      <div className="mt-1.5 space-y-1 rounded-xl border p-1">
         {devices.data.map((device) => {
           const address = device.addresses.find((item) => item.includes("."))
           if (!address) return null
-          return <option key={device.id} value={device.id}>{(device.hostname || device.name).split(".")[0]} · {address}</option>
+          const name = (device.hostname || device.name).split(".")[0]
+          return (
+            <label key={device.id} className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 hover:bg-muted/60">
+              <input
+                type="checkbox"
+                checked={selectedDevices.some((selected) => selected.id === device.id)}
+                className="size-4 shrink-0 accent-foreground"
+                onChange={(event) => {
+                  if (event.currentTarget.checked) {
+                    onChange([
+                      ...selectedDevices.filter((selected) => selected.id !== device.id),
+                      { id: device.id, name, address },
+                    ])
+                  } else {
+                    onChange(selectedDevices.filter((selected) => selected.id !== device.id))
+                  }
+                }}
+              />
+              <span className="min-w-0 flex-1 truncate text-sm">{name}</span>
+              <span className="shrink-0 font-mono text-xs text-muted-foreground">{address}</span>
+            </label>
+          )
         })}
-      </Select>
-    </div>
+        {devices.data.every((device) => !device.addresses.some((item) => item.includes("."))) && (
+          <p className="px-3 py-2 text-xs text-muted-foreground">No Tailscale devices available.</p>
+        )}
+      </div>
+    </fieldset>
   )
 }

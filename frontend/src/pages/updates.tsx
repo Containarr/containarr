@@ -15,6 +15,7 @@ export function UpdatesPage() {
     pollInterval: 1000 * 60 * 60,
   })
   const [checking, setChecking] = useState(false)
+  const [installing, setInstalling] = useState(false)
   const [checkedStatus, setCheckedStatus] = useState<ContainarrUpdateStatus | null>(null)
 
   const checkedAt = update.status === "success" ? update.data.checkedAt : null
@@ -50,6 +51,36 @@ export function UpdatesPage() {
       })
     } finally {
       setChecking(false)
+    }
+  }
+
+  async function installUpdate() {
+    setInstalling(true)
+    try {
+      const status = await apiRequest<ContainarrUpdateStatus>("/api/v1/update/install", {
+        method: "POST",
+      })
+      cacheApiResponse("/api/v1/update", status)
+      setCheckedStatus(status)
+
+      window.setTimeout(() => {
+        const waitForContainarr = window.setInterval(() => {
+          fetch("/api/v1/auth/state", { cache: "no-store" })
+            .then(response => {
+              if (!response.ok) return
+              window.clearInterval(waitForContainarr)
+              window.location.reload()
+            })
+            .catch(() => {})
+        }, 2000)
+      }, 4000)
+    } catch (error) {
+      setInstalling(false)
+      setCheckedStatus({
+        ...(checkedStatus ?? currentStatus),
+        installing: false,
+        installError: error instanceof Error ? error.message : "Unable to install the update.",
+      })
     }
   }
 
@@ -91,6 +122,16 @@ export function UpdatesPage() {
             </div>
           )}
 
+          {status.installError ? (
+            <div className="flex items-start gap-3 rounded-xl border border-red-500/25 bg-red-500/10 p-4 text-red-800 dark:text-red-300">
+              <CircleAlert className="mt-0.5 size-5 shrink-0" />
+              <div>
+                <p className="font-medium">Unable to install the update</p>
+                <p className="mt-1 text-sm opacity-80">{status.installError}</p>
+              </div>
+            </div>
+          ) : null}
+
           <dl className="grid gap-5 border-t pt-6 sm:grid-cols-2">
             <div>
               <dt className="text-sm text-muted-foreground">Current version</dt>
@@ -104,16 +145,26 @@ export function UpdatesPage() {
             </div>
           </dl>
 
-          <div className="flex justify-end border-t pt-6">
+          <div className="flex flex-wrap justify-end gap-3 border-t pt-6">
             <Button
               type="button"
               variant="outline"
               onClick={() => void checkForUpdates()}
-              disabled={checking}
+              disabled={checking || installing || status.installing}
             >
               <RefreshCw className={`mr-2 size-4 ${checking ? "animate-spin" : ""}`} />
               {checking ? "Checking for Updates…" : "Check for Updates"}
             </Button>
+            {status.updateAvailable ? (
+              <Button
+                type="button"
+                onClick={() => void installUpdate()}
+                disabled={checking || installing || status.installing}
+              >
+                <Download className={`mr-2 size-4 ${installing || status.installing ? "animate-pulse" : ""}`} />
+                {installing || status.installing ? "Installing Update…" : "Install Update"}
+              </Button>
+            ) : null}
           </div>
         </CardContent>
       </Card>
