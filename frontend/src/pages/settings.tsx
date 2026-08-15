@@ -482,11 +482,34 @@ function DnsRow({
             aria-label={`Copy ${label}`}
             title={copied ? "Copied" : `Copy ${label}`}
             className="flex min-w-0 items-center gap-2 rounded p-1 transition-colors hover:bg-muted"
-            onClick={() => {
-              void navigator.clipboard.writeText(value).then(() => {
+            onClick={async () => {
+              let copiedSuccessfully = false
+
+              try {
+                if (navigator.clipboard?.writeText) {
+                  await navigator.clipboard.writeText(value)
+                  copiedSuccessfully = true
+                }
+              } catch {
+                // Clipboard access is commonly blocked when Containarr is opened over HTTP.
+              }
+
+              if (!copiedSuccessfully) {
+                const textArea = document.createElement("textarea")
+                textArea.value = value
+                textArea.setAttribute("readonly", "")
+                textArea.style.position = "fixed"
+                textArea.style.opacity = "0"
+                document.body.appendChild(textArea)
+                textArea.select()
+                copiedSuccessfully = document.execCommand("copy")
+                textArea.remove()
+              }
+
+              if (copiedSuccessfully) {
                 setCopied(true)
                 window.setTimeout(() => setCopied(false), 1500)
-              })
+              }
             }}
           >
             <span className="min-w-0 overflow-x-auto">{value}</span>
