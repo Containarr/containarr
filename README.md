@@ -32,8 +32,10 @@ And log in again.
 ### 2. Run Containarr
 
 ```bash
-docker run -d \
+$ docker network create containarr
+$ docker run -d \
   --name=containarr \
+  --network=containarr \
   -v ~/.containarr/:/data/ \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -p 80:80 \
