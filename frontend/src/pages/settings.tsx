@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react"
-import { Check, CircleX, LoaderCircle, TriangleAlert } from "lucide-react"
+import { Check, CircleX, Copy, LoaderCircle, TriangleAlert } from "lucide-react"
 import { useSearchParams } from "react-router-dom"
 
 import { PageHeader } from "@/components/page-header"
@@ -190,62 +190,6 @@ export function DomainSettingsPage() {
             />
           </div>
 
-          <Card className="mt-5">
-            <CardContent className="pt-6">
-              <p className="text-sm font-medium">Port Forwarding</p>
-              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                In your router, forward TCP ports 80 and 443 to {installationTarget}.
-              </p>
-
-              <dl className="mt-4 grid overflow-hidden rounded-lg border sm:grid-cols-[7rem_1fr]">
-                <DnsRow label="HTTP" value={`TCP 80 → ${installationTarget}:80`} />
-                <DnsRow label="HTTPS" value={`TCP 443 → ${installationTarget}:443`} />
-              </dl>
-
-              {domainType === "containarr" && (
-                <div className="mt-5 border-t pt-5">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-medium">Connection check</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        Tests the generated domain over HTTP and HTTPS from the internet.
-                      </p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={checking}
-                      onClick={() => void checkDomain()}
-                    >
-                      {checking && <LoaderCircle className="mr-2 size-4 animate-spin" />}
-                      Check connection
-                    </Button>
-                  </div>
-
-                  {checkError && (
-                    <p role="alert" className="mt-4 text-sm text-red-600 dark:text-red-400">
-                      {checkError}
-                    </p>
-                  )}
-                  {reachability && (
-                    <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                      <ReachabilityStatus
-                        label="HTTP"
-                        ok={reachability.http.reachable}
-                        detail={protocolDetail(reachability.http)}
-                      />
-                      <ReachabilityStatus
-                        label="HTTPS"
-                        ok={reachability.https.reachable}
-                        detail={protocolDetail(reachability.https)}
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
           {domainType === "custom" && (
             <Card className="mt-5">
               <CardContent className="pt-6">
@@ -289,7 +233,7 @@ export function DomainSettingsPage() {
                   <dl className="mt-4 grid overflow-hidden rounded-lg border sm:grid-cols-[7rem_1fr]">
                     <DnsRow label="Type" value="CNAME" />
                     <DnsRow label="Name" value={cnameName} />
-                    <DnsRow label="Target" value={settings.generatedDomain} />
+                    <DnsRow label="Target" value={settings.generatedDomain} copyable />
                   </dl>
 
                   <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
@@ -354,6 +298,50 @@ export function DomainSettingsPage() {
             </Card>
           )}
 
+          {domainType === "containarr" && (
+            <Card className="mt-5">
+              <CardContent className="pt-6">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium">Connection check</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      Tests the generated domain over HTTP and HTTPS from the internet.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={checking}
+                    onClick={() => void checkDomain()}
+                  >
+                    {checking && <LoaderCircle className="mr-2 size-4 animate-spin" />}
+                    Check connection
+                  </Button>
+                </div>
+
+                {checkError && (
+                  <p role="alert" className="mt-4 text-sm text-red-600 dark:text-red-400">
+                    {checkError}
+                  </p>
+                )}
+                {reachability && (
+                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                    <ReachabilityStatus
+                      label="HTTP"
+                      ok={reachability.http.reachable}
+                      detail={protocolDetail(reachability.http)}
+                    />
+                    <ReachabilityStatus
+                      label="HTTPS"
+                      ok={reachability.https.reachable}
+                      detail={protocolDetail(reachability.https)}
+                    />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           <div className="mt-4 flex min-h-9 flex-wrap items-center gap-3">
             {error && (
               <p role="alert" className="text-sm text-red-600 dark:text-red-400">
@@ -377,6 +365,20 @@ export function DomainSettingsPage() {
               Save
             </Button>
           </div>
+
+          <Card className="mt-5 border-amber-500/25 bg-amber-500/5 shadow-none dark:border-amber-400/20 dark:bg-amber-400/5">
+            <CardContent className="pt-6">
+              <p className="text-sm font-medium">Port Forwarding</p>
+              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                In your router, forward TCP ports 80 and 443 to {installationTarget}.
+              </p>
+
+              <dl className="mt-4 grid overflow-hidden rounded-lg border sm:grid-cols-[7rem_1fr]">
+                <DnsRow label="HTTP" value={`TCP 80 → ${installationTarget}:80`} />
+                <DnsRow label="HTTPS" value={`TCP 443 → ${installationTarget}:443`} />
+              </dl>
+            </CardContent>
+          </Card>
         </form>
       </div>
     </section>
@@ -457,14 +459,46 @@ function protocolDetail(result: {
   return result.error || "Not reachable"
 }
 
-function DnsRow({ label, value }: { label: string; value: string }) {
+function DnsRow({
+  copyable = false,
+  label,
+  value,
+}: {
+  copyable?: boolean
+  label: string
+  value: string
+}) {
+  const [copied, setCopied] = useState(false)
+
   return (
     <div className="contents">
       <dt className="border-b bg-muted/40 px-4 py-3 text-xs font-medium text-muted-foreground last:border-b-0 sm:border-r">
         {label}
       </dt>
-      <dd className="overflow-x-auto border-b px-4 py-3 font-mono text-xs last:border-b-0">
-        {value}
+      <dd className="flex min-w-0 items-center gap-2 border-b px-4 py-3 font-mono text-xs last:border-b-0">
+        {copyable ? (
+          <button
+            type="button"
+            aria-label={`Copy ${label}`}
+            title={copied ? "Copied" : `Copy ${label}`}
+            className="flex min-w-0 items-center gap-2 rounded p-1 transition-colors hover:bg-muted"
+            onClick={() => {
+              void navigator.clipboard.writeText(value).then(() => {
+                setCopied(true)
+                window.setTimeout(() => setCopied(false), 1500)
+              })
+            }}
+          >
+            <span className="min-w-0 overflow-x-auto">{value}</span>
+            {copied ? (
+              <Check className="size-3.5 shrink-0 text-muted-foreground" />
+            ) : (
+              <Copy className="size-3.5 shrink-0 text-muted-foreground" />
+            )}
+          </button>
+        ) : (
+          <span className="min-w-0 overflow-x-auto">{value}</span>
+        )}
       </dd>
     </div>
   )

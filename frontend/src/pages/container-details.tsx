@@ -185,6 +185,7 @@ export function ContainerDetailsPage() {
       <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-start">
         <div className="flex min-w-0 items-center gap-4">
           <ContainerAvatar
+            appId={appId}
             image={resource.image}
             alt=""
             className="size-14"

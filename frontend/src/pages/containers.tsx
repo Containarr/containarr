@@ -112,6 +112,7 @@ function ContainersCardGrid({
                 <CardHeader className="flex flex-row items-start justify-between gap-4">
                   <div className="flex min-w-0 items-center gap-3">
                     <ContainerAvatar
+                      appId={appId}
                       image={container.image}
                       alt=""
                       className="size-10"
@@ -246,6 +247,7 @@ function ContainersTable({
               <td className="px-4 py-3">
                 <div className="flex items-center gap-3">
                   <ContainerAvatar
+                    appId={appId}
                     image={container.image}
                     alt=""
                     className="size-8"

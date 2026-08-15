@@ -223,7 +223,26 @@ export function AppDetailsPage() {
               to={resource.containerId ? `/containers/${resource.containerId}` : undefined}
               mono
             />
-            <Detail label="Internal URL" value={resource.url || "—"} mono />
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-muted-foreground">
+                Internal URLs
+              </p>
+              <div className="mt-1 space-y-1 break-words font-mono text-xs">
+                {resource.url ? <p>{resource.url}</p> : null}
+                {resource.dockerNetworkMode === "bridge"
+                && resource.subdomain
+                && resource.port ? (
+                  <p>{`http://${resource.subdomain}:${resource.port}`}</p>
+                ) : null}
+                {!resource.url && !(
+                  resource.dockerNetworkMode === "bridge"
+                  && resource.subdomain
+                  && resource.port
+                ) ? (
+                  <p>—</p>
+                ) : null}
+              </div>
+            </div>
             <Detail label="Image" value={resource.dockerImage} mono />
             <ImageUpdateControls app={resource} onReload={app.reload} />
           </CardContent>

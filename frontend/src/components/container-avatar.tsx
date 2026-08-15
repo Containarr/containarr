@@ -8,26 +8,33 @@ const pendingAvatars = new Map<string, Promise<string | null>>()
 
 type ContainerAvatarProps = {
   alt: string
+  appId?: string | null
   className?: string
   image: string
 }
 
 export function ContainerAvatar({
   alt,
+  appId,
   className,
   image,
 }: ContainerAvatarProps) {
   const owner = getDockerHubOwner(image)
+  const appLogoUrl = appId ? `/api/v1/app/${appId}/logo` : null
   const [avatarUrl, setAvatarUrl] = useState<string | null>(() =>
     owner ? getCachedAvatar(owner) : null
   )
-  const [failed, setFailed] = useState(false)
+  const [failedAppLogo, setFailedAppLogo] = useState<string | null>(null)
+  const [failedAvatar, setFailedAvatar] = useState<string | null>(null)
 
   useEffect(() => {
-    setFailed(false)
     setAvatarUrl(owner ? getCachedAvatar(owner) : null)
 
-    if (!owner || getCachedAvatar(owner)) return
+    if (
+      (appLogoUrl && failedAppLogo !== appLogoUrl)
+      || !owner
+      || getCachedAvatar(owner)
+    ) return
 
     let active = true
     void loadDockerHubAvatar(owner).then((url) => {
@@ -37,7 +44,7 @@ export function ContainerAvatar({
     return () => {
       active = false
     }
-  }, [owner])
+  }, [appLogoUrl, failedAppLogo, owner])
 
   return (
     <div
@@ -46,13 +53,20 @@ export function ContainerAvatar({
         className
       )}
     >
-      {avatarUrl && !failed ? (
+      {appLogoUrl && failedAppLogo !== appLogoUrl ? (
+        <img
+          src={appLogoUrl}
+          alt={alt}
+          className="size-full object-contain"
+          onError={() => setFailedAppLogo(appLogoUrl)}
+        />
+      ) : avatarUrl && failedAvatar !== avatarUrl ? (
         <img
           src={avatarUrl}
           alt={alt}
           className="size-full object-contain"
           referrerPolicy="no-referrer"
-          onError={() => setFailed(true)}
+          onError={() => setFailedAvatar(avatarUrl)}
         />
       ) : (
         <Container className="size-1/2" aria-hidden="true" />

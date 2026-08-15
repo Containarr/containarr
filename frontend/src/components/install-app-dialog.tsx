@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react"
+import { Children, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react"
 import {
   ArrowLeft,
   Box,
@@ -596,7 +596,7 @@ function CustomAppForm({
         <FormField
           label={
             <span className="inline-flex items-center gap-1.5">
-              Port
+              Internal Port
               <InfoTooltip text="The internal HTTP port of the container, that will be mapped to the app's subdomain." />
             </span>
           }
@@ -612,7 +612,7 @@ function CustomAppForm({
           />
         </FormField>
           </div>
-          <FormField label="Docker image">
+          <FormField label="Docker Image">
         <Input
           required
           value={dockerImage}
@@ -642,7 +642,10 @@ function CustomAppForm({
           onChange={(event) => setPrivileged(event.target.checked)}
           className="size-4 rounded border"
         />
-        Run container in privileged mode
+        <span className="inline-flex items-center gap-1.5">
+          Run container in privileged mode
+          <InfoTooltip text="Privileged mode gives the container nearly unrestricted access to host devices and kernel capabilities. Only enable it for images you trust." />
+        </span>
           </label>
           {error && <p className="text-sm text-red-600">{error}</p>}
         </div>
@@ -711,7 +714,7 @@ function PolicyField({
   const selectedPolicy = policies.status === "success" ? policies.data[value] : null
 
   return (
-    <FormField label="Firewall policy">
+    <FormField label="Firewall Policy">
       <div ref={menu} className="relative">
         <button
           type="button"
@@ -728,7 +731,7 @@ function PolicyField({
 
         {open && policies.status === "success" && (
           <div className="absolute top-full right-0 left-0 z-30 mt-1 overflow-hidden rounded-lg border bg-card p-1 text-card-foreground shadow-lg">
-            <div role="listbox" aria-label="Firewall policy" className="max-h-52 overflow-y-auto">
+            <div role="listbox" aria-label="Firewall Policy" className="max-h-52 overflow-y-auto">
               {Object.values(policies.data).map((policy) => (
                 <button
                   key={policy.id}
@@ -1234,7 +1237,9 @@ function ListEditor({
   title: string
 }) {
   return (
-    <fieldset className="space-y-3 rounded-xl border p-4">
+    <fieldset
+      className={`rounded-xl border px-4 ${Children.count(children) > 0 ? "space-y-3 py-4" : "py-3"}`}
+    >
       <div className="flex items-start justify-between gap-4">
         <div>
           <legend className="text-sm font-medium">{title}</legend>
@@ -1245,7 +1250,9 @@ function ListEditor({
           Add
         </Button>
       </div>
-      <div className="space-y-2">{children}</div>
+      {Children.count(children) > 0 ? (
+        <div className="space-y-2">{children}</div>
+      ) : null}
     </fieldset>
   )
 }
@@ -1285,7 +1292,7 @@ function FormField({
 }) {
   return (
     <label className="block space-y-1.5">
-      <span className="text-sm font-medium">{label}</span>
+      <span className="block text-sm font-medium">{label}</span>
       {children}
       {hint && <span className="block text-xs text-muted-foreground">{hint}</span>}
     </label>

@@ -55,7 +55,7 @@ export function LoginPage() {
         <CardContent className="px-6 pt-6 pb-7">
           <form onSubmit={submit} className="space-y-4">
             <div className="space-y-1.5">
-              <label htmlFor="username" className="text-sm font-medium">
+              <label htmlFor="username" className="block text-sm font-medium">
                 Username
               </label>
               <Input
@@ -72,7 +72,7 @@ export function LoginPage() {
             </div>
 
             <div className="space-y-1.5">
-              <label htmlFor="password" className="text-sm font-medium">
+              <label htmlFor="password" className="block text-sm font-medium">
                 Password
               </label>
               <Input
