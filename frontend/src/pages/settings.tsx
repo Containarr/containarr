@@ -12,7 +12,7 @@ import { cacheApiResponse, useApi } from "@/hooks/use-api"
 import { apiRequest } from "@/lib/api"
 import type { DomainReachability, DomainSettings } from "@/lib/types"
 
-export function SettingsPage() {
+export function DomainSettingsPage() {
   const [searchParams] = useSearchParams()
   const openCustomDomain = searchParams.get("domain") === "custom"
   const domainRequest = useApi<DomainSettings>("/api/v1/ddns/domain")
@@ -48,7 +48,7 @@ export function SettingsPage() {
     return (
       <section>
         <PageHeader
-          title="Settings"
+          title="Domain"
           description="Configure Containarr for your environment."
         />
         <Skeleton className="mt-8 h-80 w-full max-w-3xl rounded-xl" />
@@ -159,8 +159,8 @@ export function SettingsPage() {
   return (
     <section>
       <PageHeader
-        title="Settings"
-        description="Configure Containarr for your environment."
+        title="Domain"
+        description="Choose how your apps and proxies are reached."
       />
 
       <div className="mt-8 max-w-3xl space-y-5">

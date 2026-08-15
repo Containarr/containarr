@@ -1,7 +1,8 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from "react"
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react"
 import {
   ArrowLeft,
   Box,
+  Check,
   ChevronDown,
   Info,
   LoaderCircle,
@@ -11,6 +12,7 @@ import {
   Search,
   X,
 } from "lucide-react"
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom"
 
 import { AppLogo } from "@/components/app-logo"
 import { Button } from "@/components/ui/button"
@@ -19,7 +21,7 @@ import { Select } from "@/components/ui/select"
 import { useApi } from "@/hooks/use-api"
 import { apiRequest } from "@/lib/api"
 import { TLS_OPTIONS } from "@/lib/tls"
-import type { AppResource, DockerPort, RegistryApp } from "@/lib/types"
+import type { AppResource, DockerPort, PolicyResource, RegistryApp } from "@/lib/types"
 
 type DialogProps = {
   onClose: () => void
@@ -169,7 +171,10 @@ function EditAppDialogContent({
 }
 
 function InstallAppDialogContent({ onClose, onCreated }: DialogProps) {
-  const [mode, setMode] = useState<"registry" | "custom">("registry")
+  const [searchParams] = useSearchParams()
+  const [mode, setMode] = useState<"registry" | "custom">(
+    searchParams.get("mode") === "custom" ? "custom" : "registry"
+  )
   const [registryFilter, setRegistryFilter] = useState("")
   const [selected, setSelected] = useState<{
     id: string
@@ -188,6 +193,13 @@ function InstallAppDialogContent({ onClose, onCreated }: DialogProps) {
           )
         )
       : []
+
+  useEffect(() => {
+    const registryId = searchParams.get("registryId")
+    if (!registryId || selected || registry.status !== "success") return
+    const app = registry.data[registryId]
+    if (app) setSelected({ id: registryId, app })
+  }, [registry, searchParams, selected])
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -355,9 +367,11 @@ function RegistryInstallForm({
   onCreated: (app: AppResource) => void
   registryId: string
 }) {
+  const [searchParams] = useSearchParams()
   const [subdomain, setSubdomain] = useState(registryId)
   const [tls, setTls] = useState("only_https")
   const [networkMode, setNetworkMode] = useState(app.dockerNetworkMode || "bridge")
+  const [policyId, setPolicyId] = useState(searchParams.get("policyId") ?? "public")
   const [environment, setEnvironment] = useState(() =>
     environmentFromRecord(app.dockerEnvironment)
   )
@@ -381,6 +395,7 @@ function RegistryInstallForm({
           subdomain,
           tls,
           dockerNetworkMode: networkMode,
+          policyId,
           dockerEnvironment: environmentToRecord(environment),
           dockerVolumes: volumesToBinds(volumes),
           dockerPorts: portsToDocker(ports),
@@ -425,6 +440,12 @@ function RegistryInstallForm({
             onChange={setSubdomain}
             onTlsChange={setTls}
           />
+          <PolicyField
+            value={policyId}
+            onChange={setPolicyId}
+            allowCreate
+            createReturnTo={`/apps?new=1&registryId=${encodeURIComponent(registryId)}`}
+          />
           <NetworkEditor
             mode={networkMode}
             onModeChange={setNetworkMode}
@@ -461,6 +482,7 @@ function CustomAppForm({
   domain: string
   onSaved: (app: AppResource, dockerPropertiesChanged: boolean) => void
 }) {
+  const [searchParams] = useSearchParams()
   const editing = app !== null
   const [name, setName] = useState(app?.name ?? "")
   const [subdomain, setSubdomain] = useState(app?.subdomain ?? "")
@@ -469,6 +491,9 @@ function CustomAppForm({
   const [dockerImage, setDockerImage] = useState(app?.dockerImage ?? "")
   const [networkMode, setNetworkMode] = useState<AppResource["dockerNetworkMode"]>(
     app?.dockerNetworkMode ?? "bridge"
+  )
+  const [policyId, setPolicyId] = useState(
+    app?.policyId ?? searchParams.get("policyId") ?? "public"
   )
   const [environment, setEnvironment] = useState<EnvironmentRow[]>(() =>
     environmentFromRecord(app?.dockerEnvironment ?? {})
@@ -507,6 +532,7 @@ function CustomAppForm({
             dockerEnvironment: environmentToRecord(environment),
             dockerPrivileged: privileged,
             dockerCapabilities: capabilitiesToValues(capabilities),
+            policyId,
           }),
         }
       )
@@ -547,6 +573,12 @@ function CustomAppForm({
           value={subdomain}
           onChange={setSubdomain}
           onTlsChange={setTls}
+        />
+        <PolicyField
+          value={policyId}
+          onChange={setPolicyId}
+          allowCreate
+          createReturnTo={editing ? undefined : "/apps?new=1&mode=custom"}
         />
         <FormField
           label={
@@ -622,6 +654,99 @@ function CustomAppForm({
       </div>
       </form>
     </>
+  )
+}
+
+function PolicyField({
+  allowCreate = false,
+  createReturnTo,
+  onChange,
+  value,
+}: {
+  allowCreate?: boolean
+  createReturnTo?: string
+  onChange: (value: string) => void
+  value: string
+}) {
+  const policies = useApi<Record<string, PolicyResource>>("/api/v1/firewall/policy")
+  const navigate = useNavigate()
+  const location = useLocation()
+  const menu = useRef<HTMLDivElement>(null)
+  const [open, setOpen] = useState(false)
+
+  useEffect(() => {
+    if (!open) return
+    function closeMenu(event: MouseEvent) {
+      if (!menu.current?.contains(event.target as Node)) setOpen(false)
+    }
+    function closeOnEscape(event: globalThis.KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false)
+    }
+    document.addEventListener("mousedown", closeMenu)
+    window.addEventListener("keydown", closeOnEscape)
+    return () => {
+      document.removeEventListener("mousedown", closeMenu)
+      window.removeEventListener("keydown", closeOnEscape)
+    }
+  }, [open])
+
+  const selectedPolicy = policies.status === "success" ? policies.data[value] : null
+
+  return (
+    <FormField label="Firewall policy">
+      <div ref={menu} className="relative">
+        <button
+          type="button"
+          role="combobox"
+          aria-expanded={open}
+          aria-haspopup="listbox"
+          disabled={policies.status !== "success"}
+          onClick={() => setOpen(!open)}
+          className="flex h-9 w-full cursor-pointer items-center justify-between rounded-lg border bg-background px-3 text-left text-sm shadow-xs outline-none focus:border-foreground/30 focus:ring-2 focus:ring-ring/30 disabled:cursor-default disabled:opacity-50"
+        >
+          <span>{selectedPolicy?.name ?? "Loading policies…"}</span>
+          <ChevronDown className={`size-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
+        </button>
+
+        {open && policies.status === "success" && (
+          <div className="absolute top-full right-0 left-0 z-30 mt-1 overflow-hidden rounded-lg border bg-card p-1 text-card-foreground shadow-lg">
+            <div role="listbox" aria-label="Firewall policy" className="max-h-52 overflow-y-auto">
+              {Object.values(policies.data).map((policy) => (
+                <button
+                  key={policy.id}
+                  type="button"
+                  role="option"
+                  aria-selected={policy.id === value}
+                  onClick={() => {
+                    onChange(policy.id)
+                    setOpen(false)
+                  }}
+                  className="flex w-full cursor-pointer items-center justify-between rounded-md px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                >
+                  {policy.name}
+                  {policy.id === value && <Check className="size-4" />}
+                </button>
+              ))}
+            </div>
+            {allowCreate && (
+              <div className="mt-1 border-t pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false)
+                    navigate(`/firewall?new=1&returnTo=${encodeURIComponent(createReturnTo ?? location.pathname)}`)
+                  }}
+                  className="flex w-full cursor-pointer items-center rounded-md px-3 py-2 text-left text-sm font-medium hover:bg-accent hover:text-accent-foreground"
+                >
+                  <Plus className="mr-2 size-4" />
+                  Create new Policy
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </FormField>
   )
 }
 

@@ -40,7 +40,7 @@ export function ProxiesPage() {
       <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
         <PageHeader
           title="Proxies"
-          description="Reverse proxies for services running outside Containarr."
+          description="Publish services running outside Containarr on your domain."
         />
         <div className="flex items-center gap-2">
           <ViewToggle value={view} onChange={setView} />

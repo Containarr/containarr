@@ -6,7 +6,7 @@ import {
   LayoutGrid,
   LogOut,
   Menu,
-  Settings2,
+  ShieldCheck,
   UserRound,
   Waypoints,
   X,
@@ -22,13 +22,20 @@ const navigation = [
   { label: "Apps", to: "/apps", icon: LayoutGrid },
   { label: "Containers", to: "/containers", icon: Container },
   { label: "Proxies", to: "/proxies", icon: Waypoints },
-  { label: "Settings", to: "/settings", icon: Settings2 },
+  { label: "Firewall", to: "/firewall", icon: ShieldCheck },
+]
+
+const settingsNavigation = [
+  { label: "Domain", to: "/domain", icon: Globe2 },
+  { label: "Tailscale", to: "/tailscale", icon: Waypoints },
 ]
 
 export function DashboardLayout() {
   const [menuOpen, setMenuOpen] = useState(false)
   const location = useLocation()
   const pageTitle = navigation.find(({ to }) =>
+    location.pathname.startsWith(to)
+  )?.label ?? settingsNavigation.find(({ to }) =>
     location.pathname.startsWith(to)
   )?.label ?? "Containarr"
 
@@ -164,6 +171,28 @@ function SidebarNavigation({ onNavigate }: { onNavigate?: () => void }) {
           </NavLink>
         ))}
       </div>
+      <p className="mt-6 mb-2 px-2 text-[11px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+        Settings
+      </p>
+      <div className="flex flex-col gap-1">
+        {settingsNavigation.map(({ icon: Icon, label, to }) => (
+          <NavLink
+            key={to}
+            to={to}
+            onClick={onNavigate}
+            className={({ isActive }) =>
+              `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring ${
+                isActive
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-xs"
+                  : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
+              }`
+            }
+          >
+            <Icon className="size-4" aria-hidden="true" />
+            {label}
+          </NavLink>
+        ))}
+      </div>
     </nav>
   )
 }
@@ -208,7 +237,7 @@ function SidebarDomainPrompt({ onNavigate }: { onNavigate?: () => void }) {
         </button>
       </div>
       <NavLink
-        to="/settings?domain=custom"
+        to="/domain?domain=custom"
         onClick={onNavigate}
         className="mt-3 flex items-center justify-between rounded-lg bg-cyan-500/20 px-3 py-2 text-xs font-medium text-cyan-950 transition-colors hover:bg-cyan-500/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 dark:bg-cyan-400/15 dark:text-cyan-100 dark:hover:bg-cyan-400/25"
       >

@@ -1,6 +1,6 @@
-import { useMemo, useState, type KeyboardEvent } from "react"
+import { useEffect, useMemo, useState, type KeyboardEvent } from "react"
 import { ArrowUpRight, Plus } from "lucide-react"
-import { Link, useNavigate } from "react-router-dom"
+import { Link, useNavigate, useSearchParams } from "react-router-dom"
 
 import { AppLogo } from "@/components/app-logo"
 import { CertificateBadge } from "@/components/certificate-badge"
@@ -23,19 +23,28 @@ import { ViewToggle } from "@/components/view-toggle"
 import { useApi } from "@/hooks/use-api"
 import { useStoredViewMode } from "@/hooks/use-stored-view-mode"
 import { getPublicAppUrl } from "@/lib/apps"
-import type { AppResource } from "@/lib/types"
+import type { AppResource, PolicyResource } from "@/lib/types"
 
 export function AppsPage() {
   const apps = useApi<Record<string, AppResource>>("/api/v1/app", {
     pollInterval: 1000,
   })
   const domainRequest = useApi<{ domain: string }>("/api/v1/ddns/domain")
+  const policies = useApi<Record<string, PolicyResource>>("/api/v1/firewall/policy")
   const [view, setView] = useStoredViewMode("containarr-apps-view")
   const [installOpen, setInstallOpen] = useState(false)
+  const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const items = apps.status === "success" ? Object.values(apps.data) : []
   const domain =
     domainRequest.status === "success" ? domainRequest.data.domain : null
+  const policyNames = policies.status === "success"
+    ? Object.fromEntries(Object.values(policies.data).map((policy) => [policy.id, policy.name]))
+    : { public: "Public" }
+
+  useEffect(() => {
+    if (searchParams.get("new") === "1") setInstallOpen(true)
+  }, [searchParams])
 
   return (
     <section>
@@ -74,13 +83,13 @@ export function AppsPage() {
       {apps.status === "success" && items.length > 0 && (
         <>
           {view === "cards" ? (
-            <AppsCardGrid items={items} domain={domain} navigate={navigate} />
+            <AppsCardGrid items={items} domain={domain} policyNames={policyNames} navigate={navigate} />
           ) : (
             <>
               <div className="sm:hidden">
-                <AppsCardGrid items={items} domain={domain} navigate={navigate} />
+                <AppsCardGrid items={items} domain={domain} policyNames={policyNames} navigate={navigate} />
               </div>
-              <AppsTable items={items} domain={domain} />
+              <AppsTable items={items} domain={domain} policyNames={policyNames} />
             </>
           )}
         </>
@@ -88,7 +97,12 @@ export function AppsPage() {
 
       <InstallAppDialog
         open={installOpen}
-        onClose={() => setInstallOpen(false)}
+        onClose={() => {
+          setInstallOpen(false)
+          if (searchParams.has("new") || searchParams.has("policyId")) {
+            setSearchParams({}, { replace: true })
+          }
+        }}
         onCreated={(app) => {
           setInstallOpen(false)
           apps.reload()
@@ -103,10 +117,12 @@ function AppsCardGrid({
   domain,
   items,
   navigate,
+  policyNames,
 }: {
   domain: string | null
   items: AppResource[]
   navigate: ReturnType<typeof useNavigate>
+  policyNames: Record<string, string>
 }) {
   function openFromKeyboard(event: KeyboardEvent, appId: string) {
     if (event.key === "Enter" || event.key === " ") {
@@ -143,12 +159,17 @@ function AppsCardGrid({
               </div>
               <AppStatusBadge app={app} />
             </CardHeader>
-            {publicUrl && (
-              <div
-                className="border-t px-5 pt-2 pb-3"
-                onClick={(event) => event.stopPropagation()}
-                onKeyDown={(event) => event.stopPropagation()}
-              >
+            <div
+              className="flex min-w-0 items-baseline gap-1.5 border-t px-5 pt-2 pb-3 text-xs text-muted-foreground"
+              onClick={(event) => event.stopPropagation()}
+              onKeyDown={(event) => event.stopPropagation()}
+            >
+              <span className="shrink-0 font-medium">
+                {policyNames[app.policyId] ?? "Unknown"}
+              </span>
+              {publicUrl && (
+                <>
+                  <span aria-hidden="true">・</span>
                 <a
                   href={publicUrl}
                   target="_blank"
@@ -158,8 +179,9 @@ function AppsCardGrid({
                   <span className="truncate">{publicUrl}</span>
                   <ArrowUpRight className="size-3 shrink-0" />
                 </a>
-              </div>
-            )}
+                </>
+              )}
+            </div>
           </Card>
         )
       })}
@@ -170,23 +192,25 @@ function AppsCardGrid({
 function AppsTable({
   domain,
   items,
+  policyNames,
 }: {
   domain: string | null
   items: AppResource[]
+  policyNames: Record<string, string>
 }) {
   const [sort, setSort] = useState<{ key: AppSortKey; direction: SortDirection } | null>(null)
   const sortedItems = useMemo(() => {
     if (!sort) return items
 
     return [...items].sort((left, right) => {
-      const comparison = getAppSortValue(left, sort.key, domain).localeCompare(
-        getAppSortValue(right, sort.key, domain),
+      const comparison = getAppSortValue(left, sort.key, domain, policyNames).localeCompare(
+        getAppSortValue(right, sort.key, domain, policyNames),
         undefined,
         { numeric: true, sensitivity: "base" }
       )
       return sort.direction === "asc" ? comparison : -comparison
     })
-  }, [domain, items, sort])
+  }, [domain, items, policyNames, sort])
 
   function changeSort(key: AppSortKey) {
     setSort((current) => ({
@@ -212,6 +236,12 @@ function AppsTable({
               active={sort?.key === "url"}
               direction={sort?.direction || "asc"}
               onClick={() => changeSort("url")}
+            />
+            <SortableTableHeader
+              label="Firewall Policy"
+              active={sort?.key === "policy"}
+              direction={sort?.direction || "asc"}
+              onClick={() => changeSort("policy")}
             />
             <SortableTableHeader
               label="Status"
@@ -251,6 +281,9 @@ function AppsTable({
                     "—"
                   )}
                 </td>
+                <td className="px-4 py-3 text-muted-foreground">
+                  {policyNames[app.policyId] ?? "Unknown"}
+                </td>
                 <td className="px-4 py-3">
                   <div className="flex justify-end">
                     <AppStatusBadge app={app} />
@@ -265,10 +298,16 @@ function AppsTable({
   )
 }
 
-type AppSortKey = "app" | "url" | "status"
+type AppSortKey = "app" | "policy" | "url" | "status"
 
-function getAppSortValue(app: AppResource, key: AppSortKey, domain: string | null) {
+function getAppSortValue(
+  app: AppResource,
+  key: AppSortKey,
+  domain: string | null,
+  policyNames: Record<string, string>
+) {
   if (key === "app") return app.name || ""
+  if (key === "policy") return policyNames[app.policyId] ?? ""
   if (key === "url") return getPublicAppUrl(app, domain) || ""
   return getAppStatus(app)
 }

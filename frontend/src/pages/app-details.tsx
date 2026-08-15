@@ -14,7 +14,7 @@ import {
   Trash2,
   X,
 } from "lucide-react"
-import { Link, useNavigate, useParams } from "react-router-dom"
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 
 import { AppLogo } from "@/components/app-logo"
 import { CertificateDetail } from "@/components/certificate-badge"
@@ -30,11 +30,12 @@ import { useApi } from "@/hooks/use-api"
 import { apiRequest } from "@/lib/api"
 import { getTlsMenuLabel } from "@/lib/tls"
 import { getPublicAppUrl } from "@/lib/apps"
-import type { AppResource } from "@/lib/types"
+import type { AppResource, PolicyResource } from "@/lib/types"
 
 export function AppDetailsPage() {
   const { appId = "" } = useParams()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [editing, setEditing] = useState(false)
   const [recreatePrompt, setRecreatePrompt] = useState<AppResource | null>(null)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
@@ -44,6 +45,11 @@ export function AppDetailsPage() {
     pollInterval: 1000,
   })
   const domainRequest = useApi<{ domain: string }>("/api/v1/ddns/domain")
+  const policies = useApi<Record<string, PolicyResource>>("/api/v1/firewall/policy")
+
+  useEffect(() => {
+    if (searchParams.get("policyId")) setEditing(true)
+  }, [searchParams])
 
   if (app.status === "loading") return <DetailsSkeleton />
   if (app.status === "error") {
@@ -154,6 +160,14 @@ export function AppDetailsPage() {
           <CardContent className="mt-5 grid gap-x-8 gap-y-5 sm:grid-cols-2">
             <Detail label="Subdomain" value={resource.subdomain || "—"} />
             <Detail label="TLS" value={getTlsMenuLabel(resource.tls)} />
+            <Detail
+              label="Firewall policy"
+              value={
+                policies.status === "success"
+                  ? policies.data[resource.policyId]?.name ?? "Unknown"
+                  : "…"
+              }
+            />
             <CertificateDetail
               certificate={resource.certificate}
               onRetry={async () => {
@@ -213,10 +227,17 @@ export function AppDetailsPage() {
 
       <EditAppDialog
         open={editing}
-        app={resource}
-        onClose={() => setEditing(false)}
+        app={{
+          ...resource,
+          policyId: searchParams.get("policyId") ?? resource.policyId,
+        }}
+        onClose={() => {
+          setEditing(false)
+          if (searchParams.has("policyId")) setSearchParams({}, { replace: true })
+        }}
         onSaved={(saved, dockerPropertiesChanged) => {
           setEditing(false)
+          if (searchParams.has("policyId")) setSearchParams({}, { replace: true })
           app.reload()
           if (
             dockerPropertiesChanged &&

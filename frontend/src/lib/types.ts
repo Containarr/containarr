@@ -12,6 +12,7 @@ export type AppResource = {
   containerState: string | null
   dockerImage: string
   autoUpdate: boolean
+  policyId: string
   imageUpdate: {
     status:
       | "not_checked"
@@ -130,6 +131,33 @@ export type DomainReachability = {
   }
   http: ProtocolReachability
   https: ProtocolReachability
+}
+
+export type PolicyResource = {
+  id: string
+  name: string
+  allowedIps: string[]
+  tailscaleDevices: Array<{
+    id: string
+    name: string
+    address: string
+  }>
+  createdAt: string
+  updatedAt: string
+}
+
+export type TailscaleSettings = {
+  clientId: string
+  clientSecretConfigured: boolean
+}
+
+export type TailscaleDevice = {
+  id: string
+  name: string
+  hostname: string
+  addresses: string[]
+  os: string
+  lastSeen: string
 }
 
 type ProtocolReachability = {
