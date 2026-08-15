@@ -12,6 +12,7 @@ import {
   RotateCcw,
   Settings2,
   Trash2,
+  Usb,
   X,
 } from "lucide-react"
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
@@ -222,6 +223,12 @@ export function AppDetailsPage() {
           icon={Network}
           items={resource.dockerVolumes}
           empty="No volumes configured."
+        />
+        <ListCard
+          title="Devices"
+          icon={Usb}
+          items={resource.dockerDevices}
+          empty="No devices configured."
         />
       </div>
 

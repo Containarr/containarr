@@ -376,6 +376,9 @@ function RegistryInstallForm({
     environmentFromRecord(app.dockerEnvironment)
   )
   const [volumes, setVolumes] = useState(() => volumesFromRegistry(app.dockerVolumes))
+  const [devices, setDevices] = useState(() =>
+    volumesFromRegistry(app.dockerDevices ?? [])
+  )
   const [ports, setPorts] = useState(() => portsFromDocker(app.dockerPorts))
   const [capabilities, setCapabilities] = useState(() =>
     capabilitiesFromValues(app.dockerCapabilities || [])
@@ -398,6 +401,7 @@ function RegistryInstallForm({
           policyId,
           dockerEnvironment: environmentToRecord(environment),
           dockerVolumes: volumesToBinds(volumes),
+          dockerDevices: volumesToBinds(devices),
           dockerPorts: portsToDocker(ports),
           dockerCapabilities: capabilitiesToValues(capabilities),
         }),
@@ -454,6 +458,7 @@ function RegistryInstallForm({
           />
           <EnvironmentEditor value={environment} onChange={setEnvironment} />
           <VolumeEditor value={volumes} onChange={setVolumes} />
+          <DeviceEditor value={devices} onChange={setDevices} />
           <CapabilityEditor value={capabilities} onChange={setCapabilities} />
           {error && <p className="text-sm text-red-600">{error}</p>}
         </div>
@@ -501,6 +506,9 @@ function CustomAppForm({
   const [volumes, setVolumes] = useState<VolumeRow[]>(() =>
     volumesFromRegistry(app?.dockerVolumes ?? [])
   )
+  const [devices, setDevices] = useState<VolumeRow[]>(() =>
+    volumesFromRegistry(app?.dockerDevices ?? [])
+  )
   const [ports, setPorts] = useState<PortRow[]>(() =>
     portsFromDocker(app?.dockerPorts ?? [])
   )
@@ -528,6 +536,7 @@ function CustomAppForm({
             dockerImage,
             dockerNetworkMode: networkMode,
             dockerVolumes: volumesToBinds(volumes),
+            dockerDevices: volumesToBinds(devices),
             dockerPorts: portsToDocker(ports),
             dockerEnvironment: environmentToRecord(environment),
             dockerPrivileged: privileged,
@@ -616,6 +625,7 @@ function CustomAppForm({
           />
           <EnvironmentEditor value={environment} onChange={setEnvironment} />
           <VolumeEditor value={volumes} onChange={setVolumes} />
+          <DeviceEditor value={devices} onChange={setDevices} />
           <CapabilityEditor value={capabilities} onChange={setCapabilities} />
           <label className="flex items-center gap-2 text-sm font-medium">
         <input
@@ -1025,6 +1035,47 @@ function VolumeEditor({
   )
 }
 
+function DeviceEditor({
+  onChange,
+  value,
+}: {
+  onChange: (value: VolumeRow[]) => void
+  value: VolumeRow[]
+}) {
+  return (
+    <ListEditor
+      title="Devices"
+      hint="Expose a host device inside the container."
+      onAdd={() =>
+        onChange([...value, { id: createRowId(), host: "", container: "" }])
+      }
+    >
+      {value.map((row) => (
+        <EditorRow key={row.id} onRemove={() => onChange(removeById(value, row.id))}>
+          <Input
+            value={row.host}
+            onChange={(event) =>
+              onChange(updateById(value, row.id, { host: event.target.value }))
+            }
+            placeholder="/dev/foo"
+            className="font-mono text-xs"
+          />
+          <Input
+            value={row.container}
+            onChange={(event) =>
+              onChange(
+                updateById(value, row.id, { container: event.target.value })
+              )
+            }
+            placeholder="/dev/foo"
+            className="font-mono text-xs"
+          />
+        </EditorRow>
+      ))}
+    </ListEditor>
+  )
+}
+
 function CapabilityEditor({
   onChange,
   value,
@@ -1269,6 +1320,7 @@ function haveDockerPropertiesChanged(
     before.dockerNetworkMode !== after.dockerNetworkMode ||
     before.dockerPrivileged !== after.dockerPrivileged ||
     JSON.stringify(before.dockerVolumes) !== JSON.stringify(after.dockerVolumes) ||
+    JSON.stringify(before.dockerDevices) !== JSON.stringify(after.dockerDevices) ||
     JSON.stringify(before.dockerPorts) !== JSON.stringify(after.dockerPorts) ||
     JSON.stringify(before.dockerCapabilities) !==
       JSON.stringify(after.dockerCapabilities) ||

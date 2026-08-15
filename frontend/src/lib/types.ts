@@ -26,6 +26,7 @@ export type AppResource = {
   }
   dockerNetworkMode: "bridge" | "host"
   dockerVolumes: string[]
+  dockerDevices: string[]
   dockerPorts: DockerPort[]
   dockerEnvironment: Record<string, string>
   dockerPrivileged: boolean
@@ -57,6 +58,7 @@ export type RegistryApp = {
   dockerPorts: DockerPort[]
   dockerNetworkMode: "bridge" | "host"
   dockerVolumes: Record<string, string> | string[]
+  dockerDevices?: Record<string, string> | string[]
   dockerEnvironment: Record<string, string>
   dockerPrivileged?: boolean
   dockerCapabilities?: string[]
