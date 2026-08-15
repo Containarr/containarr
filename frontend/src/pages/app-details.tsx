@@ -61,8 +61,29 @@ export function AppDetailsPage() {
   const domain =
     domainRequest.status === "success" ? domainRequest.data.domain : null
   const publicUrl = getPublicAppUrl(resource, domain)
-  const state = resource.containerState || resource.state
-  const live = state.toLowerCase() === "running"
+  const state = resource.state
+  const normalizedState = state?.toLowerCase() ?? ""
+  const live = normalizedState === "running"
+  const statusState =
+    resource.certificate.status === "error" || normalizedState === "dead"
+      ? "error"
+      : ["provisioning", "renewing"].includes(resource.certificate.status)
+        ? "provisioning"
+        : live
+          ? "running"
+          : ["created", "removing", "restarting"].includes(normalizedState)
+            ? "starting"
+            : "stopped"
+  const statusLabel =
+    statusState === "error"
+      ? "Error"
+      : statusState === "provisioning"
+        ? "Provisioning Certificate"
+        : statusState === "running"
+          ? "Live"
+          : statusState === "starting"
+            ? "Starting"
+            : "Stopped"
 
   async function deleteApp() {
     setDeleting(true)
@@ -98,7 +119,7 @@ export function AppDetailsPage() {
               <h1 className="truncate text-2xl font-semibold tracking-tight">
                 {resource.name || "Unnamed app"}
               </h1>
-              <StatusBadge state={state} label={live ? "Live" : undefined} />
+              <StatusBadge state={statusState} label={statusLabel} />
             </div>
             {publicUrl && (
               <a
@@ -195,7 +216,7 @@ export function AppDetailsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="mt-5 space-y-5">
-            <Detail label="State" value={live ? "Live" : state || "Unknown"} />
+            <Detail label="State" value={statusLabel} />
             <Detail
               label="Container ID"
               value={resource.containerId || "Not created"}
@@ -248,7 +269,7 @@ export function AppDetailsPage() {
           app.reload()
           if (
             dockerPropertiesChanged &&
-            (saved.containerState || saved.state).toLowerCase() === "running"
+            saved.state?.toLowerCase() === "running"
           ) {
             setRecreatePrompt(saved)
           }

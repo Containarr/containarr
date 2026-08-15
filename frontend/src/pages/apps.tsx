@@ -3,7 +3,6 @@ import { ArrowUpRight, Plus } from "lucide-react"
 import { Link, useNavigate, useSearchParams } from "react-router-dom"
 
 import { AppLogo } from "@/components/app-logo"
-import { CertificateBadge } from "@/components/certificate-badge"
 import { InstallAppDialog } from "@/components/install-app-dialog"
 import { MobileHeaderAction } from "@/components/mobile-header-action"
 import { PageHeader } from "@/components/page-header"
@@ -313,23 +312,35 @@ function getAppSortValue(
 }
 
 function AppStatusBadge({ app }: { app: AppResource }) {
-  if (["provisioning", "error"].includes(app.certificate.status)) {
-    return <CertificateBadge certificate={app.certificate} />
+  const state = app.state?.toLowerCase() ?? ""
+
+  if (app.certificate.status === "error" || state === "dead") {
+    return <StatusBadge state="error" label="Error" />
   }
 
-  const state = app.containerState || app.state
-  return state.toLowerCase() === "running" ? (
-    <StatusBadge state={state} label="Live" />
-  ) : (
-    <StatusBadge state={state} />
-  )
+  if (["provisioning", "renewing"].includes(app.certificate.status)) {
+    return (
+      <StatusBadge state="provisioning" label="Provisioning Certificate" />
+    )
+  }
+
+  if (state === "running") return <StatusBadge state={state} label="Live" />
+  if (["created", "removing", "restarting"].includes(state)) {
+    return <StatusBadge state="starting" label="Starting" />
+  }
+  return <StatusBadge state="stopped" label="Stopped" />
 }
 
 function getAppStatus(app: AppResource) {
-  if (["provisioning", "error"].includes(app.certificate.status)) {
-    return app.certificate.status
-  }
+  const state = app.state?.toLowerCase() ?? ""
 
-  const state = app.containerState || app.state || "unknown"
-  return state.toLowerCase() === "running" ? "live" : state
+  if (app.certificate.status === "error" || state === "dead") {
+    return "error"
+  }
+  if (["provisioning", "renewing"].includes(app.certificate.status)) {
+    return "provisioning certificate"
+  }
+  if (state === "running") return "live"
+  if (["created", "removing", "restarting"].includes(state)) return "starting"
+  return "stopped"
 }

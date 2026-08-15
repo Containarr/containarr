@@ -2,14 +2,13 @@ export type AppResource = {
   id: string
   name: string | null
   subdomain: string | null
-  state: string
+  state: string | null
   port: number | null
   url: string | null
   registryId: string | null
   registryVersion: number | null
   tls: string
   containerId: string | null
-  containerState: string | null
   dockerImage: string
   autoUpdate: boolean
   policyId: string
