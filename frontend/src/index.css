@@ -103,11 +103,23 @@
 
   html {
     font-family: var(--font-sans);
+    max-width: 100%;
+    overflow-x: hidden;
+    overflow-x: clip;
   }
 
   body {
     @apply min-h-screen bg-background text-foreground antialiased;
     margin: 0;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden;
+    overflow-x: clip;
+  }
+
+  #root {
+    min-width: 0;
+    max-width: 100%;
   }
 
   button:not(:disabled),

@@ -407,7 +407,7 @@ function PolicyDialog({
         if (event.target === event.currentTarget && !submitting) onClose()
       }}
     >
-      <div role="dialog" aria-modal="true" aria-labelledby="policy-dialog-title" className="flex max-h-[92vh] w-full max-w-xl flex-col overflow-hidden rounded-t-2xl border bg-background shadow-2xl sm:rounded-2xl">
+      <div role="dialog" aria-modal="true" aria-labelledby="policy-dialog-title" className="flex max-h-[92vh] min-w-0 w-full max-w-xl flex-col overflow-hidden rounded-t-2xl border bg-background shadow-2xl sm:rounded-2xl">
         <div className="flex items-center justify-between border-b px-5 py-4 sm:px-6">
           <div>
             <h2 id="policy-dialog-title" className="font-semibold">{policy ? "Edit Policy" : "New Policy"}</h2>
@@ -418,8 +418,8 @@ function PolicyDialog({
           </button>
         </div>
 
-        <form onSubmit={(event) => void submit(event)} className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5 sm:p-6">
+        <form onSubmit={(event) => void submit(event)} className="flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col overflow-hidden">
+          <div className="min-h-0 min-w-0 w-full max-w-full flex-1 space-y-5 overflow-x-hidden overflow-y-auto p-5 sm:p-6">
             <div>
               <label htmlFor="policy-name" className="text-sm font-medium">Name</label>
               <Input id="policy-name" required value={name} onChange={(event) => setName(event.target.value)} placeholder="Home network" className="mt-1.5" />

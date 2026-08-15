@@ -157,7 +157,7 @@ function ContainerShellDialogContent({
         role="dialog"
         aria-modal="true"
         aria-labelledby="container-shell-title"
-        className="flex h-[80vh] max-h-[52rem] w-full max-w-5xl flex-col overflow-hidden rounded-t-2xl border bg-background shadow-2xl sm:rounded-2xl"
+        className="flex h-[80vh] max-h-[52rem] min-w-0 w-full max-w-5xl flex-col overflow-hidden rounded-t-2xl border bg-background shadow-2xl sm:rounded-2xl"
       >
         <div className="flex items-center justify-between border-b px-5 py-4">
           <div className="flex min-w-0 items-center gap-3">

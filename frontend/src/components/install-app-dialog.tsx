@@ -140,11 +140,11 @@ function EditAppDialogContent({
         role="dialog"
         aria-modal="true"
         aria-labelledby="edit-app-title"
-        className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl border bg-background shadow-2xl sm:rounded-2xl"
+        className="flex max-h-[92vh] min-w-0 w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl border bg-background shadow-2xl sm:rounded-2xl"
       >
         <div className="flex items-center justify-between border-b px-5 py-4 sm:px-6">
-          <div>
-            <h2 id="edit-app-title" className="font-semibold">
+          <div className="min-w-0">
+            <h2 id="edit-app-title" className="truncate font-semibold">
               Edit {app.name || "App"}
             </h2>
             <p className="mt-0.5 text-xs text-muted-foreground">
@@ -220,10 +220,10 @@ function InstallAppDialogContent({ onClose, onCreated }: DialogProps) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="install-app-title"
-        className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl border bg-background shadow-2xl sm:rounded-2xl"
+        className="flex max-h-[92vh] min-w-0 w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl border bg-background shadow-2xl sm:rounded-2xl"
       >
         <div className="flex items-center justify-between border-b px-5 py-4 sm:px-6">
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             {selected && (
               <button
                 type="button"
@@ -234,8 +234,8 @@ function InstallAppDialogContent({ onClose, onCreated }: DialogProps) {
                 <ArrowLeft className="size-4" />
               </button>
             )}
-            <div>
-              <h2 id="install-app-title" className="font-semibold">
+            <div className="min-w-0">
+              <h2 id="install-app-title" className="truncate font-semibold">
                 {selected ? `Install ${selected.app.name}` : "Add an app"}
               </h2>
               <p className="mt-0.5 text-xs text-muted-foreground">
@@ -286,7 +286,7 @@ function InstallAppDialogContent({ onClose, onCreated }: DialogProps) {
         ) : mode === "custom" ? (
           <CustomAppForm domain={domain} onSaved={onCreated} />
         ) : (
-          <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-6">
+          <div className="min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto p-5 sm:p-6">
             {registry.status === "loading" ? (
               <LoadingRegistry />
             ) : registry.status === "error" ? (
@@ -421,10 +421,10 @@ function RegistryInstallForm({
     <>
       <form
       onSubmit={(event) => void submit(event)}
-      className="flex min-h-0 flex-1 flex-col overflow-hidden"
+      className="flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col overflow-hidden"
     >
-      <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-6">
-        <div className="space-y-6">
+      <div className="min-h-0 min-w-0 w-full max-w-full flex-1 overflow-x-hidden overflow-y-auto p-5 sm:p-6">
+        <div className="min-w-0 max-w-full space-y-6">
           <div className="flex items-start gap-4 rounded-xl border bg-muted/20 p-4">
             <AppLogo
               registryId={registryId}
@@ -581,11 +581,11 @@ function CustomAppForm({
     <>
       <form
       onSubmit={(event) => void submit(event)}
-      className="flex min-h-0 flex-1 flex-col overflow-hidden"
+      className="flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col overflow-hidden"
     >
-      <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-6">
-        <div className="space-y-6">
-          <div className="grid gap-4 sm:grid-cols-2">
+      <div className="min-h-0 min-w-0 w-full max-w-full flex-1 overflow-x-hidden overflow-y-auto p-5 sm:p-6">
+        <div className="min-w-0 max-w-full space-y-6">
+          <div className="grid min-w-0 max-w-full gap-4 sm:grid-cols-2">
         <FormField label="Name">
           <Input
             required
@@ -797,7 +797,7 @@ function NetworkEditor({
   ports: PortRow[]
 }) {
   return (
-    <section aria-label="Network" className="rounded-xl border p-4">
+    <section aria-label="Network" className="min-w-0 max-w-full rounded-xl border p-4">
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
           <p className="text-sm font-medium">Network</p>
@@ -934,9 +934,9 @@ function SubdomainField({
     TLS_OPTIONS[0].label
 
   return (
-    <div className="sm:col-span-2">
+    <div className="min-w-0 max-w-full sm:col-span-2">
       <FormField label="Subdomain">
-        <div className="flex">
+        <div className="flex min-w-0 max-w-full overflow-hidden">
           <div className="relative shrink-0">
             <span
               aria-hidden="true"
@@ -964,7 +964,7 @@ function SubdomainField({
               aria-hidden="true"
             />
           </div>
-          <div className="flex h-10 min-w-0 flex-1 rounded-r-lg border border-l-0 bg-background shadow-xs focus-within:border-foreground/30 focus-within:ring-2 focus-within:ring-ring/30">
+          <div className="flex h-10 min-w-0 flex-1 overflow-hidden rounded-r-lg border border-l-0 bg-background shadow-xs focus-within:border-foreground/30 focus-within:ring-2 focus-within:ring-ring/30">
             <Input
               required
               value={value}
@@ -972,8 +972,8 @@ function SubdomainField({
               placeholder="my-app"
               className="h-full min-w-0 rounded-none border-0 font-mono text-xs shadow-none focus:ring-0"
             />
-            <span className="flex shrink-0 items-center whitespace-nowrap border-l px-3 font-mono text-xs text-muted-foreground">
-              .{domain}
+            <span className="flex min-w-0 max-w-[50%] shrink items-center border-l px-3 font-mono text-xs text-muted-foreground">
+              <span className="truncate">.{domain}</span>
             </span>
           </div>
         </div>
@@ -1252,7 +1252,7 @@ function ListEditor({
 }) {
   return (
     <fieldset
-      className={`rounded-xl border px-4 ${Children.count(children) > 0 ? "space-y-3 py-4" : "py-3"}`}
+      className={`min-w-0 max-w-full rounded-xl border px-4 ${Children.count(children) > 0 ? "space-y-3 py-4" : "py-3"}`}
     >
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -1281,7 +1281,7 @@ function EditorRow({
   onRemove: () => void
 }) {
   return (
-    <div className={`grid items-center gap-2 ${columns}`}>
+    <div className={`grid min-w-0 max-w-full items-center gap-2 ${columns}`}>
       {children}
       <button
         type="button"
@@ -1305,7 +1305,7 @@ function FormField({
   label: ReactNode
 }) {
   return (
-    <label className="block space-y-1.5">
+    <label className="block min-w-0 max-w-full space-y-1.5">
       <span className="block text-sm font-medium">{label}</span>
       {children}
       {hint && <span className="block text-xs text-muted-foreground">{hint}</span>}

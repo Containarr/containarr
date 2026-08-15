@@ -109,8 +109,8 @@ export function DashboardLayout() {
           </div>
         )}
 
-        <main>
-          <div className="mx-auto w-full max-w-7xl px-5 py-8 sm:px-8 sm:py-10 lg:px-10">
+        <main className="min-w-0 max-w-full">
+          <div className="mx-auto min-w-0 w-full max-w-7xl px-5 py-8 sm:px-8 sm:py-10 lg:px-10">
             <Outlet />
           </div>
         </main>

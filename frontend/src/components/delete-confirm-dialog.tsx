@@ -66,11 +66,11 @@ function DeleteConfirmDialogContent({
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
-        className="w-full max-w-md rounded-2xl border bg-background p-6 shadow-2xl"
+        className="min-w-0 w-full max-w-md rounded-2xl border bg-background p-6 shadow-2xl"
       >
         <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 id={titleId} className="text-lg font-semibold">
+          <div className="min-w-0">
+            <h2 id={titleId} className="break-words text-lg font-semibold">
               {title}
             </h2>
             <p

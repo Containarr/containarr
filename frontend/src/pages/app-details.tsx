@@ -501,11 +501,11 @@ function RecreateAppDialog({
         aria-modal="true"
         aria-labelledby="recreate-app-title"
         aria-describedby="recreate-app-description"
-        className="w-full max-w-md rounded-2xl border bg-background p-6 shadow-2xl"
+        className="min-w-0 w-full max-w-md rounded-2xl border bg-background p-6 shadow-2xl"
       >
         <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 id="recreate-app-title" className="text-lg font-semibold">
+          <div className="min-w-0">
+            <h2 id="recreate-app-title" className="break-words text-lg font-semibold">
               Restart {app.name || "app"}?
             </h2>
             <p

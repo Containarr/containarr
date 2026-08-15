@@ -97,7 +97,7 @@ function ProxyDialogContent({
         role="dialog"
         aria-modal="true"
         aria-labelledby="proxy-dialog-title"
-        className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl border bg-background shadow-2xl sm:rounded-2xl"
+        className="flex max-h-[92vh] min-w-0 w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl border bg-background shadow-2xl sm:rounded-2xl"
       >
         <div className="flex items-center justify-between border-b px-5 py-4 sm:px-6">
           <div>
@@ -122,11 +122,11 @@ function ProxyDialogContent({
 
         <form
           onSubmit={(event) => void submit(event)}
-          className="flex min-h-0 flex-1 flex-col overflow-hidden"
+          className="flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col overflow-hidden"
         >
-          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5 sm:p-6">
+          <div className="min-h-0 min-w-0 w-full max-w-full flex-1 space-y-5 overflow-x-hidden overflow-y-auto p-5 sm:p-6">
             <FormField label="Subdomain">
-              <div className="flex">
+              <div className="flex min-w-0 max-w-full overflow-hidden">
                 <div className="relative shrink-0">
                   <span
                     aria-hidden="true"
@@ -154,7 +154,7 @@ function ProxyDialogContent({
                     aria-hidden="true"
                   />
                 </div>
-                <div className="flex h-10 min-w-0 flex-1 rounded-r-lg border border-l-0 bg-background shadow-xs focus-within:border-foreground/30 focus-within:ring-2 focus-within:ring-ring/30">
+                <div className="flex h-10 min-w-0 flex-1 overflow-hidden rounded-r-lg border border-l-0 bg-background shadow-xs focus-within:border-foreground/30 focus-within:ring-2 focus-within:ring-ring/30">
                   <Input
                     required
                     pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
@@ -163,8 +163,8 @@ function ProxyDialogContent({
                     placeholder="unifi"
                     className="h-full min-w-0 rounded-none border-0 font-mono text-xs shadow-none focus:ring-0"
                   />
-                  <span className="flex shrink-0 items-center whitespace-nowrap border-l px-3 font-mono text-xs text-muted-foreground">
-                    .{domain}
+                  <span className="flex min-w-0 max-w-[50%] shrink items-center border-l px-3 font-mono text-xs text-muted-foreground">
+                    <span className="truncate">.{domain}</span>
                   </span>
                 </div>
               </div>
