@@ -457,7 +457,11 @@ function RegistryInstallForm({
             onPortsChange={setPorts}
           />
           <EnvironmentEditor value={environment} onChange={setEnvironment} />
-          <VolumeEditor value={volumes} onChange={setVolumes} />
+          <VolumeEditor
+            image={app.dockerImage}
+            value={volumes}
+            onChange={setVolumes}
+          />
           <DeviceEditor value={devices} onChange={setDevices} />
           <CapabilityEditor value={capabilities} onChange={setCapabilities} />
           {error && <p className="text-sm text-red-600">{error}</p>}
@@ -624,7 +628,11 @@ function CustomAppForm({
             onPortsChange={setPorts}
           />
           <EnvironmentEditor value={environment} onChange={setEnvironment} />
-          <VolumeEditor value={volumes} onChange={setVolumes} />
+          <VolumeEditor
+            image={dockerImage}
+            value={volumes}
+            onChange={setVolumes}
+          />
           <DeviceEditor value={devices} onChange={setDevices} />
           <CapabilityEditor value={capabilities} onChange={setCapabilities} />
           <label className="flex items-center gap-2 text-sm font-medium">
@@ -995,9 +1003,11 @@ function EnvironmentEditor({
 }
 
 function VolumeEditor({
+  image,
   onChange,
   value,
 }: {
+  image: string
   onChange: (value: VolumeRow[]) => void
   value: VolumeRow[]
 }) {
@@ -1011,23 +1021,22 @@ function VolumeEditor({
     >
       {value.map((row) => (
         <EditorRow key={row.id} onRemove={() => onChange(removeById(value, row.id))}>
-          <Input
+          <PathAutocomplete
             value={row.host}
-            onChange={(event) =>
-              onChange(updateById(value, row.id, { host: event.target.value }))
+            onChange={(host) =>
+              onChange(updateById(value, row.id, { host }))
             }
             placeholder="/host/path"
-            className="font-mono text-xs"
+            source="host"
           />
-          <Input
+          <PathAutocomplete
             value={row.container}
-            onChange={(event) =>
-              onChange(
-                updateById(value, row.id, { container: event.target.value })
-              )
+            onChange={(container) =>
+              onChange(updateById(value, row.id, { container }))
             }
             placeholder="/container/path"
-            className="font-mono text-xs"
+            source="image"
+            image={image}
           />
         </EditorRow>
       ))}
@@ -1052,27 +1061,124 @@ function DeviceEditor({
     >
       {value.map((row) => (
         <EditorRow key={row.id} onRemove={() => onChange(removeById(value, row.id))}>
-          <Input
+          <PathAutocomplete
             value={row.host}
-            onChange={(event) =>
-              onChange(updateById(value, row.id, { host: event.target.value }))
+            onChange={(host) =>
+              onChange(updateById(value, row.id, { host }))
             }
             placeholder="/dev/foo"
-            className="font-mono text-xs"
+            source="device"
           />
-          <Input
+          <PathAutocomplete
             value={row.container}
-            onChange={(event) =>
-              onChange(
-                updateById(value, row.id, { container: event.target.value })
-              )
+            onChange={(container) =>
+              onChange(updateById(value, row.id, { container }))
             }
             placeholder="/dev/foo"
-            className="font-mono text-xs"
+            source="device"
           />
         </EditorRow>
       ))}
     </ListEditor>
+  )
+}
+
+function PathAutocomplete({
+  image,
+  onChange,
+  placeholder,
+  source,
+  value,
+}: {
+  image?: string
+  onChange: (value: string) => void
+  placeholder: string
+  source: "host" | "device" | "image"
+  value: string
+}) {
+  const [focused, setFocused] = useState(false)
+  const [suggestions, setSuggestions] = useState<
+    Array<{ path: string; directory: boolean }>
+  >([])
+
+  useEffect(() => {
+    if (!focused) {
+      setSuggestions([])
+      return
+    }
+
+    if (!value && source !== "device") {
+      setSuggestions([{ path: "/", directory: true }])
+      return
+    }
+
+    if (
+      (value && !value.startsWith("/")) ||
+      (source === "image" && !image && value !== "")
+    ) {
+      setSuggestions([])
+      return
+    }
+
+    const controller = new AbortController()
+    const timeout = window.setTimeout(() => {
+      const query = new URLSearchParams({
+        source,
+        path: !value && source === "device" ? "/dev/" : value,
+      })
+      if (image) query.set("image", image)
+
+      void apiRequest<Array<{ path: string; directory: boolean }>>(
+        `/api/v1/container/paths?${query}`,
+        { signal: controller.signal }
+      )
+        .then(setSuggestions)
+        .catch((error) => {
+          if (error instanceof DOMException && error.name === "AbortError") return
+          setSuggestions([])
+        })
+    }, 250)
+
+    return () => {
+      window.clearTimeout(timeout)
+      controller.abort()
+    }
+  }, [focused, image, source, value])
+
+  return (
+    <div className="relative min-w-0">
+      <Input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        placeholder={placeholder}
+        autoComplete="off"
+        className="font-mono text-xs"
+      />
+      {focused && suggestions.length > 0 && (
+        <div
+          role="listbox"
+          className="absolute right-0 left-0 z-50 mt-1 max-h-44 overflow-y-auto rounded-lg border bg-card p-1 text-card-foreground shadow-xl"
+        >
+          {suggestions.map((suggestion) => (
+            <button
+              key={suggestion.path}
+              type="button"
+              role="option"
+              aria-selected={suggestion.path === value}
+              onMouseDown={(event) => {
+                event.preventDefault()
+                onChange(suggestion.path)
+              }}
+              className="flex w-full cursor-pointer items-center rounded-md px-2.5 py-2 text-left font-mono text-xs hover:bg-accent hover:text-accent-foreground"
+            >
+              <span className="truncate">{suggestion.path}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 
