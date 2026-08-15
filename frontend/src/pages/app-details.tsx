@@ -222,6 +222,7 @@ export function AppDetailsPage() {
               value={resource.containerId || "Not created"}
               to={resource.containerId ? `/containers/${resource.containerId}` : undefined}
               mono
+              truncate
             />
             <div className="min-w-0">
               <p className="text-xs font-medium text-muted-foreground">
@@ -560,16 +561,18 @@ function Detail({
   label,
   mono = false,
   to,
+  truncate = false,
   value,
 }: {
   label: string
   mono?: boolean
   to?: string
+  truncate?: boolean
   value: string | number
 }) {
   const valueClassName = `mt-1 break-words text-sm ${
     mono ? "font-mono text-xs" : "font-medium"
-  }`
+  } ${truncate ? "block max-w-full truncate" : ""}`
 
   return (
     <div className="min-w-0">
@@ -577,6 +580,7 @@ function Detail({
       {to ? (
         <Link
           to={to}
+          title={truncate ? String(value) : undefined}
           className={`${valueClassName} inline-block underline-offset-4 hover:underline`}
         >
           {value}
