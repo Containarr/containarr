@@ -128,7 +128,7 @@ function Brand({ onNavigate }: { onNavigate?: () => void }) {
       className="flex items-center gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
     >
       <img
-        src="/logo.svg"
+        src="/logo.png"
         alt=""
         className="size-11 shrink-0 object-contain"
         aria-hidden="true"

@@ -10,7 +10,7 @@ export function AuthLogo({
   return (
     <div className={cn("relative size-28", className)} aria-hidden="true">
       <img
-        src="/logo.svg"
+        src="/logo.png"
         alt=""
         className={cn(
           "absolute inset-0 size-full object-contain transition-opacity duration-150",
@@ -18,7 +18,7 @@ export function AuthLogo({
         )}
       />
       <img
-        src="/logo-password.svg"
+        src="/logo-password.png"
         alt=""
         className={cn(
           "absolute inset-0 size-full object-contain transition-opacity duration-150",
