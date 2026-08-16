@@ -1,5 +1,5 @@
 <p align="center">
-<img src="./frontend/public/logo.png" width="128" height="128" />
+<a href="#getting-started"><img src="./frontend/public/logo.png" width="128" height="128" /></a>
 </p>
 <h3 align="center">Containarr</h3>
 <p align="center">The easiest way to self-host Docker containers on your homelab server!</p>
