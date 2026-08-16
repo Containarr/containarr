@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react"
-import { Check, CircleAlert, Copy, DatabaseBackup, LoaderCircle } from "lucide-react"
+import { Check, CircleAlert, Copy, DatabaseBackup, FileDown, LoaderCircle } from "lucide-react"
 
 import { PageHeader } from "@/components/page-header"
 import { ErrorState } from "@/components/resource-states"
@@ -139,7 +139,7 @@ export function BackupsPage() {
                 />
               </div>
               <div>
-                <label htmlFor="backup-branch" className="text-sm font-medium">Branch</label>
+                <label htmlFor="backup-branch" className="block text-sm font-medium">Branch</label>
                 <Input
                   id="backup-branch"
                   required
@@ -193,6 +193,16 @@ export function BackupsPage() {
             </form>
           </CardContent>
         </Card>
+        <div className="flex justify-center pt-1">
+          <a
+            href="/api/v1/backup/docker-compose.yml"
+            download="docker-compose.yml"
+            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
+          >
+            <FileDown className="size-3.5" />
+            Export Docker Compose YAML
+          </a>
+        </div>
       </div>
     </section>
   )
