@@ -1082,9 +1082,9 @@ function SubdomainField({
               value={value}
               onChange={(event) => onChange(event.target.value)}
               placeholder="my-app"
-              className="h-full min-w-0 rounded-none border-0 font-mono text-xs shadow-none focus:ring-0"
+              className="h-full min-w-16 w-auto flex-1 rounded-none border-0 font-mono text-xs shadow-none focus:ring-0"
             />
-            <span className="flex min-w-0 max-w-[50%] shrink items-center border-l px-3 font-mono text-xs text-muted-foreground">
+            <span className="flex min-w-0 max-w-[calc(100%-4rem)] shrink-0 items-center border-l px-3 font-mono text-xs text-muted-foreground">
               <span className="truncate">.{domain}</span>
             </span>
           </div>
