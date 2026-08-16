@@ -27,9 +27,14 @@
 
 [View more screenshots »](https://github.com/Containarr/containarr/tree/main/screenshots)
 
-## Getting Started
+# Requirements
 
-### 1. Install Docker
+* A Linux host, e.g. Raspberry Pi
+* Port 80 (HTTP) and 443 (HTTPS) available
+
+# Getting Started
+
+## 1. Install Docker
 
 If you haven't installed Docker yet, install it by running:
 
@@ -41,7 +46,7 @@ $ exit
 
 And log in again.
 
-### 2. Run Containarr
+## 2. Run Containarr
 
 ```bash
 $ docker network create containarr
@@ -84,7 +89,7 @@ $ docker run -d \
   ```
 </details>
 
-### 3. Open a Browser
+## 3. Open a Browser
 
 Open http://localhost in your web browser to set-up Containarr, and run your first container.
 
