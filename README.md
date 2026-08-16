@@ -1,19 +1,31 @@
-# Containarr
-
-👋 Welcome to Containarr, the easiest way to self-host Docker containers on your homelab server!
-
+<p align="center">
 <img src="./frontend/public/logo.png" width="128" height="128" />
+</p>
+<h3 align="center">Containarr</h3>
+<p align="center">The easiest way to self-host Docker containers on your homelab server!</p>
 
-Containarr includes everything you need to:
+---
 
-* Easily set up, run, and update Docker containers.
-* Access your services securely through the built-in reverse proxy — for example `https://plex.mydomain.com` and `https://sonarr.mydomain.com`.
+👋 **Welcome to Containarr!** Containarr includes everything you need to:
+
+* Install, run & update Docker containers.
+* Access your services securely — for example `https://plex.mydomain.com` and `https://sonarr.mydomain.com`.
 * Keep your domain connected with built-in Dynamic DNS. Simply point `*.mydomain.com` to `mydomain.containarr.me` with a CNAME record. HTTPS automatically works!
 * Control who can access each service. Make services public or restrict them to specific IP addresses and networks.
 * Automatically update containers or receive a notification when an update becomes available.
 * Manage everything through a beautiful web interface designed for both desktop and mobile.
 
 > A friendly warning: Containarr is intentionally opinionated, so it may not be for everyone, and that’s perfectly fine. There are plenty of excellent alternatives available.
+
+# Screenshots
+
+<img alt="" src="./screenshots/Apps — Grid.png">
+
+<img alt="" src="./screenshots/Container 1.png">
+
+<img alt="" src="./screenshots/Settings — Domain (Custom).png">
+
+[View more screenshots »](https://github.com/Containarr/containarr/tree/main/screenshots)
 
 ## Getting Started
 
@@ -75,16 +87,6 @@ $ docker run -d \
 ### 3. Open a Browser
 
 Open http://localhost in your web browser to set-up Containarr, and run your first container.
-
-# Screenshots
-
-<img alt="" src="./screenshots/Apps — Grid.png">
-
-<img alt="" src="./screenshots/Container 1.png">
-
-<img alt="" src="./screenshots/Settings — Domain (Custom).png">
-
-[View more screenshots »](https://github.com/Containarr/containarr/tree/main/screenshots)
 
 # Roadmap
 
