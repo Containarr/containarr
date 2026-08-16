@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import {
   ArrowRight,
   Container,
+  DatabaseBackup,
   Download,
   Globe2,
   LayoutGrid,
@@ -28,6 +29,7 @@ const navigation = [
 
 const settingsNavigation = [
   { label: "Domain", to: "/domain", icon: Globe2 },
+  { label: "Backups", to: "/backups", icon: DatabaseBackup },
   { label: "Updates", to: "/updates", icon: Download },
 ]
 

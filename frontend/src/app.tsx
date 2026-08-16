@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AuthProvider, useAuth } from "@/hooks/use-auth"
 import { AppDetailsPage } from "@/pages/app-details"
 import { AppsPage } from "@/pages/apps"
+import { BackupsPage } from "@/pages/backups"
 import { ContainerDetailsPage } from "@/pages/container-details"
 import { ContainersPage } from "@/pages/containers"
 import { LoginPage } from "@/pages/login"
@@ -90,9 +91,11 @@ function AppRoutes() {
         <Route path="/proxies/:proxyId" element={<ProxyDetailsPage />} />
         <Route path="/firewall" element={<FirewallPage />} />
         <Route path="/domain" element={<DomainSettingsPage />} />
+        <Route path="/backups" element={<BackupsPage />} />
         <Route path="/updates" element={<UpdatesPage />} />
         <Route path="/settings" element={<Navigate to="/domain" replace />} />
         <Route path="/settings/domain" element={<Navigate to="/domain" replace />} />
+        <Route path="/settings/backups" element={<Navigate to="/backups" replace />} />
         <Route path="/settings/updates" element={<Navigate to="/updates" replace />} />
       </Route>
       <Route path="/login" element={<Navigate to="/apps" replace />} />

@@ -2,8 +2,8 @@
   "name": "@containarr/containarr",
   "version": "0.10.0",
   "scripts": {
-    "start": "DEBUG=HTTPServer,Traefik,Docker,Settings,SQLite,DDNS,LetsEncrypt,Apps,App:*,Proxies,Updates node server.mjs",
-    "serve": "DEBUG=HTTPServer,Traefik,Docker,Settings,SQLite,DDNS,LetsEncrypt,Apps,App:*,Proxies,Updates node --watch --watch-kill-signal SIGINT server.mjs",
+    "start": "DEBUG=HTTPServer,Traefik,Docker,Settings,SQLite,DDNS,LetsEncrypt,Apps,App:*,Proxies,Updates,Backups node server.mjs",
+    "serve": "DEBUG=HTTPServer,Traefik,Docker,Settings,SQLite,DDNS,LetsEncrypt,Apps,App:*,Proxies,Updates,Backups node --watch --watch-kill-signal SIGINT server.mjs",
     "start:docker": "docker compose -f docker-compose.yml up",
     "serve:docker": "docker compose -f docker-compose.yml -f docker-compose.dev.yml up",
     "build:docker": "docker build -t containarr ."

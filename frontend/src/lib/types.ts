@@ -139,6 +139,16 @@ export type DomainSettings = {
   generatedDomain: string
 }
 
+export type BackupSettings = {
+  repositoryUrl: string
+  branch: string
+  publicKey: string
+  configured: boolean
+  backingUp: boolean
+  lastBackupAt: string | null
+  error: string | null
+}
+
 export type DomainReachability = {
   hostname: string
   expectedTarget: string

@@ -17,9 +17,9 @@ ARG CONTAINARR_VERSION
 LABEL org.opencontainers.image.version="${CONTAINARR_VERSION}"
 ENV CONTAINARR_VERSION="${CONTAINARR_VERSION}"
 
-# Install curl
+# Install system dependencies
 RUN apt-get update && \
-    apt-get install -y curl && \
+    apt-get install -y curl git openssh-client && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
