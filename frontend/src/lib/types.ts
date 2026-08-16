@@ -9,6 +9,12 @@ export type AppResource = {
   registryVersion: number | null
   tls: string
   containerId: string | null
+  containerError: {
+    containerId: string
+    exitCode: number
+    finishedAt: string
+    logs: string
+  } | null
   dockerImage: string
   autoUpdate: boolean
   policyId: string

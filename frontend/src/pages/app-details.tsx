@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react"
+import Ansi from "ansi-to-react"
 import {
   ArrowLeft,
   ArrowUpRight,
   Box,
+  CircleAlert,
   Container,
   Download,
   LoaderCircle,
@@ -65,7 +67,11 @@ export function AppDetailsPage() {
   const normalizedState = state?.toLowerCase() ?? ""
   const live = normalizedState === "running"
   const statusState =
-    resource.certificate.status === "error" || normalizedState === "dead"
+    resource.certificate.status === "error"
+    || (
+      resource.containerError
+      && ["dead", "exited", "restarting"].includes(normalizedState)
+    )
       ? "error"
       : ["provisioning", "renewing"].includes(resource.certificate.status)
         ? "provisioning"
@@ -252,6 +258,35 @@ export function AppDetailsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {resource.containerError && (
+        <Card className="mt-4 overflow-hidden border-red-500/30 shadow-none">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-red-700 dark:text-red-300">
+              <CircleAlert className="size-4" />
+              Last Container Error
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="mt-5">
+            <p className="text-sm text-muted-foreground">
+              Exited with code {resource.containerError.exitCode} on{" "}
+              {new Intl.DateTimeFormat(undefined, {
+                dateStyle: "medium",
+                timeStyle: "medium",
+              }).format(new Date(resource.containerError.finishedAt))}.
+            </p>
+            {resource.containerError.logs ? (
+              <pre className="mt-4 max-h-[28rem] overflow-auto whitespace-pre-wrap break-words rounded-lg bg-zinc-950 p-4 font-mono text-xs leading-relaxed text-zinc-100">
+                <Ansi>{resource.containerError.logs}</Ansi>
+              </pre>
+            ) : (
+              <p className="mt-4 text-sm text-muted-foreground">
+                The container did not write any logs before it exited.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="mt-4 grid gap-4">
         <ListCard

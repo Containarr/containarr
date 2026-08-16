@@ -322,7 +322,10 @@ function getAppSortValue(
 function AppStatusBadge({ app }: { app: AppResource }) {
   const state = app.state?.toLowerCase() ?? ""
 
-  if (app.certificate.status === "error" || state === "dead") {
+  if (
+    app.certificate.status === "error"
+    || (app.containerError && ["dead", "exited", "restarting"].includes(state))
+  ) {
     return <StatusBadge state="error" label="Error" />
   }
 
@@ -342,7 +345,10 @@ function AppStatusBadge({ app }: { app: AppResource }) {
 function getAppStatus(app: AppResource) {
   const state = app.state?.toLowerCase() ?? ""
 
-  if (app.certificate.status === "error" || state === "dead") {
+  if (
+    app.certificate.status === "error"
+    || (app.containerError && ["dead", "exited", "restarting"].includes(state))
+  ) {
     return "error"
   }
   if (["provisioning", "renewing"].includes(app.certificate.status)) {
