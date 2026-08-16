@@ -383,6 +383,17 @@ function RegistryInstallForm({
   const [capabilities, setCapabilities] = useState(() =>
     capabilitiesFromValues(app.dockerCapabilities || [])
   )
+  const [userId, setUserId] = useState(
+    app.dockerUserId === null || app.dockerUserId === undefined
+      ? ""
+      : String(app.dockerUserId)
+  )
+  const [groupId, setGroupId] = useState(
+    app.dockerGroupId === null || app.dockerGroupId === undefined
+      ? ""
+      : String(app.dockerGroupId)
+  )
+  const [autoStart, setAutoStart] = useState(app.dockerAutoStart ?? true)
   const [privileged, setPrivileged] = useState(app.dockerPrivileged ?? false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -404,12 +415,15 @@ function RegistryInstallForm({
           dockerVolumes: volumesToBinds(volumes),
           dockerDevices: volumesToBinds(devices),
           dockerPorts: portsToDocker(ports),
+          dockerUserId: userId === "" ? null : Number(userId),
+          dockerGroupId: userId === "" || groupId === "" ? null : Number(groupId),
+          dockerAutoStart: autoStart,
           dockerPrivileged: privileged,
           dockerCapabilities: capabilitiesToValues(capabilities),
         }),
       })
       onCreated(created)
-      void startApp(created).catch(() => {})
+      if (autoStart) void startApp(created).catch(() => {})
     } catch (requestError) {
       setError(getErrorMessage(requestError, "Install failed."))
     } finally {
@@ -466,18 +480,60 @@ function RegistryInstallForm({
           />
           <DeviceEditor value={devices} onChange={setDevices} />
           <CapabilityEditor value={capabilities} onChange={setCapabilities} />
-          <label className="flex items-center gap-2 text-sm font-medium">
-            <input
-              type="checkbox"
-              checked={privileged}
-              onChange={(event) => setPrivileged(event.target.checked)}
-              className="size-4 rounded border"
-            />
-            <span className="inline-flex items-center gap-1.5">
-              Run container in privileged mode
-              <InfoTooltip text="Privileged mode gives the container nearly unrestricted access to host devices and kernel capabilities. Only enable it for images you trust." />
-            </span>
-          </label>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField label="User ID">
+              <Input
+                type="number"
+                min="0"
+                step="1"
+                value={userId}
+                onChange={(event) => {
+                  setUserId(event.target.value)
+                  if (event.target.value === "") setGroupId("")
+                }}
+                placeholder="1000"
+                className="appearance-none font-mono text-xs [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              />
+            </FormField>
+            <FormField label="Group ID">
+              <Input
+                type="number"
+                min="0"
+                step="1"
+                value={groupId}
+                onChange={(event) => setGroupId(event.target.value)}
+                placeholder="1000"
+                disabled={userId === ""}
+                className="appearance-none font-mono text-xs [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              />
+            </FormField>
+          </div>
+          <div className="space-y-3">
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <input
+                type="checkbox"
+                checked={autoStart}
+                onChange={(event) => setAutoStart(event.target.checked)}
+                className="size-4 rounded border"
+              />
+              <span className="inline-flex items-center gap-1.5">
+                Auto-start
+                <InfoTooltip text="Automatically start this container again unless it was explicitly stopped." />
+              </span>
+            </label>
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <input
+                type="checkbox"
+                checked={privileged}
+                onChange={(event) => setPrivileged(event.target.checked)}
+                className="size-4 rounded border"
+              />
+              <span className="inline-flex items-center gap-1.5">
+                Run container in privileged mode
+                <InfoTooltip text="Privileged mode gives the container nearly unrestricted access to host devices and kernel capabilities. Only enable it for images you trust." />
+              </span>
+            </label>
+          </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
         </div>
       </div>
@@ -533,6 +589,17 @@ function CustomAppForm({
   const [capabilities, setCapabilities] = useState<CapabilityRow[]>(() =>
     capabilitiesFromValues(app?.dockerCapabilities ?? [])
   )
+  const [userId, setUserId] = useState(
+    app?.dockerUserId === null || app?.dockerUserId === undefined
+      ? ""
+      : String(app.dockerUserId)
+  )
+  const [groupId, setGroupId] = useState(
+    app?.dockerGroupId === null || app?.dockerGroupId === undefined
+      ? ""
+      : String(app.dockerGroupId)
+  )
+  const [autoStart, setAutoStart] = useState(app?.dockerAutoStart ?? true)
   const [privileged, setPrivileged] = useState(app?.dockerPrivileged ?? false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -557,6 +624,9 @@ function CustomAppForm({
             dockerDevices: volumesToBinds(devices),
             dockerPorts: portsToDocker(ports),
             dockerEnvironment: environmentToRecord(environment),
+            dockerUserId: userId === "" ? null : Number(userId),
+            dockerGroupId: userId === "" || groupId === "" ? null : Number(groupId),
+            dockerAutoStart: autoStart,
             dockerPrivileged: privileged,
             dockerCapabilities: capabilitiesToValues(capabilities),
             policyId,
@@ -564,7 +634,7 @@ function CustomAppForm({
         }
       )
       onSaved(saved, editing && haveDockerPropertiesChanged(app, saved))
-      if (!editing) void startApp(saved).catch(() => {})
+      if (!editing && autoStart) void startApp(saved).catch(() => {})
     } catch (requestError) {
       setError(
         getErrorMessage(
@@ -649,18 +719,60 @@ function CustomAppForm({
           />
           <DeviceEditor value={devices} onChange={setDevices} />
           <CapabilityEditor value={capabilities} onChange={setCapabilities} />
-          <label className="flex items-center gap-2 text-sm font-medium">
-        <input
-          type="checkbox"
-          checked={privileged}
-          onChange={(event) => setPrivileged(event.target.checked)}
-          className="size-4 rounded border"
-        />
-        <span className="inline-flex items-center gap-1.5">
-          Run container in privileged mode
-          <InfoTooltip text="Privileged mode gives the container nearly unrestricted access to host devices and kernel capabilities. Only enable it for images you trust." />
-        </span>
-          </label>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField label="User ID">
+              <Input
+                type="number"
+                min="0"
+                step="1"
+                value={userId}
+                onChange={(event) => {
+                  setUserId(event.target.value)
+                  if (event.target.value === "") setGroupId("")
+                }}
+                placeholder="1000"
+                className="appearance-none font-mono text-xs [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              />
+            </FormField>
+            <FormField label="Group ID">
+              <Input
+                type="number"
+                min="0"
+                step="1"
+                value={groupId}
+                onChange={(event) => setGroupId(event.target.value)}
+                placeholder="1000"
+                disabled={userId === ""}
+                className="appearance-none font-mono text-xs [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              />
+            </FormField>
+          </div>
+          <div className="space-y-3">
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <input
+                type="checkbox"
+                checked={autoStart}
+                onChange={(event) => setAutoStart(event.target.checked)}
+                className="size-4 rounded border"
+              />
+              <span className="inline-flex items-center gap-1.5">
+                Auto-start
+                <InfoTooltip text="Automatically start this container again unless it was explicitly stopped." />
+              </span>
+            </label>
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <input
+                type="checkbox"
+                checked={privileged}
+                onChange={(event) => setPrivileged(event.target.checked)}
+                className="size-4 rounded border"
+              />
+              <span className="inline-flex items-center gap-1.5">
+                Run container in privileged mode
+                <InfoTooltip text="Privileged mode gives the container nearly unrestricted access to host devices and kernel capabilities. Only enable it for images you trust." />
+              </span>
+            </label>
+          </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
         </div>
       </div>
@@ -1445,6 +1557,9 @@ function haveDockerPropertiesChanged(
   return (
     before.dockerImage !== after.dockerImage ||
     before.dockerNetworkMode !== after.dockerNetworkMode ||
+    before.dockerUserId !== after.dockerUserId ||
+    before.dockerGroupId !== after.dockerGroupId ||
+    before.dockerAutoStart !== after.dockerAutoStart ||
     before.dockerPrivileged !== after.dockerPrivileged ||
     JSON.stringify(before.dockerVolumes) !== JSON.stringify(after.dockerVolumes) ||
     JSON.stringify(before.dockerDevices) !== JSON.stringify(after.dockerDevices) ||

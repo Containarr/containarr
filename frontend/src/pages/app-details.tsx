@@ -204,6 +204,9 @@ export function AppDetailsPage() {
               label="Network"
               value={resource.dockerNetworkMode === "host" ? "Host" : "Bridge"}
             />
+            <Detail label="User ID" value={resource.dockerUserId ?? "Default"} mono />
+            <Detail label="Group ID" value={resource.dockerGroupId ?? "Default"} mono />
+            <Detail label="Auto-start" value={resource.dockerAutoStart ? "Yes" : "No"} />
             <Detail label="Privileged" value={resource.dockerPrivileged ? "Yes" : "No"} />
           </CardContent>
         </Card>

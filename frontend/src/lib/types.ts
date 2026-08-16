@@ -28,6 +28,9 @@ export type AppResource = {
   dockerDevices: string[]
   dockerPorts: DockerPort[]
   dockerEnvironment: Record<string, string>
+  dockerUserId: number | null
+  dockerGroupId: number | null
+  dockerAutoStart: boolean
   dockerPrivileged: boolean
   dockerCapabilities: string[]
   certificate: CertificateStatus
@@ -69,6 +72,9 @@ export type RegistryApp = {
   dockerVolumes: Record<string, string> | string[]
   dockerDevices?: Record<string, string> | string[]
   dockerEnvironment: Record<string, string>
+  dockerUserId?: number | null
+  dockerGroupId?: number | null
+  dockerAutoStart?: boolean
   dockerPrivileged?: boolean
   dockerCapabilities?: string[]
 }

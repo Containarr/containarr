@@ -104,7 +104,7 @@ export function UpdatesPage() {
             <div className="flex items-start gap-3 rounded-xl border border-blue-500/25 bg-blue-500/10 p-4 text-blue-900 dark:text-blue-200">
               <Download className="mt-0.5 size-5 shrink-0" />
               <div>
-                <p className="font-medium">A Containarr update is available</p>
+                <p className="font-medium">A Containarr update is available!</p>
                 <p className="mt-1 text-sm opacity-80">
                   Version {status.latestVersion} is ready to install.
                 </p>
