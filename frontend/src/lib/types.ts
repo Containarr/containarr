@@ -125,6 +125,7 @@ export type ProxyResource = {
   subdomain: string
   tls: string
   sourceUrl: string
+  policyId: string
   createdAt: string
   updatedAt: string
   certificate: CertificateStatus
@@ -154,27 +155,8 @@ export type PolicyResource = {
   id: string
   name: string
   allowedIps: string[]
-  tailscaleDevices: Array<{
-    id: string
-    name: string
-    address: string
-  }>
   createdAt: string
   updatedAt: string
-}
-
-export type TailscaleSettings = {
-  clientId: string
-  clientSecretConfigured: boolean
-}
-
-export type TailscaleDevice = {
-  id: string
-  name: string
-  hostname: string
-  addresses: string[]
-  os: string
-  lastSeen: string
 }
 
 type ProtocolReachability = {

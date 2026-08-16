@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent, type KeyboardEvent } from "react"
 import { Globe2, LoaderCircle, Pencil, Plus, ShieldCheck, Trash2, X } from "lucide-react"
-import { Link, useNavigate, useSearchParams } from "react-router-dom"
+import { useNavigate, useSearchParams } from "react-router-dom"
 
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { MobileHeaderAction } from "@/components/mobile-header-action"
@@ -15,7 +15,7 @@ import { ViewToggle } from "@/components/view-toggle"
 import { useApi } from "@/hooks/use-api"
 import { useStoredViewMode } from "@/hooks/use-stored-view-mode"
 import { apiRequest } from "@/lib/api"
-import type { PolicyResource, TailscaleDevice, TailscaleSettings } from "@/lib/types"
+import type { PolicyResource } from "@/lib/types"
 
 export function FirewallPage() {
   const policies = useApi<Record<string, PolicyResource>>("/api/v1/firewall/policy")
@@ -44,7 +44,7 @@ export function FirewallPage() {
       <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
         <PageHeader
           title="Firewall"
-          description="Control which networks and Tailscale devices can access your apps."
+          description="Control which networks can access your apps and proxies."
         />
         <div className="flex items-center gap-2">
           <ViewToggle value={view} onChange={setView} />
@@ -120,7 +120,7 @@ export function FirewallPage() {
       <DeleteConfirmDialog
         open={deleting !== null}
         title={`Delete ${deleting?.name || "policy"}?`}
-        description="Apps using this policy will be changed to Public. This action cannot be undone."
+        description="Apps and proxies using this policy will be changed to Public. This action cannot be undone."
         deleting={deletePending}
         error={deleteError}
         onCancel={() => {
@@ -171,7 +171,7 @@ function PolicyCardGrid({
                 <p className="mt-1 text-xs text-muted-foreground">
                   {policy.id === "public"
                     ? "Everyone can access apps with this policy."
-                    : `${policy.allowedIps.length + (policy.tailscaleDevices?.length ?? 0)} allowed ${policy.allowedIps.length + (policy.tailscaleDevices?.length ?? 0) === 1 ? "source" : "sources"}`}
+                    : `${policy.allowedIps.length} allowed ${policy.allowedIps.length === 1 ? "source" : "sources"}`}
                 </p>
               </div>
             </div>
@@ -186,20 +186,7 @@ function PolicyCardGrid({
                 {policy.allowedIps.map((entry) => (
                   <span key={entry} className="rounded-md bg-muted px-2 py-1 font-mono text-xs">{entry}</span>
                 ))}
-                {(policy.tailscaleDevices ?? []).map((device) => (
-                  <span
-                    key={device.id}
-                    tabIndex={0}
-                    aria-label={`${device.name}, ${device.address}`}
-                    className="group relative rounded-md bg-muted px-2 py-1 text-xs outline-none focus:ring-2 focus:ring-ring/30"
-                  >
-                    {device.name}
-                    <span aria-hidden="true" className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-foreground px-2 py-1 font-mono text-[10px] text-background opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus:opacity-100">
-                      {device.address}
-                    </span>
-                  </span>
-                ))}
-                {policy.allowedIps.length === 0 && (policy.tailscaleDevices?.length ?? 0) === 0 && (
+                {policy.allowedIps.length === 0 && (
                   <p className="text-xs text-muted-foreground">No addresses are allowed.</p>
                 )}
               </div>
@@ -242,13 +229,13 @@ function PolicyTable({
       const leftValue = sort.key === "name"
         ? left.name
         : sort.key === "sources"
-          ? String(left.id === "public" ? Number.MAX_SAFE_INTEGER : left.allowedIps.length + (left.tailscaleDevices?.length ?? 0))
-          : [...left.allowedIps, ...(left.tailscaleDevices ?? []).map((device) => device.name)].join(" ")
+          ? String(left.id === "public" ? Number.MAX_SAFE_INTEGER : left.allowedIps.length)
+          : left.allowedIps.join(" ")
       const rightValue = sort.key === "name"
         ? right.name
         : sort.key === "sources"
-          ? String(right.id === "public" ? Number.MAX_SAFE_INTEGER : right.allowedIps.length + (right.tailscaleDevices?.length ?? 0))
-          : [...right.allowedIps, ...(right.tailscaleDevices ?? []).map((device) => device.name)].join(" ")
+          ? String(right.id === "public" ? Number.MAX_SAFE_INTEGER : right.allowedIps.length)
+          : right.allowedIps.join(" ")
       const comparison = leftValue.localeCompare(rightValue, undefined, {
         numeric: true,
         sensitivity: "base",
@@ -271,7 +258,7 @@ function PolicyTable({
           <tr>
             <SortableTableHeader label="Policy" active={sort?.key === "name"} direction={sort?.direction || "asc"} onClick={() => changeSort("name")} />
             <SortableTableHeader label="Sources" active={sort?.key === "sources"} direction={sort?.direction || "asc"} onClick={() => changeSort("sources")} />
-            <SortableTableHeader label="Allowed IPs and Devices" active={sort?.key === "allowed"} direction={sort?.direction || "asc"} onClick={() => changeSort("allowed")} />
+            <SortableTableHeader label="Allowed IPs" active={sort?.key === "allowed"} direction={sort?.direction || "asc"} onClick={() => changeSort("allowed")} />
             <th className="px-4 py-3 text-right font-medium">Actions</th>
           </tr>
         </thead>
@@ -285,7 +272,7 @@ function PolicyTable({
                 </div>
               </td>
               <td className="px-4 py-3 text-muted-foreground">
-                {policy.id === "public" ? "Everyone" : policy.allowedIps.length + (policy.tailscaleDevices?.length ?? 0)}
+                {policy.id === "public" ? "Everyone" : policy.allowedIps.length}
               </td>
               <td className="px-4 py-3">
                 {policy.id === "public" ? (
@@ -293,20 +280,7 @@ function PolicyTable({
                 ) : (
                   <div className="flex flex-wrap gap-1.5">
                     {policy.allowedIps.map((entry) => <span key={entry} className="rounded-md bg-muted px-2 py-1 font-mono text-xs">{entry}</span>)}
-                    {(policy.tailscaleDevices ?? []).map((device) => (
-                      <span
-                        key={device.id}
-                        tabIndex={0}
-                        aria-label={`${device.name}, ${device.address}`}
-                        className="group relative rounded-md bg-muted px-2 py-1 text-xs outline-none focus:ring-2 focus:ring-ring/30"
-                      >
-                        {device.name}
-                        <span aria-hidden="true" className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-foreground px-2 py-1 font-mono text-[10px] text-background opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus:opacity-100">
-                          {device.address}
-                        </span>
-                      </span>
-                    ))}
-                    {policy.allowedIps.length === 0 && (policy.tailscaleDevices?.length ?? 0) === 0 && <span className="text-muted-foreground">None</span>}
+                    {policy.allowedIps.length === 0 && <span className="text-muted-foreground">None</span>}
                   </div>
                 )}
               </td>
@@ -339,12 +313,6 @@ function PolicyDialog({
 }) {
   const [name, setName] = useState(policy?.name ?? "")
   const [allowedIps, setAllowedIps] = useState<string[]>(policy?.allowedIps ?? [])
-  const [tailscaleDevices, setTailscaleDevices] = useState(
-    policy?.tailscaleDevices ?? []
-  )
-  const [availableTailscaleDevices, setAvailableTailscaleDevices] = useState<
-    Array<{ id: string; name: string; address: string }>
-  >([])
   const [entry, setEntry] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -372,25 +340,13 @@ function PolicyDialog({
       const submittedIps = entry.trim() && !allowedIps.includes(entry.trim())
         ? [...allowedIps, entry.trim()]
         : allowedIps
-      const detectedDevices = availableTailscaleDevices.filter((device) =>
-        submittedIps.includes(device.address)
-      )
-      const submittedDevices = [
-        ...tailscaleDevices,
-        ...detectedDevices.filter((device) =>
-          !tailscaleDevices.some((selected) => selected.id === device.id)
-        ),
-      ]
       onSaved(await apiRequest<PolicyResource>(
         policy ? `/api/v1/firewall/policy/${policy.id}` : "/api/v1/firewall/policy",
         {
           method: policy ? "PUT" : "POST",
           body: JSON.stringify({
             name,
-            allowedIps: submittedIps.filter((ip) =>
-              !submittedDevices.some((device) => device.address === ip)
-            ),
-            tailscaleDevices: submittedDevices,
+            allowedIps: submittedIps,
           }),
         }
       ))
@@ -411,7 +367,7 @@ function PolicyDialog({
         <div className="flex items-center justify-between border-b px-5 py-4 sm:px-6">
           <div>
             <h2 id="policy-dialog-title" className="font-semibold">{policy ? "Edit Policy" : "New Policy"}</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">Allow individual addresses, networks, or Tailscale devices.</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">Allow individual addresses or networks.</p>
           </div>
           <button type="button" className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground" onClick={onClose} aria-label="Close dialog">
             <X className="size-4" />
@@ -430,17 +386,14 @@ function PolicyDialog({
               <div className="mt-1.5 rounded-xl border p-2 focus-within:border-foreground/30 focus-within:ring-2 focus-within:ring-ring/30">
                 {allowedIps.length > 0 && (
                   <div className="mb-2 flex flex-wrap gap-1.5">
-                    {allowedIps.map((ip) => {
-                      const device = availableTailscaleDevices.find((item) => item.address === ip)
-                      return (
-                      <span key={ip} title={device ? ip : undefined} className={`inline-flex items-center gap-1 rounded-md bg-muted py-1 pr-1 pl-2 text-xs ${device ? "" : "font-mono"}`}>
-                        {device?.name ?? ip}
+                    {allowedIps.map((ip) => (
+                      <span key={ip} className="inline-flex items-center gap-1 rounded-md bg-muted py-1 pr-1 pl-2 font-mono text-xs">
+                        {ip}
                         <button type="button" aria-label={`Remove ${ip}`} className="flex size-5 items-center justify-center rounded hover:bg-background" onClick={() => setAllowedIps(allowedIps.filter((item) => item !== ip))}>
                           <X className="size-3" />
                         </button>
                       </span>
-                      )
-                    })}
+                    ))}
                   </div>
                 )}
                 <div className="flex gap-2">
@@ -463,17 +416,6 @@ function PolicyDialog({
               <p className="mt-1.5 text-xs text-muted-foreground">Press Enter after an IP address or CIDR range.</p>
             </div>
 
-            <TailscaleDevicePicker
-              onDevicesLoaded={setAvailableTailscaleDevices}
-              selectedDevices={tailscaleDevices}
-              onChange={(devices) => {
-                setAllowedIps(allowedIps.filter((ip) =>
-                  !devices.some((device) => device.address === ip)
-                ))
-                setTailscaleDevices(devices)
-              }}
-            />
-
             {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>}
           </div>
           <div className="flex shrink-0 justify-end gap-2 border-t bg-background px-5 py-4 sm:px-6">
@@ -486,107 +428,5 @@ function PolicyDialog({
         </form>
       </div>
     </div>
-  )
-}
-
-function TailscaleDevicePicker({
-  onDevicesLoaded,
-  selectedDevices,
-  onChange,
-}: {
-  onDevicesLoaded: (devices: Array<{ id: string; name: string; address: string }>) => void
-  selectedDevices: Array<{ id: string; name: string; address: string }>
-  onChange: (devices: Array<{ id: string; name: string; address: string }>) => void
-}) {
-  const settings = useApi<TailscaleSettings>("/api/v1/tailscale")
-
-  if (settings.status !== "success" || !settings.data.clientSecretConfigured) {
-    return (
-      <fieldset>
-        <legend className="text-sm font-medium">Allowed Tailscale Devices</legend>
-        <Link
-          to="/tailscale"
-          className="mt-1.5 inline-block text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-        >
-          Configure Tailscale under Settings to select devices.
-        </Link>
-      </fieldset>
-    )
-  }
-
-  return (
-    <ConfiguredTailscaleDevicePicker
-      onDevicesLoaded={onDevicesLoaded}
-      selectedDevices={selectedDevices}
-      onChange={onChange}
-    />
-  )
-}
-
-function ConfiguredTailscaleDevicePicker({
-  onDevicesLoaded,
-  selectedDevices,
-  onChange,
-}: {
-  onDevicesLoaded: (devices: Array<{ id: string; name: string; address: string }>) => void
-  selectedDevices: Array<{ id: string; name: string; address: string }>
-  onChange: (devices: Array<{ id: string; name: string; address: string }>) => void
-}) {
-  const devices = useApi<TailscaleDevice[]>("/api/v1/tailscale/devices")
-
-  useEffect(() => {
-    if (devices.status !== "success") return
-    onDevicesLoaded(devices.data.flatMap((device) => {
-      const address = device.addresses.find((item) => item.includes("."))
-      if (!address) return []
-      return [{
-        id: device.id,
-        name: (device.hostname || device.name).split(".")[0],
-        address,
-      }]
-    }))
-  }, [devices.status, devices.status === "success" ? devices.data : null, onDevicesLoaded])
-
-  return (
-    <fieldset>
-      <legend className="text-sm font-medium">Allowed Tailscale Devices</legend>
-      {devices.status === "loading" && <Skeleton className="mt-1.5 h-9 w-full rounded-lg" />}
-      {devices.status === "error" && (
-        <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">{devices.error}</p>
-      )}
-      {devices.status === "success" && (
-        <div className="mt-1.5 space-y-1 rounded-xl border p-1">
-          {devices.data.map((device) => {
-            const address = device.addresses.find((item) => item.includes("."))
-            if (!address) return null
-            const name = (device.hostname || device.name).split(".")[0]
-            return (
-              <label key={device.id} className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 hover:bg-muted/60">
-                <input
-                  type="checkbox"
-                  checked={selectedDevices.some((selected) => selected.id === device.id)}
-                  className="size-4 shrink-0 accent-foreground"
-                  onChange={(event) => {
-                    if (event.currentTarget.checked) {
-                      onChange([
-                        ...selectedDevices.filter((selected) => selected.id !== device.id),
-                        { id: device.id, name, address },
-                      ])
-                    } else {
-                      onChange(selectedDevices.filter((selected) => selected.id !== device.id))
-                    }
-                  }}
-                />
-                <span className="min-w-0 flex-1 truncate text-sm">{name}</span>
-                <span className="shrink-0 font-mono text-xs text-muted-foreground">{address}</span>
-              </label>
-            )
-          })}
-          {devices.data.every((device) => !device.addresses.some((item) => item.includes("."))) && (
-            <p className="px-3 py-2 text-xs text-muted-foreground">No Tailscale devices available.</p>
-          )}
-        </div>
-      )}
-    </fieldset>
   )
 }

@@ -16,7 +16,6 @@ import { ProxiesPage } from "@/pages/proxies"
 import { ProxyDetailsPage } from "@/pages/proxy-details"
 import { FirewallPage } from "@/pages/firewall"
 import { DomainSettingsPage } from "@/pages/settings"
-import { TailscaleSettingsPage } from "@/pages/tailscale-settings"
 import { UpdatesPage } from "@/pages/updates"
 
 export default function App() {
@@ -91,11 +90,9 @@ function AppRoutes() {
         <Route path="/proxies/:proxyId" element={<ProxyDetailsPage />} />
         <Route path="/firewall" element={<FirewallPage />} />
         <Route path="/domain" element={<DomainSettingsPage />} />
-        <Route path="/tailscale" element={<TailscaleSettingsPage />} />
         <Route path="/updates" element={<UpdatesPage />} />
         <Route path="/settings" element={<Navigate to="/domain" replace />} />
         <Route path="/settings/domain" element={<Navigate to="/domain" replace />} />
-        <Route path="/settings/tailscale" element={<Navigate to="/tailscale" replace />} />
         <Route path="/settings/updates" element={<Navigate to="/updates" replace />} />
       </Route>
       <Route path="/login" element={<Navigate to="/apps" replace />} />

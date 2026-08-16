@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   ArrowLeft,
   ArrowUpRight,
@@ -8,7 +8,7 @@ import {
   Trash2,
   Waypoints,
 } from "lucide-react"
-import { Link, useNavigate, useParams } from "react-router-dom"
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 
 import { ProxyDialog } from "@/components/new-proxy-dialog"
 import { CertificateDetail } from "@/components/certificate-badge"
@@ -21,11 +21,12 @@ import { useApi } from "@/hooks/use-api"
 import { apiRequest } from "@/lib/api"
 import { getPublicProxyUrl } from "@/lib/proxies"
 import { getTlsMenuLabel } from "@/lib/tls"
-import type { ProxyResource } from "@/lib/types"
+import type { PolicyResource, ProxyResource } from "@/lib/types"
 
 export function ProxyDetailsPage() {
   const { proxyId = "" } = useParams()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [editing, setEditing] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -34,6 +35,11 @@ export function ProxyDetailsPage() {
     pollInterval: 1000,
   })
   const domainRequest = useApi<{ domain: string }>("/api/v1/ddns/domain")
+  const policies = useApi<Record<string, PolicyResource>>("/api/v1/firewall/policy")
+
+  useEffect(() => {
+    if (searchParams.get("policyId")) setEditing(true)
+  }, [searchParams])
 
   if (proxy.status === "loading") return <DetailsSkeleton />
   if (proxy.status === "error") {
@@ -129,6 +135,13 @@ export function ProxyDetailsPage() {
         <CardContent className="mt-5 grid gap-x-8 gap-y-5 sm:grid-cols-2">
           <Detail label="Subdomain" value={resource.subdomain} mono />
           <Detail label="TLS" value={getTlsMenuLabel(resource.tls)} />
+          <Detail
+            label="Firewall Policy"
+            value={policies.status === "success"
+              ? policies.data[resource.policyId]?.name ?? "Unknown"
+              : "Loading…"}
+            to={resource.policyId === "public" ? "/firewall" : `/firewall?edit=${encodeURIComponent(resource.policyId)}`}
+          />
           <CertificateDetail
             certificate={resource.certificate}
             onRetry={async () => {
@@ -148,9 +161,13 @@ export function ProxyDetailsPage() {
       <ProxyDialog
         open={editing}
         proxy={resource}
-        onClose={() => setEditing(false)}
+        onClose={() => {
+          setEditing(false)
+          if (searchParams.has("policyId")) setSearchParams({}, { replace: true })
+        }}
         onSaved={() => {
           setEditing(false)
+          if (searchParams.has("policyId")) setSearchParams({}, { replace: true })
           proxy.reload()
         }}
       />
@@ -174,11 +191,13 @@ function Detail({
   href,
   label,
   mono = false,
+  to,
   value,
 }: {
   href?: string
   label: string
   mono?: boolean
+  to?: string
   value: string
 }) {
   const className = `mt-1 break-all text-sm ${
@@ -187,7 +206,14 @@ function Detail({
   return (
     <div className="min-w-0">
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      {href ? (
+      {to ? (
+        <Link
+          to={to}
+          className={`${className} inline-flex underline-offset-4 hover:underline`}
+        >
+          {value}
+        </Link>
+      ) : href ? (
         <a
           href={href}
           target="_blank"

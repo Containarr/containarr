@@ -28,7 +28,6 @@ const navigation = [
 
 const settingsNavigation = [
   { label: "Domain", to: "/domain", icon: Globe2 },
-  { label: "Tailscale", to: "/tailscale", icon: Waypoints },
   { label: "Updates", to: "/updates", icon: Download },
 ]
 

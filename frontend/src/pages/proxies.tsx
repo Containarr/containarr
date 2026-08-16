@@ -1,6 +1,6 @@
-import { useMemo, useState, type KeyboardEvent } from "react"
+import { useEffect, useMemo, useState, type KeyboardEvent } from "react"
 import { ArrowRight, ArrowUpRight, Plus, Waypoints } from "lucide-react"
-import { Link, useNavigate } from "react-router-dom"
+import { Link, useNavigate, useSearchParams } from "react-router-dom"
 
 import { ProxyDialog } from "@/components/new-proxy-dialog"
 import { MobileHeaderAction } from "@/components/mobile-header-action"
@@ -21,19 +21,28 @@ import { ViewToggle } from "@/components/view-toggle"
 import { useApi } from "@/hooks/use-api"
 import { useStoredViewMode } from "@/hooks/use-stored-view-mode"
 import { getPublicProxyUrl } from "@/lib/proxies"
-import type { ProxyResource } from "@/lib/types"
+import type { PolicyResource, ProxyResource } from "@/lib/types"
 
 export function ProxiesPage() {
   const proxies = useApi<Record<string, ProxyResource>>("/api/v1/proxy", {
     pollInterval: 1000,
   })
   const domainRequest = useApi<{ domain: string }>("/api/v1/ddns/domain")
+  const policies = useApi<Record<string, PolicyResource>>("/api/v1/firewall/policy")
   const [view, setView] = useStoredViewMode("containarr-proxies-view")
   const [newProxyOpen, setNewProxyOpen] = useState(false)
+  const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const items = proxies.status === "success" ? Object.values(proxies.data) : []
   const domain =
     domainRequest.status === "success" ? domainRequest.data.domain : null
+  const policyNames = policies.status === "success"
+    ? Object.fromEntries(Object.values(policies.data).map((policy) => [policy.id, policy.name]))
+    : { public: "Public" }
+
+  useEffect(() => {
+    if (searchParams.get("new") === "1") setNewProxyOpen(true)
+  }, [searchParams])
 
   return (
     <section>
@@ -71,19 +80,24 @@ export function ProxiesPage() {
       )}
       {proxies.status === "success" && items.length > 0 &&
         (view === "cards" ? (
-          <ProxyCardGrid items={items} domain={domain} navigate={navigate} />
+          <ProxyCardGrid items={items} domain={domain} policyNames={policyNames} navigate={navigate} />
         ) : (
           <>
             <div className="sm:hidden">
-              <ProxyCardGrid items={items} domain={domain} navigate={navigate} />
+              <ProxyCardGrid items={items} domain={domain} policyNames={policyNames} navigate={navigate} />
             </div>
-            <ProxyTable items={items} domain={domain} />
+            <ProxyTable items={items} domain={domain} policyNames={policyNames} />
           </>
         ))}
 
       <ProxyDialog
         open={newProxyOpen}
-        onClose={() => setNewProxyOpen(false)}
+        onClose={() => {
+          setNewProxyOpen(false)
+          if (searchParams.has("new") || searchParams.has("policyId")) {
+            setSearchParams({}, { replace: true })
+          }
+        }}
         onSaved={(proxy) => {
           setNewProxyOpen(false)
           proxies.reload()
@@ -98,10 +112,12 @@ function ProxyCardGrid({
   domain,
   items,
   navigate,
+  policyNames,
 }: {
   domain: string | null
   items: ProxyResource[]
   navigate: ReturnType<typeof useNavigate>
+  policyNames: Record<string, string>
 }) {
   function openFromKeyboard(event: KeyboardEvent, proxyId: string) {
     if (event.key === "Enter" || event.key === " ") {
@@ -155,6 +171,18 @@ function ProxyCardGrid({
                 <span className="truncate">{proxy.sourceUrl}</span>
               </div>
             </CardContent>
+            <div
+              className="border-t px-5 py-2.5 text-xs text-muted-foreground"
+              onClick={(event) => event.stopPropagation()}
+              onKeyDown={(event) => event.stopPropagation()}
+            >
+              <Link
+                to={proxy.policyId === "public" ? "/firewall" : `/firewall?edit=${encodeURIComponent(proxy.policyId)}`}
+                className="font-medium underline-offset-4 hover:text-foreground hover:underline"
+              >
+                {policyNames[proxy.policyId] ?? "Unknown"}
+              </Link>
+            </div>
           </Card>
         )
       })}
@@ -165,9 +193,11 @@ function ProxyCardGrid({
 function ProxyTable({
   domain,
   items,
+  policyNames,
 }: {
   domain: string | null
   items: ProxyResource[]
+  policyNames: Record<string, string>
 }) {
   const [sort, setSort] = useState<{
     key: ProxySortKey
@@ -176,14 +206,14 @@ function ProxyTable({
   const sortedItems = useMemo(() => {
     if (!sort) return items
     return [...items].sort((left, right) => {
-      const comparison = getProxySortValue(left, sort.key, domain).localeCompare(
-        getProxySortValue(right, sort.key, domain),
+      const comparison = getProxySortValue(left, sort.key, domain, policyNames).localeCompare(
+        getProxySortValue(right, sort.key, domain, policyNames),
         undefined,
         { numeric: true, sensitivity: "base" }
       )
       return sort.direction === "asc" ? comparison : -comparison
     })
-  }, [domain, items, sort])
+  }, [domain, items, policyNames, sort])
 
   function changeSort(key: ProxySortKey) {
     setSort((current) => ({
@@ -209,6 +239,12 @@ function ProxyTable({
               active={sort?.key === "publicUrl"}
               direction={sort?.direction || "asc"}
               onClick={() => changeSort("publicUrl")}
+            />
+            <SortableTableHeader
+              label="Firewall Policy"
+              active={sort?.key === "policy"}
+              direction={sort?.direction || "asc"}
+              onClick={() => changeSort("policy")}
             />
             <SortableTableHeader
               label="Certificate"
@@ -246,6 +282,14 @@ function ProxyTable({
                   )}
                 </td>
                 <td className="px-4 py-3">
+                  <Link
+                    to={proxy.policyId === "public" ? "/firewall" : `/firewall?edit=${encodeURIComponent(proxy.policyId)}`}
+                    className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                  >
+                    {policyNames[proxy.policyId] ?? "Unknown"}
+                  </Link>
+                </td>
+                <td className="px-4 py-3">
                   <CertificateBadge certificate={proxy.certificate} />
                 </td>
                 <td className="max-w-72 px-4 py-3">
@@ -274,15 +318,17 @@ function ExternalLink({ href, mono = false }: { href: string; mono?: boolean }) 
   )
 }
 
-type ProxySortKey = "proxy" | "publicUrl" | "certificate" | "sourceUrl"
+type ProxySortKey = "proxy" | "publicUrl" | "policy" | "certificate" | "sourceUrl"
 
 function getProxySortValue(
   proxy: ProxyResource,
   key: ProxySortKey,
-  domain: string | null
+  domain: string | null,
+  policyNames: Record<string, string>
 ) {
   if (key === "proxy") return proxy.subdomain
   if (key === "publicUrl") return getPublicProxyUrl(proxy, domain) || ""
+  if (key === "policy") return policyNames[proxy.policyId] ?? ""
   if (key === "certificate") return proxy.certificate.status
   return proxy.sourceUrl
 }

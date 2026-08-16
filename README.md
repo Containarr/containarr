@@ -9,7 +9,7 @@ Containarr includes everything you need to:
 * Easily set up, run, and update Docker containers.
 * Access your services securely through the built-in reverse proxy — for example `https://plex.mydomain.com` and `https://sonarr.mydomain.com`.
 * Keep your domain connected with built-in Dynamic DNS. Simply point `*.mydomain.com` to `mydomain.containarr.me` with a CNAME record. HTTPS automatically works!
-* Control who can access each service. Make services public, restrict them to your LAN, VPN or Tailscale devices.
+* Control who can access each service. Make services public or restrict them to specific IP addresses and networks.
 * Automatically update containers or receive a notification when an update becomes available.
 * Manage everything through a beautiful web interface designed for both desktop and mobile.
 
