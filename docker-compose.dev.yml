@@ -4,11 +4,10 @@ services:
       context: .
       dockerfile: Dockerfile
     command: npm run serve
-    environment:
-      # Screenshot mode: fake healthy certificates and domain checks.
-      - CONTAINARR_DEMO_MODE=true
-      # - CONTAINARR_VERSION=0.0.0-dev
-      # - LETS_ENCRYPT_DIRECTORY_URL=https://acme-staging-v02.api.letsencrypt.org/directory
+    # environment:
+    # - CONTAINARR_DEMO_MODE=true
+    # - CONTAINARR_VERSION=0.0.0-dev
+    # - LETS_ENCRYPT_DIRECTORY_URL=https://acme-staging-v02.api.letsencrypt.org/directory
     volumes:
       - ./volumes/containarr:/data
       - ./lib/:/app/lib/
