@@ -7,6 +7,7 @@ export type AppResource = {
   url: string | null
   registryId: string | null
   registryVersion: number | null
+  hasLogo: boolean
   tls: string
   containerId: string | null
   containerError: {

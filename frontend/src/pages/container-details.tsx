@@ -197,7 +197,7 @@ export function ContainerDetailsPage() {
       <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-start">
         <div className="flex min-w-0 items-center gap-4">
           <ContainerAvatar
-            appId={appId}
+            appId={linkedApp?.hasLogo ? appId : undefined}
             image={resource.image}
             alt=""
             className="size-14"
@@ -286,7 +286,7 @@ export function ContainerDetailsPage() {
             {appId ? (
               <div className="flex items-center gap-3 rounded-lg border bg-muted/25 p-3">
                 <AppLogo
-                  appId={appId}
+                  appId={linkedApp?.hasLogo ? appId : undefined}
                   alt={`${linkedApp?.name || "App"} logo`}
                   className="size-10"
                 />

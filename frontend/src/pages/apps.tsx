@@ -210,7 +210,7 @@ function AppsCardGrid({
             <CardHeader className="flex flex-row items-start justify-between gap-4 pb-5">
               <div className="flex min-w-0 items-center gap-3">
                 <AppLogo
-                  appId={app.id}
+                  appId={app.hasLogo ? app.id : undefined}
                   alt={`${app.name || "App"} logo`}
                   className="size-10"
                 />
@@ -367,7 +367,11 @@ function AppsTable({
                     to={`/apps/${app.id}`}
                     className="flex items-center gap-3 font-medium hover:underline"
                   >
-                    <AppLogo appId={app.id} alt="" className="size-8" />
+                    <AppLogo
+                      appId={app.hasLogo ? app.id : undefined}
+                      alt=""
+                      className="size-8"
+                    />
                     {app.name || "Unnamed app"}
                   </Link>
                 </td>

@@ -137,7 +137,7 @@ export function AppDetailsPage() {
       <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-start">
         <div className="flex min-w-0 items-center gap-4">
           <AppLogo
-            appId={resource.id}
+            appId={resource.hasLogo ? resource.id : undefined}
             alt={`${resource.name || "App"} logo`}
             className="size-14"
           />
