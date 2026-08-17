@@ -123,6 +123,7 @@ export type ContainerStats = {
   blockWriteBytes: number
   networkRxBytes: number
   networkTxBytes: number
+  demoHistory?: Array<Omit<ContainerStats, "demoHistory">>
 }
 
 export type ProxyResource = {

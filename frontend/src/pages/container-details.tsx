@@ -68,32 +68,44 @@ export function ContainerDetailsPage() {
 
     const sample = stats.data
     const previous = previousStatsRef.current
-    const timestamp = parseDockerTimestamp(sample.read)
-    const sameContainer = previous?.id === sample.id
-    const elapsedSeconds = sameContainer
-      ? Math.max((timestamp - parseDockerTimestamp(previous.read)) / 1000, 0.001)
-      : 1
-    const point: MetricPoint = {
-      timestamp,
-      cpu: sample.cpuPercent,
-      memory: sample.memoryUsage,
-      diskRead: sameContainer
-        ? bytesPerSecond(sample.blockReadBytes, previous.blockReadBytes, elapsedSeconds)
-        : 0,
-      diskWrite: sameContainer
-        ? bytesPerSecond(sample.blockWriteBytes, previous.blockWriteBytes, elapsedSeconds)
-        : 0,
-      networkReceive: sameContainer
-        ? bytesPerSecond(sample.networkRxBytes, previous.networkRxBytes, elapsedSeconds)
-        : 0,
-      networkTransmit: sameContainer
-        ? bytesPerSecond(sample.networkTxBytes, previous.networkTxBytes, elapsedSeconds)
-        : 0,
-    }
+    const samples = !previous && sample.demoHistory?.length
+      ? sample.demoHistory
+      : [sample]
+    let preceding = previous
+    const points = samples.map((currentSample) => {
+      const timestamp = parseDockerTimestamp(currentSample.read)
+      const precedingSample = preceding
+      const sameContainer = precedingSample?.id === currentSample.id
+      const elapsedSeconds = sameContainer && precedingSample
+        ? Math.max(
+            (timestamp - parseDockerTimestamp(precedingSample.read)) / 1000,
+            0.001
+          )
+        : 1
+      const point: MetricPoint = {
+        timestamp,
+        cpu: currentSample.cpuPercent,
+        memory: currentSample.memoryUsage,
+        diskRead: sameContainer && precedingSample
+          ? bytesPerSecond(currentSample.blockReadBytes, precedingSample.blockReadBytes, elapsedSeconds)
+          : 0,
+        diskWrite: sameContainer && precedingSample
+          ? bytesPerSecond(currentSample.blockWriteBytes, precedingSample.blockWriteBytes, elapsedSeconds)
+          : 0,
+        networkReceive: sameContainer && precedingSample
+          ? bytesPerSecond(currentSample.networkRxBytes, precedingSample.networkRxBytes, elapsedSeconds)
+          : 0,
+        networkTransmit: sameContainer && precedingSample
+          ? bytesPerSecond(currentSample.networkTxBytes, precedingSample.networkTxBytes, elapsedSeconds)
+          : 0,
+      }
+      preceding = currentSample
+      return point
+    })
 
-    setMetricHistory((current) =>
-      sameContainer ? [...current, point].slice(-60) : [point]
-    )
+    setMetricHistory((current) => (
+      previous ? [...current, ...points].slice(-60) : points.slice(-60)
+    ))
     previousStatsRef.current = sample
   }, [stats.status, stats.data])
 
