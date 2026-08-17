@@ -4,6 +4,8 @@ import {
   ArrowUpRight,
   LoaderCircle,
   Pencil,
+  Power,
+  PowerOff,
   Settings2,
   Trash2,
   Waypoints,
@@ -14,6 +16,7 @@ import { ProxyDialog } from "@/components/new-proxy-dialog"
 import { CertificateDetail } from "@/components/certificate-badge"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { ErrorState } from "@/components/resource-states"
+import { StatusBadge } from "@/components/status-badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -31,6 +34,8 @@ export function ProxyDetailsPage() {
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [togglingDisabled, setTogglingDisabled] = useState(false)
+  const [disabledError, setDisabledError] = useState<string | null>(null)
   const proxy = useApi<ProxyResource>(`/api/v1/proxy/${proxyId}`, {
     pollInterval: 1000,
   })
@@ -63,6 +68,22 @@ export function ProxyDetailsPage() {
     }
   }
 
+  async function toggleDisabled() {
+    setTogglingDisabled(true)
+    setDisabledError(null)
+    try {
+      await apiRequest(`/api/v1/proxy/${resource.id}/disabled`, {
+        method: "PUT",
+        body: JSON.stringify({ disabled: !resource.disabled }),
+      })
+      proxy.reload()
+    } catch (error) {
+      setDisabledError(error instanceof Error ? error.message : "Action failed.")
+    } finally {
+      setTogglingDisabled(false)
+    }
+  }
+
   return (
     <section>
       <Link
@@ -79,9 +100,20 @@ export function ProxyDetailsPage() {
             <Waypoints className="size-6 text-muted-foreground" />
           </span>
           <div className="min-w-0">
-            <h1 className="truncate text-2xl font-semibold tracking-tight">
-              {resource.subdomain}
-            </h1>
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h1 className="truncate text-2xl font-semibold tracking-tight">
+                {resource.subdomain}
+              </h1>
+              {resource.disabled ? (
+                <StatusBadge state="disabled" label="Disabled" />
+              ) : resource.certificate.status === "error" ? (
+                <StatusBadge state="error" label="Error" />
+              ) : ["provisioning", "renewing"].includes(resource.certificate.status) ? (
+                <StatusBadge state="provisioning" label="Provisioning Certificate" />
+              ) : (
+                <StatusBadge state="running" label="Live" />
+              )}
+            </div>
             {publicUrl && (
               <a
                 href={publicUrl}
@@ -97,6 +129,21 @@ export function ProxyDetailsPage() {
         </div>
         <div className="space-y-2">
           <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={togglingDisabled}
+              onClick={() => void toggleDisabled()}
+            >
+              {togglingDisabled ? (
+                <LoaderCircle className="mr-2 size-4 animate-spin" />
+              ) : resource.disabled ? (
+                <Power className="mr-2 size-4" />
+              ) : (
+                <PowerOff className="mr-2 size-4" />
+              )}
+              {resource.disabled ? "Enable" : "Disable"}
+            </Button>
             <Button
               type="button"
               variant="outline"
@@ -122,6 +169,7 @@ export function ProxyDetailsPage() {
               Delete
             </Button>
           </div>
+          {disabledError && <p className="text-xs text-red-600">{disabledError}</p>}
         </div>
       </div>
 

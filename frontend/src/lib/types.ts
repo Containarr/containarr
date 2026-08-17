@@ -17,6 +17,7 @@ export type AppResource = {
   } | null
   dockerImage: string
   autoUpdate: boolean
+  disabled: boolean
   policyId: string
   imageUpdate: {
     status:
@@ -36,7 +37,6 @@ export type AppResource = {
   dockerEnvironment: Record<string, string>
   dockerUserId: number | null
   dockerGroupId: number | null
-  dockerAutoStart: boolean
   dockerPrivileged: boolean
   dockerCapabilities: string[]
   certificate: CertificateStatus
@@ -80,7 +80,6 @@ export type RegistryApp = {
   dockerEnvironment: Record<string, string>
   dockerUserId?: number | null
   dockerGroupId?: number | null
-  dockerAutoStart?: boolean
   dockerPrivileged?: boolean
   dockerCapabilities?: string[]
 }
@@ -132,6 +131,7 @@ export type ProxyResource = {
   tls: string
   sourceUrl: string
   policyId: string
+  disabled: boolean
   createdAt: string
   updatedAt: string
   certificate: CertificateStatus

@@ -393,7 +393,6 @@ function RegistryInstallForm({
       ? ""
       : String(app.dockerGroupId)
   )
-  const [autoStart, setAutoStart] = useState(app.dockerAutoStart ?? true)
   const [privileged, setPrivileged] = useState(app.dockerPrivileged ?? false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -417,13 +416,11 @@ function RegistryInstallForm({
           dockerPorts: portsToDocker(ports),
           dockerUserId: userId === "" ? null : Number(userId),
           dockerGroupId: userId === "" || groupId === "" ? null : Number(groupId),
-          dockerAutoStart: autoStart,
           dockerPrivileged: privileged,
           dockerCapabilities: capabilitiesToValues(capabilities),
         }),
       })
       onCreated(created)
-      if (autoStart) void startApp(created).catch(() => {})
     } catch (requestError) {
       setError(getErrorMessage(requestError, "Install failed."))
     } finally {
@@ -512,18 +509,6 @@ function RegistryInstallForm({
             <label className="flex items-center gap-2 text-sm font-medium">
               <input
                 type="checkbox"
-                checked={autoStart}
-                onChange={(event) => setAutoStart(event.target.checked)}
-                className="size-4 rounded border"
-              />
-              <span className="inline-flex items-center gap-1.5">
-                Auto-start
-                <InfoTooltip text="Automatically start this container again unless it was explicitly stopped." />
-              </span>
-            </label>
-            <label className="flex items-center gap-2 text-sm font-medium">
-              <input
-                type="checkbox"
                 checked={privileged}
                 onChange={(event) => setPrivileged(event.target.checked)}
                 className="size-4 rounded border"
@@ -599,7 +584,6 @@ function CustomAppForm({
       ? ""
       : String(app.dockerGroupId)
   )
-  const [autoStart, setAutoStart] = useState(app?.dockerAutoStart ?? true)
   const [privileged, setPrivileged] = useState(app?.dockerPrivileged ?? false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -626,7 +610,6 @@ function CustomAppForm({
             dockerEnvironment: environmentToRecord(environment),
             dockerUserId: userId === "" ? null : Number(userId),
             dockerGroupId: userId === "" || groupId === "" ? null : Number(groupId),
-            dockerAutoStart: autoStart,
             dockerPrivileged: privileged,
             dockerCapabilities: capabilitiesToValues(capabilities),
             policyId,
@@ -634,7 +617,6 @@ function CustomAppForm({
         }
       )
       onSaved(saved, editing && haveDockerPropertiesChanged(app, saved))
-      if (!editing && autoStart) void startApp(saved).catch(() => {})
     } catch (requestError) {
       setError(
         getErrorMessage(
@@ -748,18 +730,6 @@ function CustomAppForm({
             </FormField>
           </div>
           <div className="space-y-3">
-            <label className="flex items-center gap-2 text-sm font-medium">
-              <input
-                type="checkbox"
-                checked={autoStart}
-                onChange={(event) => setAutoStart(event.target.checked)}
-                className="size-4 rounded border"
-              />
-              <span className="inline-flex items-center gap-1.5">
-                Auto-start
-                <InfoTooltip text="Automatically start this container again unless it was explicitly stopped." />
-              </span>
-            </label>
             <label className="flex items-center gap-2 text-sm font-medium">
               <input
                 type="checkbox"
@@ -1464,10 +1434,6 @@ function RegistryError({ error, retry }: { error: string; retry: () => void }) {
   )
 }
 
-async function startApp(app: AppResource) {
-  await apiRequest(`/api/v1/app/${app.id}/start`, { method: "POST" })
-}
-
 function getErrorMessage(error: unknown, fallback = "Request failed.") {
   return error instanceof Error ? error.message : fallback
 }
@@ -1555,11 +1521,11 @@ function haveDockerPropertiesChanged(
   after: AppResource
 ) {
   return (
+    before.subdomain !== after.subdomain ||
     before.dockerImage !== after.dockerImage ||
     before.dockerNetworkMode !== after.dockerNetworkMode ||
     before.dockerUserId !== after.dockerUserId ||
     before.dockerGroupId !== after.dockerGroupId ||
-    before.dockerAutoStart !== after.dockerAutoStart ||
     before.dockerPrivileged !== after.dockerPrivileged ||
     JSON.stringify(before.dockerVolumes) !== JSON.stringify(after.dockerVolumes) ||
     JSON.stringify(before.dockerDevices) !== JSON.stringify(after.dockerDevices) ||

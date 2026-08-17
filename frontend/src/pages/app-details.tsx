@@ -10,6 +10,8 @@ import {
   LoaderCircle,
   Network,
   Pencil,
+  Power,
+  PowerOff,
   RefreshCw,
   RotateCcw,
   Settings2,
@@ -24,7 +26,6 @@ import { CertificateDetail } from "@/components/certificate-badge"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { EditAppDialog } from "@/components/install-app-dialog"
 import { ErrorState } from "@/components/resource-states"
-import { ResourceActions } from "@/components/resource-actions"
 import { StatusBadge } from "@/components/status-badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -41,6 +42,8 @@ export function AppDetailsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [editing, setEditing] = useState(false)
   const [recreatePrompt, setRecreatePrompt] = useState<AppResource | null>(null)
+  const [togglingDisabled, setTogglingDisabled] = useState(false)
+  const [disabledError, setDisabledError] = useState<string | null>(null)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
@@ -67,7 +70,9 @@ export function AppDetailsPage() {
   const normalizedState = state?.toLowerCase() ?? ""
   const live = normalizedState === "running"
   const statusState =
-    resource.certificate.status === "error"
+    resource.disabled
+      ? "disabled"
+      : resource.certificate.status === "error"
     || (
       resource.containerError
       && ["dead", "exited", "restarting"].includes(normalizedState)
@@ -77,19 +82,17 @@ export function AppDetailsPage() {
         ? "provisioning"
         : live
           ? "running"
-          : ["created", "removing", "restarting"].includes(normalizedState)
-            ? "starting"
-            : "stopped"
+          : "starting"
   const statusLabel =
-    statusState === "error"
+    resource.disabled
+      ? "Disabled"
+      : statusState === "error"
       ? "Error"
       : statusState === "provisioning"
         ? "Provisioning Certificate"
         : statusState === "running"
           ? "Live"
-          : statusState === "starting"
-            ? "Starting"
-            : "Stopped"
+          : "Starting"
 
   async function deleteApp() {
     setDeleting(true)
@@ -100,6 +103,22 @@ export function AppDetailsPage() {
     } catch (error) {
       setDeleteError(error instanceof Error ? error.message : "Delete failed.")
       setDeleting(false)
+    }
+  }
+
+  async function toggleDisabled() {
+    setTogglingDisabled(true)
+    setDisabledError(null)
+    try {
+      await apiRequest(`/api/v1/app/${resource.id}/disabled`, {
+        method: "PUT",
+        body: JSON.stringify({ disabled: !resource.disabled }),
+      })
+      app.reload()
+    } catch (error) {
+      setDisabledError(error instanceof Error ? error.message : "Action failed.")
+    } finally {
+      setTogglingDisabled(false)
     }
   }
 
@@ -142,13 +161,21 @@ export function AppDetailsPage() {
         </div>
         <div className="space-y-2">
           <div className="flex flex-wrap gap-2">
-            <ResourceActions
-              id={resource.id}
-              kind="app"
-              state={state}
-              restartRecreates
-              onComplete={app.reload}
-            />
+            <Button
+              type="button"
+              variant="outline"
+              disabled={togglingDisabled}
+              onClick={() => void toggleDisabled()}
+            >
+              {togglingDisabled ? (
+                <LoaderCircle className="mr-2 size-4 animate-spin" />
+              ) : resource.disabled ? (
+                <Power className="mr-2 size-4" />
+              ) : (
+                <PowerOff className="mr-2 size-4" />
+              )}
+              {resource.disabled ? "Enable" : "Disable"}
+            </Button>
             <Button
               type="button"
               variant="outline"
@@ -174,6 +201,7 @@ export function AppDetailsPage() {
               Delete
             </Button>
           </div>
+          {disabledError && <p className="text-xs text-red-600">{disabledError}</p>}
         </div>
       </div>
 
@@ -212,7 +240,6 @@ export function AppDetailsPage() {
             />
             <Detail label="User ID" value={resource.dockerUserId ?? "Default"} mono />
             <Detail label="Group ID" value={resource.dockerGroupId ?? "Default"} mono />
-            <Detail label="Auto-start" value={resource.dockerAutoStart ? "Yes" : "No"} />
             <Detail label="Privileged" value={resource.dockerPrivileged ? "Yes" : "No"} />
           </CardContent>
         </Card>
@@ -326,8 +353,9 @@ export function AppDetailsPage() {
           if (searchParams.has("policyId")) setSearchParams({}, { replace: true })
           app.reload()
           if (
-            dockerPropertiesChanged &&
-            saved.state?.toLowerCase() === "running"
+            dockerPropertiesChanged
+            && !saved.disabled
+            && saved.state?.toLowerCase() === "running"
           ) {
             setRecreatePrompt(saved)
           }
@@ -521,7 +549,7 @@ function RecreateAppDialog({
       setError(
         requestError instanceof Error
           ? requestError.message
-          : "The app could not be recreated."
+          : "The app could not be restarted."
       )
       setRecreating(false)
     }

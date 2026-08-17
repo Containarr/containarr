@@ -4,8 +4,8 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom"
 
 import { ProxyDialog } from "@/components/new-proxy-dialog"
 import { MobileHeaderAction } from "@/components/mobile-header-action"
-import { CertificateBadge } from "@/components/certificate-badge"
 import { PageHeader } from "@/components/page-header"
+import { StatusBadge } from "@/components/status-badge"
 import {
   CardGridSkeleton,
   EmptyState,
@@ -163,7 +163,15 @@ function ProxyCardGrid({
                   )}
                 </div>
               </div>
-              <CertificateBadge certificate={proxy.certificate} />
+              {proxy.disabled ? (
+                <StatusBadge state="disabled" label="Disabled" />
+              ) : proxy.certificate.status === "error" ? (
+                <StatusBadge state="error" label="Error" />
+              ) : ["provisioning", "renewing"].includes(proxy.certificate.status) ? (
+                <StatusBadge state="provisioning" label="Provisioning Certificate" />
+              ) : (
+                <StatusBadge state="running" label="Live" />
+              )}
             </CardHeader>
             <CardContent>
               <div className="flex min-w-0 items-center gap-2 rounded-lg bg-muted/40 px-3 py-2 font-mono text-xs text-muted-foreground">
@@ -247,10 +255,10 @@ function ProxyTable({
               onClick={() => changeSort("policy")}
             />
             <SortableTableHeader
-              label="Certificate"
-              active={sort?.key === "certificate"}
+              label="Status"
+              active={sort?.key === "status"}
               direction={sort?.direction || "asc"}
-              onClick={() => changeSort("certificate")}
+              onClick={() => changeSort("status")}
             />
             <SortableTableHeader
               label="Source URL"
@@ -290,7 +298,15 @@ function ProxyTable({
                   </Link>
                 </td>
                 <td className="px-4 py-3">
-                  <CertificateBadge certificate={proxy.certificate} />
+                  {proxy.disabled ? (
+                    <StatusBadge state="disabled" label="Disabled" />
+                  ) : proxy.certificate.status === "error" ? (
+                    <StatusBadge state="error" label="Error" />
+                  ) : ["provisioning", "renewing"].includes(proxy.certificate.status) ? (
+                    <StatusBadge state="provisioning" label="Provisioning Certificate" />
+                  ) : (
+                    <StatusBadge state="running" label="Live" />
+                  )}
                 </td>
                 <td className="max-w-72 px-4 py-3">
                   <ExternalLink href={proxy.sourceUrl} mono />
@@ -318,7 +334,7 @@ function ExternalLink({ href, mono = false }: { href: string; mono?: boolean }) 
   )
 }
 
-type ProxySortKey = "proxy" | "publicUrl" | "policy" | "certificate" | "sourceUrl"
+type ProxySortKey = "proxy" | "publicUrl" | "policy" | "status" | "sourceUrl"
 
 function getProxySortValue(
   proxy: ProxyResource,
@@ -329,6 +345,11 @@ function getProxySortValue(
   if (key === "proxy") return proxy.subdomain
   if (key === "publicUrl") return getPublicProxyUrl(proxy, domain) || ""
   if (key === "policy") return policyNames[proxy.policyId] ?? ""
-  if (key === "certificate") return proxy.certificate.status
+  if (key === "status") {
+    if (proxy.disabled) return "disabled"
+    if (proxy.certificate.status === "error") return "error"
+    if (["provisioning", "renewing"].includes(proxy.certificate.status)) return "provisioning"
+    return "live"
+  }
   return proxy.sourceUrl
 }

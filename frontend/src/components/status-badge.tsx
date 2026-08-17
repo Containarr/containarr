@@ -21,7 +21,7 @@ export function StatusBadge({
   const normalized = (state || "unknown").toLowerCase()
   const isHealthy = healthyStates.has(normalized)
   const isTransitional = transitionalStates.has(normalized)
-  const isStopped = ["stopped", "exited", "paused"].includes(normalized)
+  const isStopped = ["disabled", "stopped", "exited", "paused"].includes(normalized)
   const isError = ["dead", "error"].includes(normalized)
 
   return (

@@ -322,6 +322,8 @@ function getAppSortValue(
 function AppStatusBadge({ app }: { app: AppResource }) {
   const state = app.state?.toLowerCase() ?? ""
 
+  if (app.disabled) return <StatusBadge state="disabled" label="Disabled" />
+
   if (
     app.certificate.status === "error"
     || (app.containerError && ["dead", "exited", "restarting"].includes(state))
@@ -336,14 +338,13 @@ function AppStatusBadge({ app }: { app: AppResource }) {
   }
 
   if (state === "running") return <StatusBadge state={state} label="Live" />
-  if (["created", "removing", "restarting"].includes(state)) {
-    return <StatusBadge state="starting" label="Starting" />
-  }
-  return <StatusBadge state="stopped" label="Stopped" />
+  return <StatusBadge state="starting" label="Starting" />
 }
 
 function getAppStatus(app: AppResource) {
   const state = app.state?.toLowerCase() ?? ""
+
+  if (app.disabled) return "disabled"
 
   if (
     app.certificate.status === "error"
@@ -355,6 +356,5 @@ function getAppStatus(app: AppResource) {
     return "provisioning certificate"
   }
   if (state === "running") return "live"
-  if (["created", "removing", "restarting"].includes(state)) return "starting"
-  return "stopped"
+  return "starting"
 }
