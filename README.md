@@ -19,11 +19,11 @@
 
 # Screenshots
 
-<img alt="" src="./screenshots/Apps — Grid.png">
+<img alt="" src="./screenshots/Apps.png">
 
-<img alt="" src="./screenshots/Container 1.png">
+<img alt="" src="./screenshots/Containers → View Container.png">
 
-<img alt="" src="./screenshots/Settings — Domain (Custom).png">
+<img alt="" src="./screenshots/Settings → Domain.png">
 
 [View more screenshots »](https://github.com/Containarr/containarr/tree/main/screenshots)
 
