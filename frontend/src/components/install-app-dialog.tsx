@@ -29,8 +29,19 @@ type DialogProps = {
   open: boolean
 }
 
-type EnvironmentRow = { id: string; key: string; value: string }
-type VolumeRow = { id: string; host: string; container: string }
+type EnvironmentRow = {
+  id: string
+  key: string
+  value: string
+  valueRequired?: boolean
+}
+type VolumeRow = {
+  id: string
+  host: string
+  container: string
+  hostRequired?: boolean
+  containerRequired?: boolean
+}
 type PortRow = {
   id: string
   host: string
@@ -1088,6 +1099,7 @@ function EnvironmentEditor({
             className="font-mono text-xs"
           />
           <Input
+            required={row.valueRequired}
             value={row.value}
             onChange={(event) =>
               onChange(updateById(value, row.id, { value: event.target.value }))
@@ -1121,6 +1133,7 @@ function VolumeEditor({
       {value.map((row) => (
         <EditorRow key={row.id} onRemove={() => onChange(removeById(value, row.id))}>
           <PathAutocomplete
+            required={row.hostRequired}
             value={row.host}
             onChange={(host) =>
               onChange(updateById(value, row.id, { host }))
@@ -1129,6 +1142,7 @@ function VolumeEditor({
             source="host"
           />
           <PathAutocomplete
+            required={row.containerRequired}
             value={row.container}
             onChange={(container) =>
               onChange(updateById(value, row.id, { container }))
@@ -1161,6 +1175,7 @@ function DeviceEditor({
       {value.map((row) => (
         <EditorRow key={row.id} onRemove={() => onChange(removeById(value, row.id))}>
           <PathAutocomplete
+            required={row.hostRequired}
             value={row.host}
             onChange={(host) =>
               onChange(updateById(value, row.id, { host }))
@@ -1169,6 +1184,7 @@ function DeviceEditor({
             source="device"
           />
           <PathAutocomplete
+            required={row.containerRequired}
             value={row.container}
             onChange={(container) =>
               onChange(updateById(value, row.id, { container }))
@@ -1186,12 +1202,14 @@ function PathAutocomplete({
   image,
   onChange,
   placeholder,
+  required,
   source,
   value,
 }: {
   image?: string
   onChange: (value: string) => void
   placeholder: string
+  required?: boolean
   source: "host" | "device" | "image"
   value: string
 }) {
@@ -1247,6 +1265,7 @@ function PathAutocomplete({
   return (
     <div className="relative min-w-0">
       <Input
+        required={required}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         onFocus={() => setFocused(true)}
@@ -1442,7 +1461,11 @@ function environmentFromRecord(value: Record<string, string>): EnvironmentRow[] 
   return Object.entries(value).map(([key, environmentValue]) => ({
     id: createRowId(),
     key,
-    value: resolveEnvironmentValue(environmentValue),
+    value:
+      environmentValue === "$REQUIRED"
+        ? ""
+        : resolveEnvironmentValue(environmentValue),
+    valueRequired: environmentValue === "$REQUIRED",
   }))
 }
 
@@ -1468,17 +1491,23 @@ function volumesFromRegistry(value: Record<string, string> | string[]): VolumeRo
   if (!Array.isArray(value)) {
     return Object.entries(value).map(([host, container]) => ({
       id: createRowId(),
-      host,
-      container,
+      host: host === "$REQUIRED" ? "" : host,
+      container: container === "$REQUIRED" ? "" : container,
+      hostRequired: host === "$REQUIRED",
+      containerRequired: container === "$REQUIRED",
     }))
   }
 
   return value.map((bind) => {
     const separator = bind.indexOf(":")
+    const host = separator < 0 ? bind : bind.slice(0, separator)
+    const container = separator < 0 ? "" : bind.slice(separator + 1)
     return {
       id: createRowId(),
-      host: separator < 0 ? bind : bind.slice(0, separator),
-      container: separator < 0 ? "" : bind.slice(separator + 1),
+      host: host === "$REQUIRED" ? "" : host,
+      container: container === "$REQUIRED" ? "" : container,
+      hostRequired: host === "$REQUIRED",
+      containerRequired: container === "$REQUIRED",
     }
   })
 }
