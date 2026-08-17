@@ -487,7 +487,12 @@ function RegistryInstallForm({
             onChange={setVolumes}
           />
           <DeviceEditor value={devices} onChange={setDevices} />
-          <CapabilityEditor value={capabilities} onChange={setCapabilities} />
+          <CapabilityEditor
+            privileged={privileged}
+            onPrivilegedChange={setPrivileged}
+            value={capabilities}
+            onChange={setCapabilities}
+          />
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField label="User ID">
               <Input
@@ -515,20 +520,6 @@ function RegistryInstallForm({
                 className="appearance-none font-mono text-xs [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
               />
             </FormField>
-          </div>
-          <div className="space-y-3">
-            <label className="flex items-center gap-2 text-sm font-medium">
-              <input
-                type="checkbox"
-                checked={privileged}
-                onChange={(event) => setPrivileged(event.target.checked)}
-                className="size-4 rounded border"
-              />
-              <span className="inline-flex items-center gap-1.5">
-                Run container in privileged mode
-                <InfoTooltip text="Privileged mode gives the container nearly unrestricted access to host devices and kernel capabilities. Only enable it for images you trust." />
-              </span>
-            </label>
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
         </div>
@@ -711,7 +702,12 @@ function CustomAppForm({
             onChange={setVolumes}
           />
           <DeviceEditor value={devices} onChange={setDevices} />
-          <CapabilityEditor value={capabilities} onChange={setCapabilities} />
+          <CapabilityEditor
+            privileged={privileged}
+            onPrivilegedChange={setPrivileged}
+            value={capabilities}
+            onChange={setCapabilities}
+          />
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField label="User ID">
               <Input
@@ -739,20 +735,6 @@ function CustomAppForm({
                 className="appearance-none font-mono text-xs [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
               />
             </FormField>
-          </div>
-          <div className="space-y-3">
-            <label className="flex items-center gap-2 text-sm font-medium">
-              <input
-                type="checkbox"
-                checked={privileged}
-                onChange={(event) => setPrivileged(event.target.checked)}
-                className="size-4 rounded border"
-              />
-              <span className="inline-flex items-center gap-1.5">
-                Run container in privileged mode
-                <InfoTooltip text="Privileged mode gives the container nearly unrestricted access to host devices and kernel capabilities. Only enable it for images you trust." />
-              </span>
-            </label>
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
         </div>
@@ -1302,41 +1284,89 @@ function PathAutocomplete({
 
 function CapabilityEditor({
   onChange,
+  onPrivilegedChange,
+  privileged,
   value,
 }: {
   onChange: (value: CapabilityRow[]) => void
+  onPrivilegedChange: (value: boolean) => void
+  privileged: boolean
   value: CapabilityRow[]
 }) {
   return (
-    <ListEditor
-      title="Capabilities"
-      hint="Grant specific Linux capabilities to the container."
-      onAdd={() =>
-        onChange([...value, { id: createRowId(), value: "CAP_NET_ADMIN" }])
-      }
+    <section
+      aria-label="Container privileges"
+      className="min-w-0 max-w-full rounded-xl border p-4"
     >
-      {value.map((row) => (
-        <EditorRow
-          key={row.id}
-          onRemove={() => onChange(removeById(value, row.id))}
-          columns="grid-cols-[1fr_auto]"
-        >
-          <Select
-            value={row.value}
-            onChange={(event) =>
-              onChange(updateById(value, row.id, { value: event.target.value }))
-            }
-            className="font-mono text-xs"
-          >
-            {LINUX_CAPABILITIES.map((capability) => (
-              <option key={capability} value={capability}>
-                {capability}
-              </option>
-            ))}
-          </Select>
-        </EditorRow>
-      ))}
-    </ListEditor>
+      <label className="flex items-center gap-2 text-sm font-medium">
+        <input
+          type="checkbox"
+          checked={privileged}
+          onChange={(event) => onPrivilegedChange(event.target.checked)}
+          className="size-4 rounded border"
+        />
+        <span className="inline-flex items-center gap-1.5">
+          Run container in privileged mode
+          <InfoTooltip text="Privileged mode gives the container nearly unrestricted access to host devices and kernel capabilities. Only enable it for images you trust." />
+        </span>
+      </label>
+
+      {!privileged && (
+        <div className="mt-4 border-t pt-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium">Capabilities</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Grant specific Linux capabilities to the container.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() =>
+                onChange([
+                  ...value,
+                  { id: createRowId(), value: "CAP_NET_ADMIN" },
+                ])
+              }
+              className="h-8"
+            >
+              <Plus className="mr-1.5 size-3.5" />
+              Add
+            </Button>
+          </div>
+          {value.length > 0 && (
+            <div className="mt-3 space-y-2">
+              {value.map((row) => (
+                <EditorRow
+                  key={row.id}
+                  onRemove={() => onChange(removeById(value, row.id))}
+                  columns="grid-cols-[1fr_auto]"
+                >
+                  <Select
+                    value={row.value}
+                    onChange={(event) =>
+                      onChange(
+                        updateById(value, row.id, {
+                          value: event.target.value,
+                        })
+                      )
+                    }
+                    className="font-mono text-xs"
+                  >
+                    {LINUX_CAPABILITIES.map((capability) => (
+                      <option key={capability} value={capability}>
+                        {capability}
+                      </option>
+                    ))}
+                  </Select>
+                </EditorRow>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </section>
   )
 }
 
