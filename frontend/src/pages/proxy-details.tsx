@@ -43,7 +43,9 @@ export function ProxyDetailsPage() {
   const policies = useApi<Record<string, PolicyResource>>("/api/v1/firewall/policy")
 
   useEffect(() => {
-    if (searchParams.get("policyId")) setEditing(true)
+    if (searchParams.get("edit") === "1" || searchParams.get("policyId")) {
+      setEditing(true)
+    }
   }, [searchParams])
 
   if (proxy.status === "loading") return <DetailsSkeleton />
@@ -211,11 +213,15 @@ export function ProxyDetailsPage() {
         proxy={resource}
         onClose={() => {
           setEditing(false)
-          if (searchParams.has("policyId")) setSearchParams({}, { replace: true })
+          if (searchParams.has("edit") || searchParams.has("policyId")) {
+            setSearchParams({}, { replace: true })
+          }
         }}
         onSaved={() => {
           setEditing(false)
-          if (searchParams.has("policyId")) setSearchParams({}, { replace: true })
+          if (searchParams.has("edit") || searchParams.has("policyId")) {
+            setSearchParams({}, { replace: true })
+          }
           proxy.reload()
         }}
       />

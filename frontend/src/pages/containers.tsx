@@ -1,9 +1,11 @@
 import { useMemo, useState, type KeyboardEvent } from "react"
-import { Fingerprint, Link2, Package } from "lucide-react"
+import { ArrowUpRight, Fingerprint, Link2, Package, Play, RefreshCw, Square, Trash2 } from "lucide-react"
 import { Link, useNavigate } from "react-router-dom"
 
 import { ContainerAvatar } from "@/components/container-avatar"
+import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { PageHeader } from "@/components/page-header"
+import { ResourceMenu, type ResourceMenuItem } from "@/components/resource-menu"
 import {
   CardGridSkeleton,
   EmptyState,
@@ -19,6 +21,7 @@ import { ViewToggle } from "@/components/view-toggle"
 import { useApi } from "@/hooks/use-api"
 import { useStoredViewMode } from "@/hooks/use-stored-view-mode"
 import { getComposeProject, getContainerAppId } from "@/lib/container-labels"
+import { apiRequest } from "@/lib/api"
 import type { AppResource, ContainerResource } from "@/lib/types"
 
 export function ContainersPage() {
@@ -29,6 +32,9 @@ export function ContainersPage() {
     pollInterval: 1000,
   })
   const [view, setView] = useStoredViewMode("containarr-containers-view")
+  const [deleting, setDeleting] = useState<ContainerResource | null>(null)
+  const [deletePending, setDeletePending] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const navigate = useNavigate()
   const items = containers.status === "success" ? containers.data : []
   const appsById = apps.status === "success" ? apps.data : {}
@@ -56,6 +62,8 @@ export function ContainersPage() {
             items={items}
             apps={appsById}
             navigate={navigate}
+            onDelete={setDeleting}
+            onReload={containers.reload}
           />
         ) : (
           <>
@@ -64,11 +72,36 @@ export function ContainersPage() {
                 items={items}
                 apps={appsById}
                 navigate={navigate}
+                onDelete={setDeleting}
+                onReload={containers.reload}
               />
             </div>
-            <ContainersTable items={items} apps={appsById} />
+            <ContainersTable items={items} apps={appsById} onReload={containers.reload} onDelete={setDeleting} />
           </>
         ))}
+      <DeleteConfirmDialog
+        open={deleting !== null}
+        title={`Delete ${deleting?.name || "container"}?`}
+        description="This permanently removes the container. This action cannot be undone."
+        deleting={deletePending}
+        error={deleteError}
+        onCancel={() => {
+          setDeleting(null)
+          setDeleteError(null)
+        }}
+        onConfirm={() => {
+          if (!deleting) return
+          setDeletePending(true)
+          setDeleteError(null)
+          void apiRequest(`/api/v1/container/${deleting.id}`, { method: "DELETE" })
+            .then(() => {
+              setDeleting(null)
+              containers.reload()
+            })
+            .catch((error) => setDeleteError(error instanceof Error ? error.message : "Delete failed."))
+            .finally(() => setDeletePending(false))
+        }}
+      />
     </section>
   )
 }
@@ -77,10 +110,14 @@ function ContainersCardGrid({
   apps,
   items,
   navigate,
+  onDelete,
+  onReload,
 }: {
   apps: Record<string, AppResource>
   items: ContainerResource[]
   navigate: ReturnType<typeof useNavigate>
+  onDelete: (container: ContainerResource) => void
+  onReload: () => void
 }) {
   function openFromKeyboard(event: KeyboardEvent, containerId: string) {
     if (event.key === "Enter" || event.key === " ") {
@@ -99,10 +136,44 @@ function ContainersCardGrid({
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {group.items.map((container) => {
               const appId = getContainerAppId(container)
+              const running = container.state.toLowerCase() === "running"
+              const menuItems: ResourceMenuItem[] = [
+                {
+                  label: "Open",
+                  icon: ArrowUpRight,
+                  onSelect: () => navigate(`/containers/${container.id}`),
+                },
+                ...(appId ? [{
+                  label: "Open app",
+                  icon: Link2,
+                  onSelect: () => navigate(`/apps/${appId}`),
+                }] : [
+                  {
+                    label: running ? "Stop" : "Start",
+                    icon: running ? Square : Play,
+                    onSelect: () => apiRequest(`/api/v1/container/${container.id}/${running ? "stop" : "start"}`, {
+                      method: "POST",
+                    }).then(onReload),
+                  },
+                  {
+                    label: "Restart",
+                    icon: RefreshCw,
+                    onSelect: () => apiRequest(`/api/v1/container/${container.id}/restart`, {
+                      method: "POST",
+                    }).then(onReload),
+                  },
+                  {
+                    label: "Delete",
+                    icon: Trash2,
+                    destructive: true,
+                    onSelect: () => onDelete(container),
+                  },
+                ]),
+              ]
 
               return (
+              <ResourceMenu key={container.id} items={menuItems} triggerLabel={`Actions for ${container.name || "container"}`}>
               <Card
-                key={container.id}
                 role="link"
                 tabIndex={0}
                 onClick={() => navigate(`/containers/${container.id}`)}
@@ -154,6 +225,7 @@ function ContainersCardGrid({
                   </div>
                 </CardContent>
               </Card>
+              </ResourceMenu>
               )
             })}
           </div>
@@ -186,10 +258,15 @@ function DataRow({
 function ContainersTable({
   apps,
   items,
+  onDelete,
+  onReload,
 }: {
   apps: Record<string, AppResource>
   items: ContainerResource[]
+  onDelete: (container: ContainerResource) => void
+  onReload: () => void
 }) {
+  const navigate = useNavigate()
   const [sort, setSort] = useState<{
     key: ContainerSortKey
     direction: SortDirection
@@ -236,14 +313,50 @@ function ContainersTable({
                 />
               )
             )}
+            <th className="w-12 px-2 py-3"><span className="sr-only">Actions</span></th>
           </tr>
         </thead>
         <tbody className="divide-y">
           {groupedItems.map((container) => {
             const appId = getContainerAppId(container)
+            const running = container.state.toLowerCase() === "running"
+            const menuItems: ResourceMenuItem[] = [
+              {
+                label: "Open",
+                icon: ArrowUpRight,
+                onSelect: () => navigate(`/containers/${container.id}`),
+              },
+              ...(appId ? [{
+                label: "Open app",
+                icon: Link2,
+                onSelect: () => navigate(`/apps/${appId}`),
+              }] : [
+                {
+                  label: running ? "Stop" : "Start",
+                  icon: running ? Square : Play,
+                  onSelect: () => apiRequest(`/api/v1/container/${container.id}/${running ? "stop" : "start"}`, {
+                    method: "POST",
+                  }).then(onReload),
+                },
+                {
+                  label: "Restart",
+                  icon: RefreshCw,
+                  onSelect: () => apiRequest(`/api/v1/container/${container.id}/restart`, {
+                    method: "POST",
+                  }).then(onReload),
+                },
+                {
+                  label: "Delete",
+                  icon: Trash2,
+                  destructive: true,
+                  onSelect: () => onDelete(container),
+                },
+              ]),
+            ]
 
             return (
-            <tr key={container.id} className="hover:bg-muted/25">
+            <ResourceMenu key={container.id} items={menuItems} triggerLabel={`Actions for ${container.name || "container"}`}>
+            <tr className="hover:bg-muted/25">
               <td className="px-4 py-3">
                 <div className="flex items-center gap-3">
                   <ContainerAvatar
@@ -286,7 +399,11 @@ function ContainersTable({
                   <span className="text-muted-foreground">Unmanaged</span>
                 )}
               </td>
+              <td className="w-12 px-2 py-3">
+                <ResourceMenu items={menuItems} triggerLabel={`Actions for ${container.name || "container"}`} />
+              </td>
             </tr>
+            </ResourceMenu>
             )
           })}
         </tbody>

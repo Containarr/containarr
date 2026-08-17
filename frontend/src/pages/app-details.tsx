@@ -54,7 +54,9 @@ export function AppDetailsPage() {
   const policies = useApi<Record<string, PolicyResource>>("/api/v1/firewall/policy")
 
   useEffect(() => {
-    if (searchParams.get("policyId")) setEditing(true)
+    if (searchParams.get("edit") === "1" || searchParams.get("policyId")) {
+      setEditing(true)
+    }
   }, [searchParams])
 
   if (app.status === "loading") return <DetailsSkeleton />
@@ -346,11 +348,15 @@ export function AppDetailsPage() {
         }}
         onClose={() => {
           setEditing(false)
-          if (searchParams.has("policyId")) setSearchParams({}, { replace: true })
+          if (searchParams.has("edit") || searchParams.has("policyId")) {
+            setSearchParams({}, { replace: true })
+          }
         }}
         onSaved={(saved, dockerPropertiesChanged) => {
           setEditing(false)
-          if (searchParams.has("policyId")) setSearchParams({}, { replace: true })
+          if (searchParams.has("edit") || searchParams.has("policyId")) {
+            setSearchParams({}, { replace: true })
+          }
           app.reload()
           if (
             dockerPropertiesChanged

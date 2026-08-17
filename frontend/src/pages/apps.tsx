@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState, type KeyboardEvent } from "react"
-import { ArrowUpRight, Plus } from "lucide-react"
+import { ArrowUpRight, Globe2, Pencil, Plus, Power, PowerOff, Trash2 } from "lucide-react"
 import { Link, useNavigate, useSearchParams } from "react-router-dom"
 
 import { AppLogo } from "@/components/app-logo"
+import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { InstallAppDialog } from "@/components/install-app-dialog"
 import { MobileHeaderAction } from "@/components/mobile-header-action"
 import { PageHeader } from "@/components/page-header"
+import { ResourceMenu, type ResourceMenuItem } from "@/components/resource-menu"
 import {
   CardGridSkeleton,
   EmptyState,
@@ -22,6 +24,7 @@ import { ViewToggle } from "@/components/view-toggle"
 import { useApi } from "@/hooks/use-api"
 import { useStoredViewMode } from "@/hooks/use-stored-view-mode"
 import { getPublicAppUrl } from "@/lib/apps"
+import { apiRequest } from "@/lib/api"
 import type { AppResource, PolicyResource } from "@/lib/types"
 
 export function AppsPage() {
@@ -32,6 +35,9 @@ export function AppsPage() {
   const policies = useApi<Record<string, PolicyResource>>("/api/v1/firewall/policy")
   const [view, setView] = useStoredViewMode("containarr-apps-view")
   const [installOpen, setInstallOpen] = useState(false)
+  const [deleting, setDeleting] = useState<AppResource | null>(null)
+  const [deletePending, setDeletePending] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const items = apps.status === "success" ? Object.values(apps.data) : []
@@ -82,13 +88,13 @@ export function AppsPage() {
       {apps.status === "success" && items.length > 0 && (
         <>
           {view === "cards" ? (
-            <AppsCardGrid items={items} domain={domain} policyNames={policyNames} navigate={navigate} />
+            <AppsCardGrid items={items} domain={domain} policyNames={policyNames} navigate={navigate} onReload={apps.reload} onDelete={setDeleting} />
           ) : (
             <>
               <div className="sm:hidden">
-                <AppsCardGrid items={items} domain={domain} policyNames={policyNames} navigate={navigate} />
+                <AppsCardGrid items={items} domain={domain} policyNames={policyNames} navigate={navigate} onReload={apps.reload} onDelete={setDeleting} />
               </div>
-              <AppsTable items={items} domain={domain} policyNames={policyNames} />
+              <AppsTable items={items} domain={domain} policyNames={policyNames} onReload={apps.reload} onDelete={setDeleting} />
             </>
           )}
         </>
@@ -108,6 +114,29 @@ export function AppsPage() {
           navigate(`/apps/${app.id}`)
         }}
       />
+      <DeleteConfirmDialog
+        open={deleting !== null}
+        title={`Delete ${deleting?.name || "app"}?`}
+        description="This also removes its container. This action cannot be undone."
+        deleting={deletePending}
+        error={deleteError}
+        onCancel={() => {
+          setDeleting(null)
+          setDeleteError(null)
+        }}
+        onConfirm={() => {
+          if (!deleting) return
+          setDeletePending(true)
+          setDeleteError(null)
+          void apiRequest(`/api/v1/app/${deleting.id}`, { method: "DELETE" })
+            .then(() => {
+              setDeleting(null)
+              apps.reload()
+            })
+            .catch((error) => setDeleteError(error instanceof Error ? error.message : "Delete failed."))
+            .finally(() => setDeletePending(false))
+        }}
+      />
     </section>
   )
 }
@@ -116,11 +145,15 @@ function AppsCardGrid({
   domain,
   items,
   navigate,
+  onDelete,
+  onReload,
   policyNames,
 }: {
   domain: string | null
   items: AppResource[]
   navigate: ReturnType<typeof useNavigate>
+  onDelete: (app: AppResource) => void
+  onReload: () => void
   policyNames: Record<string, string>
 }) {
   function openFromKeyboard(event: KeyboardEvent, appId: string) {
@@ -134,9 +167,40 @@ function AppsCardGrid({
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       {items.map((app) => {
         const publicUrl = getPublicAppUrl(app, domain)
+        const menuItems: ResourceMenuItem[] = [
+          {
+            label: "Open",
+            icon: ArrowUpRight,
+            onSelect: () => navigate(`/apps/${app.id}`),
+          },
+          {
+            label: "Edit",
+            icon: Pencil,
+            onSelect: () => navigate(`/apps/${app.id}?edit=1`),
+          },
+          ...(publicUrl ? [{
+            label: "Open public URL",
+            icon: Globe2,
+            onSelect: () => { window.open(publicUrl, "_blank", "noopener,noreferrer") },
+          }] : []),
+          {
+            label: app.disabled ? "Enable" : "Disable",
+            icon: app.disabled ? Power : PowerOff,
+            onSelect: () => apiRequest(`/api/v1/app/${app.id}/disabled`, {
+              method: "PUT",
+              body: JSON.stringify({ disabled: !app.disabled }),
+            }).then(onReload),
+          },
+          {
+            label: "Delete",
+            icon: Trash2,
+            destructive: true,
+            onSelect: () => onDelete(app),
+          },
+        ]
         return (
+          <ResourceMenu key={app.id} items={menuItems} triggerLabel={`Actions for ${app.name || "app"}`}>
           <Card
-            key={app.id}
             role="link"
             tabIndex={0}
             onClick={() => navigate(`/apps/${app.id}`)}
@@ -185,6 +249,7 @@ function AppsCardGrid({
               )}
             </div>
           </Card>
+          </ResourceMenu>
         )
       })}
     </div>
@@ -195,11 +260,16 @@ function AppsTable({
   domain,
   items,
   policyNames,
+  onDelete,
+  onReload,
 }: {
   domain: string | null
   items: AppResource[]
   policyNames: Record<string, string>
+  onDelete: (app: AppResource) => void
+  onReload: () => void
 }) {
+  const navigate = useNavigate()
   const [sort, setSort] = useState<{ key: AppSortKey; direction: SortDirection } | null>(null)
   const sortedItems = useMemo(() => {
     if (!sort) return items
@@ -252,13 +322,46 @@ function AppsTable({
               direction={sort?.direction || "asc"}
               onClick={() => changeSort("status")}
             />
+            <th className="w-12 px-2 py-3"><span className="sr-only">Actions</span></th>
           </tr>
         </thead>
         <tbody className="divide-y">
           {sortedItems.map((app) => {
             const publicUrl = getPublicAppUrl(app, domain)
+            const menuItems: ResourceMenuItem[] = [
+              {
+                label: "Open",
+                icon: ArrowUpRight,
+                onSelect: () => navigate(`/apps/${app.id}`),
+              },
+              {
+                label: "Edit",
+                icon: Pencil,
+                onSelect: () => navigate(`/apps/${app.id}?edit=1`),
+              },
+              ...(publicUrl ? [{
+                label: "Open public URL",
+                icon: Globe2,
+                onSelect: () => { window.open(publicUrl, "_blank", "noopener,noreferrer") },
+              }] : []),
+              {
+                label: app.disabled ? "Enable" : "Disable",
+                icon: app.disabled ? Power : PowerOff,
+                onSelect: () => apiRequest(`/api/v1/app/${app.id}/disabled`, {
+                  method: "PUT",
+                  body: JSON.stringify({ disabled: !app.disabled }),
+                }).then(onReload),
+              },
+              {
+                label: "Delete",
+                icon: Trash2,
+                destructive: true,
+                onSelect: () => onDelete(app),
+              },
+            ]
             return (
-              <tr key={app.id} className="hover:bg-muted/25">
+              <ResourceMenu key={app.id} items={menuItems} triggerLabel={`Actions for ${app.name || "app"}`}>
+              <tr className="hover:bg-muted/25">
                 <td className="px-4 py-3">
                   <Link
                     to={`/apps/${app.id}`}
@@ -296,7 +399,11 @@ function AppsTable({
                     <AppStatusBadge app={app} />
                   </div>
                 </td>
+                <td className="w-12 px-2 py-3">
+                  <ResourceMenu items={menuItems} triggerLabel={`Actions for ${app.name || "app"}`} />
+                </td>
               </tr>
+              </ResourceMenu>
             )
           })}
         </tbody>

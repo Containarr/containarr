@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState, type KeyboardEvent } from "react"
-import { ArrowRight, ArrowUpRight, Plus, Waypoints } from "lucide-react"
+import { ArrowRight, ArrowUpRight, Globe2, Pencil, Plus, Power, PowerOff, Trash2, Waypoints } from "lucide-react"
 import { Link, useNavigate, useSearchParams } from "react-router-dom"
 
 import { ProxyDialog } from "@/components/new-proxy-dialog"
+import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { MobileHeaderAction } from "@/components/mobile-header-action"
 import { PageHeader } from "@/components/page-header"
+import { ResourceMenu, type ResourceMenuItem } from "@/components/resource-menu"
 import { StatusBadge } from "@/components/status-badge"
 import {
   CardGridSkeleton,
@@ -21,6 +23,7 @@ import { ViewToggle } from "@/components/view-toggle"
 import { useApi } from "@/hooks/use-api"
 import { useStoredViewMode } from "@/hooks/use-stored-view-mode"
 import { getPublicProxyUrl } from "@/lib/proxies"
+import { apiRequest } from "@/lib/api"
 import type { PolicyResource, ProxyResource } from "@/lib/types"
 
 export function ProxiesPage() {
@@ -31,6 +34,9 @@ export function ProxiesPage() {
   const policies = useApi<Record<string, PolicyResource>>("/api/v1/firewall/policy")
   const [view, setView] = useStoredViewMode("containarr-proxies-view")
   const [newProxyOpen, setNewProxyOpen] = useState(false)
+  const [deleting, setDeleting] = useState<ProxyResource | null>(null)
+  const [deletePending, setDeletePending] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const items = proxies.status === "success" ? Object.values(proxies.data) : []
@@ -80,13 +86,13 @@ export function ProxiesPage() {
       )}
       {proxies.status === "success" && items.length > 0 &&
         (view === "cards" ? (
-          <ProxyCardGrid items={items} domain={domain} policyNames={policyNames} navigate={navigate} />
+          <ProxyCardGrid items={items} domain={domain} policyNames={policyNames} navigate={navigate} onReload={proxies.reload} onDelete={setDeleting} />
         ) : (
           <>
             <div className="sm:hidden">
-              <ProxyCardGrid items={items} domain={domain} policyNames={policyNames} navigate={navigate} />
+              <ProxyCardGrid items={items} domain={domain} policyNames={policyNames} navigate={navigate} onReload={proxies.reload} onDelete={setDeleting} />
             </div>
-            <ProxyTable items={items} domain={domain} policyNames={policyNames} />
+            <ProxyTable items={items} domain={domain} policyNames={policyNames} onReload={proxies.reload} onDelete={setDeleting} />
           </>
         ))}
 
@@ -104,6 +110,29 @@ export function ProxiesPage() {
           navigate(`/proxies/${proxy.id}`)
         }}
       />
+      <DeleteConfirmDialog
+        open={deleting !== null}
+        title={`Delete ${deleting?.subdomain || "proxy"}?`}
+        description="This removes the reverse proxy rule. This action cannot be undone."
+        deleting={deletePending}
+        error={deleteError}
+        onCancel={() => {
+          setDeleting(null)
+          setDeleteError(null)
+        }}
+        onConfirm={() => {
+          if (!deleting) return
+          setDeletePending(true)
+          setDeleteError(null)
+          void apiRequest(`/api/v1/proxy/${deleting.id}`, { method: "DELETE" })
+            .then(() => {
+              setDeleting(null)
+              proxies.reload()
+            })
+            .catch((error) => setDeleteError(error instanceof Error ? error.message : "Delete failed."))
+            .finally(() => setDeletePending(false))
+        }}
+      />
     </section>
   )
 }
@@ -112,11 +141,15 @@ function ProxyCardGrid({
   domain,
   items,
   navigate,
+  onDelete,
+  onReload,
   policyNames,
 }: {
   domain: string | null
   items: ProxyResource[]
   navigate: ReturnType<typeof useNavigate>
+  onDelete: (proxy: ProxyResource) => void
+  onReload: () => void
   policyNames: Record<string, string>
 }) {
   function openFromKeyboard(event: KeyboardEvent, proxyId: string) {
@@ -130,9 +163,40 @@ function ProxyCardGrid({
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       {items.map((proxy) => {
         const publicUrl = getPublicProxyUrl(proxy, domain)
+        const menuItems: ResourceMenuItem[] = [
+          {
+            label: "Open",
+            icon: ArrowUpRight,
+            onSelect: () => navigate(`/proxies/${proxy.id}`),
+          },
+          {
+            label: "Edit",
+            icon: Pencil,
+            onSelect: () => navigate(`/proxies/${proxy.id}?edit=1`),
+          },
+          ...(publicUrl ? [{
+            label: "Open public URL",
+            icon: Globe2,
+            onSelect: () => { window.open(publicUrl, "_blank", "noopener,noreferrer") },
+          }] : []),
+          {
+            label: proxy.disabled ? "Enable" : "Disable",
+            icon: proxy.disabled ? Power : PowerOff,
+            onSelect: () => apiRequest(`/api/v1/proxy/${proxy.id}/disabled`, {
+              method: "PUT",
+              body: JSON.stringify({ disabled: !proxy.disabled }),
+            }).then(onReload),
+          },
+          {
+            label: "Delete",
+            icon: Trash2,
+            destructive: true,
+            onSelect: () => onDelete(proxy),
+          },
+        ]
         return (
+          <ResourceMenu key={proxy.id} items={menuItems} triggerLabel={`Actions for ${proxy.subdomain}`}>
           <Card
-            key={proxy.id}
             role="link"
             tabIndex={0}
             onClick={() => navigate(`/proxies/${proxy.id}`)}
@@ -192,6 +256,7 @@ function ProxyCardGrid({
               </Link>
             </div>
           </Card>
+          </ResourceMenu>
         )
       })}
     </div>
@@ -202,11 +267,16 @@ function ProxyTable({
   domain,
   items,
   policyNames,
+  onDelete,
+  onReload,
 }: {
   domain: string | null
   items: ProxyResource[]
   policyNames: Record<string, string>
+  onDelete: (proxy: ProxyResource) => void
+  onReload: () => void
 }) {
+  const navigate = useNavigate()
   const [sort, setSort] = useState<{
     key: ProxySortKey
     direction: SortDirection
@@ -266,13 +336,46 @@ function ProxyTable({
               direction={sort?.direction || "asc"}
               onClick={() => changeSort("sourceUrl")}
             />
+            <th className="w-12 px-2 py-3"><span className="sr-only">Actions</span></th>
           </tr>
         </thead>
         <tbody className="divide-y">
           {sortedItems.map((proxy) => {
             const publicUrl = getPublicProxyUrl(proxy, domain)
+            const menuItems: ResourceMenuItem[] = [
+              {
+                label: "Open",
+                icon: ArrowUpRight,
+                onSelect: () => navigate(`/proxies/${proxy.id}`),
+              },
+              {
+                label: "Edit",
+                icon: Pencil,
+                onSelect: () => navigate(`/proxies/${proxy.id}?edit=1`),
+              },
+              ...(publicUrl ? [{
+                label: "Open public URL",
+                icon: Globe2,
+                onSelect: () => { window.open(publicUrl, "_blank", "noopener,noreferrer") },
+              }] : []),
+              {
+                label: proxy.disabled ? "Enable" : "Disable",
+                icon: proxy.disabled ? Power : PowerOff,
+                onSelect: () => apiRequest(`/api/v1/proxy/${proxy.id}/disabled`, {
+                  method: "PUT",
+                  body: JSON.stringify({ disabled: !proxy.disabled }),
+                }).then(onReload),
+              },
+              {
+                label: "Delete",
+                icon: Trash2,
+                destructive: true,
+                onSelect: () => onDelete(proxy),
+              },
+            ]
             return (
-              <tr key={proxy.id} className="hover:bg-muted/25">
+              <ResourceMenu key={proxy.id} items={menuItems} triggerLabel={`Actions for ${proxy.subdomain}`}>
+              <tr className="hover:bg-muted/25">
                 <td className="px-4 py-3">
                   <Link
                     to={`/proxies/${proxy.id}`}
@@ -311,7 +414,11 @@ function ProxyTable({
                 <td className="max-w-72 px-4 py-3">
                   <ExternalLink href={proxy.sourceUrl} mono />
                 </td>
+                <td className="w-12 px-2 py-3">
+                  <ResourceMenu items={menuItems} triggerLabel={`Actions for ${proxy.subdomain}`} />
+                </td>
               </tr>
+              </ResourceMenu>
             )
           })}
         </tbody>

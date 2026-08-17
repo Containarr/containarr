@@ -5,6 +5,7 @@ import { useNavigate, useSearchParams } from "react-router-dom"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { MobileHeaderAction } from "@/components/mobile-header-action"
 import { PageHeader } from "@/components/page-header"
+import { ResourceMenu, type ResourceMenuItem } from "@/components/resource-menu"
 import { EmptyState, ErrorState } from "@/components/resource-states"
 import { SortableTableHeader, type SortDirection } from "@/components/sortable-table-header"
 import { Button } from "@/components/ui/button"
@@ -156,7 +157,29 @@ function PolicyCardGrid({
   return (
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       {items.map((policy) => (
-        <Card key={policy.id} className="overflow-hidden shadow-none">
+        <ResourceMenu
+          key={policy.id}
+          triggerLabel={`Actions for ${policy.name}`}
+          items={policy.id === "public" ? [{
+            label: "Default policy",
+            icon: Globe2,
+            disabled: true,
+            onSelect: () => {},
+          }] : [
+            {
+              label: "Edit",
+              icon: Pencil,
+              onSelect: () => onEdit(policy),
+            },
+            {
+              label: "Delete",
+              icon: Trash2,
+              destructive: true,
+              onSelect: () => onDelete(policy),
+            },
+          ] satisfies ResourceMenuItem[]}
+        >
+        <Card className="overflow-hidden shadow-none">
           <CardHeader className="flex flex-row items-start justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
               <span className="flex size-10 shrink-0 items-center justify-center rounded-lg border bg-muted/30">
@@ -205,6 +228,7 @@ function PolicyCardGrid({
             )}
           </CardContent>
         </Card>
+        </ResourceMenu>
       ))}
     </div>
   )
@@ -259,12 +283,34 @@ function PolicyTable({
             <SortableTableHeader label="Policy" active={sort?.key === "name"} direction={sort?.direction || "asc"} onClick={() => changeSort("name")} />
             <SortableTableHeader label="Sources" active={sort?.key === "sources"} direction={sort?.direction || "asc"} onClick={() => changeSort("sources")} />
             <SortableTableHeader label="Allowed IPs" active={sort?.key === "allowed"} direction={sort?.direction || "asc"} onClick={() => changeSort("allowed")} />
-            <th className="px-4 py-3 text-right font-medium">Actions</th>
+            <th className="w-12 px-2 py-3"><span className="sr-only">Actions</span></th>
           </tr>
         </thead>
         <tbody className="divide-y">
           {sortedItems.map((policy) => (
-            <tr key={policy.id} className="hover:bg-muted/25">
+            <ResourceMenu
+              key={policy.id}
+              triggerLabel={`Actions for ${policy.name}`}
+              items={policy.id === "public" ? [{
+                label: "Default policy",
+                icon: Globe2,
+                disabled: true,
+                onSelect: () => {},
+              }] : [
+                {
+                  label: "Edit",
+                  icon: Pencil,
+                  onSelect: () => onEdit(policy),
+                },
+                {
+                  label: "Delete",
+                  icon: Trash2,
+                  destructive: true,
+                  onSelect: () => onDelete(policy),
+                },
+              ] satisfies ResourceMenuItem[]}
+            >
+            <tr className="hover:bg-muted/25">
               <td className="px-4 py-3">
                 <div className="flex items-center gap-3 font-medium">
                   {policy.id === "public" ? <Globe2 className="size-4 text-muted-foreground" /> : <ShieldCheck className="size-4 text-muted-foreground" />}
@@ -284,17 +330,31 @@ function PolicyTable({
                   </div>
                 )}
               </td>
-              <td className="px-4 py-3">
-                {policy.id === "public" ? (
-                  <p className="text-right text-xs text-muted-foreground">Default</p>
-                ) : (
-                  <div className="flex justify-end gap-2">
-                    <Button type="button" variant="outline" className="h-8" onClick={() => onEdit(policy)}><Pencil className="mr-1.5 size-3.5" />Edit</Button>
-                    <Button type="button" variant="outline" className="h-8 text-red-600 hover:text-red-600 dark:text-red-400 dark:hover:text-red-400" onClick={() => onDelete(policy)}><Trash2 className="mr-1.5 size-3.5" />Delete</Button>
-                  </div>
-                )}
+              <td className="w-12 px-2 py-3">
+                <ResourceMenu
+                  triggerLabel={`Actions for ${policy.name}`}
+                  items={policy.id === "public" ? [{
+                    label: "Default policy",
+                    icon: Globe2,
+                    disabled: true,
+                    onSelect: () => {},
+                  }] : [
+                    {
+                      label: "Edit",
+                      icon: Pencil,
+                      onSelect: () => onEdit(policy),
+                    },
+                    {
+                      label: "Delete",
+                      icon: Trash2,
+                      destructive: true,
+                      onSelect: () => onDelete(policy),
+                    },
+                  ] satisfies ResourceMenuItem[]}
+                />
               </td>
             </tr>
+            </ResourceMenu>
           ))}
         </tbody>
       </table>
