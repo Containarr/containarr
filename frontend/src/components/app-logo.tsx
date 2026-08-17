@@ -20,7 +20,7 @@ export function AppLogo({
   const src = appId
     ? `/api/v1/app/${appId}/logo`
     : registryId
-      ? `https://containarr.com/apps/${registryId}.png`
+      ? `https://registry.containarr.com/${registryId}.png`
       : null
 
   useEffect(() => setFailed(false), [src])
