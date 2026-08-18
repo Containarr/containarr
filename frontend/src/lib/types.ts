@@ -43,6 +43,25 @@ export type AppResource = {
   certificate: CertificateStatus
 }
 
+export type AppConfiguration = Pick<
+  AppResource,
+  | "name"
+  | "subdomain"
+  | "port"
+  | "tls"
+  | "dockerImage"
+  | "dockerNetworkMode"
+  | "dockerVolumes"
+  | "dockerDevices"
+  | "dockerPorts"
+  | "dockerEnvironment"
+  | "dockerUserId"
+  | "dockerGroupId"
+  | "dockerPrivileged"
+  | "dockerCapabilities"
+  | "policyId"
+>
+
 export type CertificateStatus = {
   hostname: string | null
   status: "not_required" | "provisioning" | "renewing" | "ready" | "error"
@@ -62,6 +81,7 @@ export type ContainarrUpdateStatus = {
 
 export type DockerPort = {
   host: number
+  hostIp?: string
   container: number
   protocol: "tcp" | "udp"
 }
@@ -93,6 +113,7 @@ export type ContainerResource = {
   state: string
   status: string
   labels: Record<string, string>
+  importable: boolean
 }
 
 export type ContainerDetails = ContainerResource & {

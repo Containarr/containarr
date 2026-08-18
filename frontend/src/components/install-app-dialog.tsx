@@ -7,6 +7,7 @@ import {
   Info,
   LoaderCircle,
   Minus,
+  PackagePlus,
   Plus,
   Save,
   Search,
@@ -21,7 +22,7 @@ import { Select } from "@/components/ui/select"
 import { useApi } from "@/hooks/use-api"
 import { apiRequest } from "@/lib/api"
 import { TLS_OPTIONS } from "@/lib/tls"
-import type { AppResource, DockerPort, PolicyResource, RegistryApp } from "@/lib/types"
+import type { AppConfiguration, AppResource, DockerPort, PolicyResource, RegistryApp } from "@/lib/types"
 
 type DialogProps = {
   onClose: () => void
@@ -45,6 +46,7 @@ type VolumeRow = {
 type PortRow = {
   id: string
   host: string
+  hostIp?: string
   container: string
   protocol: "tcp" | "udp"
 }
@@ -183,6 +185,7 @@ function EditAppDialogContent({
 
 function InstallAppDialogContent({ onClose, onCreated }: DialogProps) {
   const [searchParams] = useSearchParams()
+  const importContainerId = searchParams.get("import")
   const [mode, setMode] = useState<"registry" | "custom">(
     searchParams.get("mode") === "custom" ? "custom" : "registry"
   )
@@ -235,7 +238,7 @@ function InstallAppDialogContent({ onClose, onCreated }: DialogProps) {
       >
         <div className="flex items-center justify-between border-b px-5 py-4 sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
-            {selected && (
+            {selected && !importContainerId && (
               <button
                 type="button"
                 className="flex size-8 items-center justify-center rounded-lg hover:bg-muted"
@@ -247,12 +250,18 @@ function InstallAppDialogContent({ onClose, onCreated }: DialogProps) {
             )}
             <div className="min-w-0">
               <h2 id="install-app-title" className="truncate font-semibold">
-                {selected ? `Install ${selected.app.name}` : "Add an app"}
+                {importContainerId
+                  ? "New App"
+                  : selected
+                    ? `Install ${selected.app.name}`
+                    : "Add an app"}
               </h2>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                {selected
-                  ? "Review the defaults and add optional overrides."
-                  : "Choose a registry app or configure your own container."}
+                {importContainerId
+                  ? "Review and adjust the imported container settings."
+                  : selected
+                    ? "Review the defaults and add optional overrides."
+                    : "Choose a registry app or configure your own container."}
               </p>
             </div>
           </div>
@@ -266,7 +275,7 @@ function InstallAppDialogContent({ onClose, onCreated }: DialogProps) {
           </button>
         </div>
 
-        {!selected && (
+        {!selected && !importContainerId && (
           <div className="border-b px-5 pt-3 sm:px-6">
             <div className="flex gap-5">
               {(["registry", "custom"] as const).map((option) => (
@@ -287,7 +296,13 @@ function InstallAppDialogContent({ onClose, onCreated }: DialogProps) {
           </div>
         )}
 
-        {selected ? (
+        {importContainerId ? (
+          <ImportAppForm
+            containerId={importContainerId}
+            domain={domain}
+            onCreated={onCreated}
+          />
+        ) : selected ? (
           <RegistryInstallForm
             registryId={selected.id}
             app={selected.app}
@@ -364,6 +379,49 @@ function InstallAppDialogContent({ onClose, onCreated }: DialogProps) {
         )}
       </div>
     </div>
+  )
+}
+
+function ImportAppForm({
+  containerId,
+  domain,
+  onCreated,
+}: {
+  containerId: string
+  domain: string
+  onCreated: (app: AppResource) => void
+}) {
+  const preview = useApi<AppConfiguration>(
+    `/api/v1/container/${encodeURIComponent(containerId)}/import`
+  )
+
+  if (preview.status === "loading") {
+    return (
+      <div className="flex min-h-64 items-center justify-center text-sm text-muted-foreground">
+        <LoaderCircle className="mr-2 size-4 animate-spin" />
+        Loading container settings…
+      </div>
+    )
+  }
+  if (preview.status === "error") {
+    return (
+      <div className="flex min-h-64 flex-col items-center justify-center text-center">
+        <p className="font-medium">Unable to inspect the container</p>
+        <p className="mt-1 text-sm text-muted-foreground">{preview.error}</p>
+        <Button type="button" variant="outline" className="mt-4" onClick={preview.reload}>
+          Try again
+        </Button>
+      </div>
+    )
+  }
+
+  return (
+    <CustomAppForm
+      domain={domain}
+      importContainerId={containerId}
+      initialApp={preview.data}
+      onSaved={onCreated}
+    />
   )
 }
 
@@ -542,51 +600,57 @@ function RegistryInstallForm({
 function CustomAppForm({
   app = null,
   domain,
+  importContainerId = null,
+  initialApp = null,
   onSaved,
 }: {
   app?: AppResource | null
   domain: string
+  importContainerId?: string | null
+  initialApp?: AppConfiguration | null
   onSaved: (app: AppResource, dockerPropertiesChanged: boolean) => void
 }) {
   const [searchParams] = useSearchParams()
   const editing = app !== null
-  const [name, setName] = useState(app?.name ?? "")
-  const [subdomain, setSubdomain] = useState(app?.subdomain ?? "")
-  const [port, setPort] = useState(app?.port ? String(app.port) : "")
-  const [tls, setTls] = useState(app?.tls ?? "only_https")
-  const [dockerImage, setDockerImage] = useState(app?.dockerImage ?? "")
+  const importing = importContainerId !== null
+  const defaults = app ?? initialApp
+  const [name, setName] = useState(defaults?.name ?? "")
+  const [subdomain, setSubdomain] = useState(defaults?.subdomain ?? "")
+  const [port, setPort] = useState(defaults?.port ? String(defaults.port) : "")
+  const [tls, setTls] = useState(defaults?.tls ?? "only_https")
+  const [dockerImage, setDockerImage] = useState(defaults?.dockerImage ?? "")
   const [networkMode, setNetworkMode] = useState<AppResource["dockerNetworkMode"]>(
-    app?.dockerNetworkMode ?? "bridge"
+    defaults?.dockerNetworkMode ?? "bridge"
   )
   const [policyId, setPolicyId] = useState(
-    app?.policyId ?? searchParams.get("policyId") ?? "public"
+    defaults?.policyId ?? searchParams.get("policyId") ?? "public"
   )
   const [environment, setEnvironment] = useState<EnvironmentRow[]>(() =>
-    environmentFromRecord(app?.dockerEnvironment ?? {})
+    environmentFromRecord(defaults?.dockerEnvironment ?? {})
   )
   const [volumes, setVolumes] = useState<VolumeRow[]>(() =>
-    volumesFromRegistry(app?.dockerVolumes ?? [])
+    volumesFromRegistry(defaults?.dockerVolumes ?? [])
   )
   const [devices, setDevices] = useState<VolumeRow[]>(() =>
-    volumesFromRegistry(app?.dockerDevices ?? [])
+    volumesFromRegistry(defaults?.dockerDevices ?? [])
   )
   const [ports, setPorts] = useState<PortRow[]>(() =>
-    portsFromDocker(app?.dockerPorts ?? [])
+    portsFromDocker(defaults?.dockerPorts ?? [])
   )
   const [capabilities, setCapabilities] = useState<CapabilityRow[]>(() =>
-    capabilitiesFromValues(app?.dockerCapabilities ?? [])
+    capabilitiesFromValues(defaults?.dockerCapabilities ?? [])
   )
   const [userId, setUserId] = useState(
-    app?.dockerUserId === null || app?.dockerUserId === undefined
+    defaults?.dockerUserId === null || defaults?.dockerUserId === undefined
       ? ""
-      : String(app.dockerUserId)
+      : String(defaults.dockerUserId)
   )
   const [groupId, setGroupId] = useState(
-    app?.dockerGroupId === null || app?.dockerGroupId === undefined
+    defaults?.dockerGroupId === null || defaults?.dockerGroupId === undefined
       ? ""
-      : String(app.dockerGroupId)
+      : String(defaults.dockerGroupId)
   )
-  const [privileged, setPrivileged] = useState(app?.dockerPrivileged ?? false)
+  const [privileged, setPrivileged] = useState(defaults?.dockerPrivileged ?? false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -596,7 +660,11 @@ function CustomAppForm({
     setError(null)
     try {
       const saved = await apiRequest<AppResource>(
-        editing ? `/api/v1/app/${app.id}` : "/api/v1/app",
+        importing
+          ? `/api/v1/container/${encodeURIComponent(importContainerId)}/import`
+          : editing
+            ? `/api/v1/app/${app.id}`
+            : "/api/v1/app",
         {
           method: editing ? "PUT" : "POST",
           body: JSON.stringify({
@@ -623,7 +691,9 @@ function CustomAppForm({
       setError(
         getErrorMessage(
           requestError,
-          `App ${editing ? "update" : "creation"} failed.`
+          importing
+            ? "Container import failed."
+            : `App ${editing ? "update" : "creation"} failed.`
         )
       )
     } finally {
@@ -639,6 +709,15 @@ function CustomAppForm({
     >
       <div className="min-h-0 min-w-0 w-full max-w-full flex-1 overflow-x-hidden overflow-y-auto p-5 sm:p-6">
         <div className="min-w-0 max-w-full space-y-6">
+          {importing && (
+            <div className="flex items-start gap-3 rounded-xl border bg-muted/20 p-4 text-sm text-muted-foreground">
+              <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+              <p>
+                Importing replaces the existing container with a newly started,
+                app-managed container. Existing labels are not imported.
+              </p>
+            </div>
+          )}
           <div className="grid min-w-0 max-w-full gap-4 sm:grid-cols-2">
         <FormField label="Name">
           <Input
@@ -659,7 +738,13 @@ function CustomAppForm({
           value={policyId}
           onChange={setPolicyId}
           allowCreate
-          createReturnTo={editing ? undefined : "/apps?new=1&mode=custom"}
+          createReturnTo={
+            editing
+              ? undefined
+              : importing
+                ? `/apps?new=1&mode=custom&import=${encodeURIComponent(importContainerId)}`
+                : "/apps?new=1&mode=custom"
+          }
         />
         <FormField
           label={
@@ -740,26 +825,34 @@ function CustomAppForm({
         </div>
       </div>
       <div className="flex shrink-0 justify-end border-t bg-background px-5 py-4 sm:px-6">
-        {editing && (
+        {(editing || importing) && (
           <p className="mr-auto self-center text-xs text-muted-foreground">
-            Container changes require a restart.
+            {importing
+              ? "The old container is replaced when you import."
+              : "Container changes require a restart."}
           </p>
         )}
         <Button type="submit" disabled={submitting}>
           {submitting ? (
             <LoaderCircle className="mr-2 size-4 animate-spin" />
+          ) : importing ? (
+            <PackagePlus className="mr-2 size-4" />
           ) : editing ? (
             <Save className="mr-2 size-4" />
           ) : (
             <Box className="mr-2 size-4" />
           )}
           {submitting
-            ? editing
-              ? "Saving…"
-              : "Creating…"
-            : editing
-              ? "Save"
-              : "Create"}
+            ? importing
+              ? "Importing…"
+              : editing
+                ? "Saving…"
+                : "Creating…"
+            : importing
+              ? "Import"
+              : editing
+                ? "Save"
+                : "Create"}
         </Button>
       </div>
       </form>
@@ -1552,6 +1645,7 @@ function portsFromDocker(value: DockerPort[]): PortRow[] {
   return value.map((port) => ({
     id: createRowId(),
     host: String(port.host),
+    hostIp: port.hostIp,
     container: String(port.container),
     protocol: port.protocol,
   }))
@@ -1562,6 +1656,7 @@ function portsToDocker(value: PortRow[]): DockerPort[] {
     .filter((row) => row.host && row.container)
     .map((row) => ({
       host: Number(row.host),
+      ...(row.hostIp ? { hostIp: row.hostIp } : {}),
       container: Number(row.container),
       protocol: row.protocol,
     }))

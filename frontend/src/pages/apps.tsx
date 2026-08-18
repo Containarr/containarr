@@ -25,7 +25,7 @@ import { useApi } from "@/hooks/use-api"
 import { useStoredViewMode } from "@/hooks/use-stored-view-mode"
 import { getPublicAppUrl } from "@/lib/apps"
 import { apiRequest } from "@/lib/api"
-import type { AppResource, PolicyResource } from "@/lib/types"
+import type { AppResource, ContainerResource, PolicyResource } from "@/lib/types"
 
 export function AppsPage() {
   const apps = useApi<Record<string, AppResource>>("/api/v1/app", {
@@ -33,6 +33,7 @@ export function AppsPage() {
   })
   const domainRequest = useApi<{ domain: string }>("/api/v1/ddns/domain")
   const policies = useApi<Record<string, PolicyResource>>("/api/v1/firewall/policy")
+  const containers = useApi<ContainerResource[]>("/api/v1/container")
   const [view, setView] = useStoredViewMode("containarr-apps-view")
   const [installOpen, setInstallOpen] = useState(false)
   const [deleting, setDeleting] = useState<AppResource | null>(null)
@@ -41,6 +42,9 @@ export function AppsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const items = apps.status === "success" ? Object.values(apps.data) : []
+  const importableContainers = containers.status === "success"
+    ? containers.data.filter((container) => container.importable)
+    : []
   const domain =
     domainRequest.status === "success" ? domainRequest.data.domain : null
   const policyNames = policies.status === "success"
@@ -83,7 +87,17 @@ export function AppsPage() {
         <ErrorState message={apps.error} onRetry={apps.reload} />
       )}
       {apps.status === "success" && items.length === 0 && (
-        <EmptyState>No apps have been configured yet.</EmptyState>
+        <EmptyState>
+          {importableContainers.length > 0 ? (
+            <>
+              No apps have been configured yet. You can import {importableContainers.length}{" "}
+              existing {importableContainers.length === 1 ? "container" : "containers"}{" "}
+              from <Link to="/containers" className="font-medium text-foreground underline underline-offset-4">Containers</Link>.
+            </>
+          ) : (
+            "No apps have been configured yet."
+          )}
+        </EmptyState>
       )}
       {apps.status === "success" && items.length > 0 && (
         <>

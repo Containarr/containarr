@@ -1,5 +1,5 @@
 import { useMemo, useState, type KeyboardEvent } from "react"
-import { ArrowUpRight, Fingerprint, Link2, Package, Play, RefreshCw, Square, Trash2 } from "lucide-react"
+import { ArrowUpRight, Fingerprint, Link2, Package, PackagePlus, Play, RefreshCw, Square, Trash2 } from "lucide-react"
 import { Link, useNavigate } from "react-router-dom"
 
 import { ContainerAvatar } from "@/components/container-avatar"
@@ -148,6 +148,11 @@ function ContainersCardGrid({
                   icon: Link2,
                   onSelect: () => navigate(`/apps/${appId}`),
                 }] : [
+                  ...(container.importable ? [{
+                    label: "Import as app",
+                    icon: PackagePlus,
+                    onSelect: () => navigate(`/apps?new=1&mode=custom&import=${encodeURIComponent(container.id)}`),
+                  }] : []),
                   {
                     label: running ? "Stop" : "Start",
                     icon: running ? Square : Play,
@@ -331,6 +336,11 @@ function ContainersTable({
                 icon: Link2,
                 onSelect: () => navigate(`/apps/${appId}`),
               }] : [
+                ...(container.importable ? [{
+                  label: "Import as app",
+                  icon: PackagePlus,
+                  onSelect: () => navigate(`/apps?new=1&mode=custom&import=${encodeURIComponent(container.id)}`),
+                }] : []),
                 {
                   label: running ? "Stop" : "Start",
                   icon: running ? Square : Play,

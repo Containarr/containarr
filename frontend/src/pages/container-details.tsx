@@ -10,6 +10,7 @@ import {
   LayoutGrid,
   LoaderCircle,
   Network,
+  PackagePlus,
   Settings2,
   Tag,
   Terminal,
@@ -222,6 +223,16 @@ export function ContainerDetailsPage() {
               state={resource.state}
               onComplete={container.reload}
             />
+            {resource.importable && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate(`/apps?new=1&mode=custom&import=${encodeURIComponent(resource.id)}`)}
+              >
+                <PackagePlus className="mr-2 size-4" />
+                Import as app
+              </Button>
+            )}
             <Button
               type="button"
               variant="outline"
