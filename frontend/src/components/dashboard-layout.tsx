@@ -5,6 +5,7 @@ import {
   DatabaseBackup,
   Download,
   Globe2,
+  KeyRound,
   LayoutGrid,
   LogOut,
   Menu,
@@ -16,6 +17,7 @@ import {
 import { NavLink, Outlet, useLocation } from "react-router-dom"
 
 import { ThemeSwitch } from "@/components/theme-switch"
+import { ChangePasswordDialog } from "@/components/change-password-dialog"
 import { useApi } from "@/hooks/use-api"
 import { useAuth } from "@/hooks/use-auth"
 import {
@@ -320,9 +322,33 @@ function SidebarDomainPrompt({ onNavigate }: { onNavigate?: () => void }) {
 
 function SidebarFooter() {
   const { state, logout } = useAuth()
+  const accountMenu = useRef<HTMLDivElement>(null)
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false)
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const username = state.status === "ready" ? state.data.user?.username : null
+
+  useEffect(() => {
+    if (!accountMenuOpen) return
+
+    function closeMenu(event: MouseEvent) {
+      if (!accountMenu.current?.contains(event.target as Node)) {
+        setAccountMenuOpen(false)
+      }
+    }
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setAccountMenuOpen(false)
+    }
+
+    document.addEventListener("mousedown", closeMenu)
+    window.addEventListener("keydown", closeOnEscape)
+    return () => {
+      document.removeEventListener("mousedown", closeMenu)
+      window.removeEventListener("keydown", closeOnEscape)
+    }
+  }, [accountMenuOpen])
 
   async function signOut() {
     setLoggingOut(true)
@@ -339,11 +365,36 @@ function SidebarFooter() {
 
   return (
     <div className="shrink-0 space-y-3 border-t px-3 pt-3 pb-5">
-      <div className="flex items-center gap-2 px-1">
+      <div ref={accountMenu} className="relative flex items-center gap-2 px-1">
         <UserRound className="size-4 shrink-0 text-muted-foreground" />
-        <span className="min-w-0 flex-1 truncate text-sm font-medium">
+        <button
+          type="button"
+          aria-haspopup="menu"
+          aria-expanded={accountMenuOpen}
+          onClick={() => setAccountMenuOpen((open) => !open)}
+          className="min-w-0 flex-1 truncate rounded-sm text-left text-sm font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+        >
           {username}
-        </span>
+        </button>
+        {accountMenuOpen && (
+          <div
+            role="menu"
+            className="absolute bottom-full left-0 z-50 mb-2 w-52 rounded-lg border bg-popover p-1 text-popover-foreground shadow-lg"
+          >
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setAccountMenuOpen(false)
+                setPasswordDialogOpen(true)
+              }}
+              className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
+            >
+              <KeyRound className="size-4 text-muted-foreground" />
+              Change Password
+            </button>
+          </div>
+        )}
         <button
           type="button"
           title="Sign out"
@@ -357,6 +408,10 @@ function SidebarFooter() {
       </div>
       {error && <p className="px-1 text-xs text-red-600 dark:text-red-400">{error}</p>}
       <ThemeSwitch />
+      <ChangePasswordDialog
+        open={passwordDialogOpen}
+        onClose={() => setPasswordDialogOpen(false)}
+      />
     </div>
   )
 }
