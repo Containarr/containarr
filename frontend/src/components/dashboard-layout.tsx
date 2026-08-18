@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import {
   ArrowRight,
   Container,
@@ -18,6 +18,11 @@ import { NavLink, Outlet, useLocation } from "react-router-dom"
 import { ThemeSwitch } from "@/components/theme-switch"
 import { useApi } from "@/hooks/use-api"
 import { useAuth } from "@/hooks/use-auth"
+import {
+  checkDomainConnection,
+  DOMAIN_CONNECTION_CHECKED_EVENT,
+  type DomainConnectionChecked,
+} from "@/lib/domain-connection"
 import type { ContainarrUpdateStatus, DomainSettings } from "@/lib/types"
 
 const navigation = [
@@ -35,6 +40,9 @@ const settingsNavigation = [
 
 export function DashboardLayout() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const domainRequest = useApi<DomainSettings>("/api/v1/ddns/domain")
+  const [domainConnectionFailed, setDomainConnectionFailed] = useState(false)
+  const latestDomainCheck = useRef(0)
   const location = useLocation()
   const pageTitle = navigation.find(({ to }) =>
     location.pathname.startsWith(to)
@@ -53,13 +61,43 @@ export function DashboardLayout() {
     return () => window.removeEventListener("keydown", onKeyDown)
   }, [menuOpen])
 
+  useEffect(() => {
+    function onDomainConnectionChecked(event: Event) {
+      const detail = (event as CustomEvent<DomainConnectionChecked>).detail
+      if (detail.checkId < latestDomainCheck.current) return
+      latestDomainCheck.current = detail.checkId
+      setDomainConnectionFailed(detail.failed)
+    }
+
+    window.addEventListener(
+      DOMAIN_CONNECTION_CHECKED_EVENT,
+      onDomainConnectionChecked
+    )
+    return () =>
+      window.removeEventListener(
+        DOMAIN_CONNECTION_CHECKED_EVENT,
+        onDomainConnectionChecked
+      )
+  }, [])
+
+  useEffect(() => {
+    if (domainRequest.status !== "success") return
+
+    const controller = new AbortController()
+    void checkDomainConnection(domainRequest.data.domain, {
+      signal: controller.signal,
+    }).catch(() => {})
+
+    return () => controller.abort()
+  }, [domainRequest.status, domainRequest.data])
+
   return (
     <div className="min-h-dvh bg-muted/25 md:grid md:grid-cols-[15rem_minmax(0,1fr)]">
       <aside className="sticky top-0 hidden h-dvh flex-col border-r bg-sidebar text-sidebar-foreground md:flex">
         <div className="flex h-20 items-center px-5">
           <Brand />
         </div>
-        <SidebarNavigation />
+        <SidebarNavigation domainConnectionFailed={domainConnectionFailed} />
         <SidebarDomainPrompt />
         <SidebarFooter />
       </aside>
@@ -103,7 +141,10 @@ export function DashboardLayout() {
                   <X className="size-5" />
                 </button>
               </div>
-              <SidebarNavigation onNavigate={() => setMenuOpen(false)} />
+              <SidebarNavigation
+                domainConnectionFailed={domainConnectionFailed}
+                onNavigate={() => setMenuOpen(false)}
+              />
               <SidebarDomainPrompt onNavigate={() => setMenuOpen(false)} />
               <SidebarFooter />
             </aside>
@@ -145,7 +186,13 @@ function Brand({ onNavigate }: { onNavigate?: () => void }) {
   )
 }
 
-function SidebarNavigation({ onNavigate }: { onNavigate?: () => void }) {
+function SidebarNavigation({
+  domainConnectionFailed,
+  onNavigate,
+}: {
+  domainConnectionFailed: boolean
+  onNavigate?: () => void
+}) {
   const updateRequest = useApi<ContainarrUpdateStatus>("/api/v1/update", {
     pollInterval: 1000 * 60 * 60,
   })
@@ -204,6 +251,13 @@ function SidebarNavigation({ onNavigate }: { onNavigate?: () => void }) {
                 className="ml-auto size-2 rounded-full bg-blue-500 shadow-[0_0_0_3px_rgba(59,130,246,0.14)]"
                 title="Update available"
                 aria-label="Update available"
+              />
+            )}
+            {label === "Domain" && domainConnectionFailed && (
+              <span
+                className="ml-auto size-2 rounded-full bg-red-500 shadow-[0_0_0_3px_rgba(239,68,68,0.14)]"
+                title="Domain connection check failed"
+                aria-label="Domain connection check failed"
               />
             )}
           </NavLink>

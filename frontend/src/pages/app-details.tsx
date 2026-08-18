@@ -219,7 +219,7 @@ export function AppDetailsPage() {
             <Detail label="Subdomain" value={resource.subdomain || "—"} />
             <Detail label="TLS" value={getTlsMenuLabel(resource.tls)} />
             <Detail
-              label="Firewall policy"
+              label="Firewall Policy"
               value={
                 policies.status === "success"
                   ? policies.data[resource.policyId]?.name ?? "Unknown"
@@ -235,7 +235,7 @@ export function AppDetailsPage() {
                 app.reload()
               }}
             />
-            <Detail label="Container port" value={resource.port ?? "—"} mono />
+            <Detail label="Container Port" value={resource.port ?? "—"} mono />
             <Detail
               label="Network"
               value={resource.dockerNetworkMode === "host" ? "Host" : "Bridge"}

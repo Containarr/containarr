@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cacheApiResponse, useApi } from "@/hooks/use-api"
 import { apiRequest } from "@/lib/api"
+import { checkDomainConnection } from "@/lib/domain-connection"
 import type { DomainReachability, DomainSettings } from "@/lib/types"
 
 export function DomainSettingsPage() {
@@ -103,14 +104,10 @@ export function DomainSettingsPage() {
       setSaving(false)
       setChecking(true)
       try {
-        setReachability(
-          await apiRequest<DomainReachability>("/api/v1/ddns/domain/check", {
-            method: "POST",
-            body: JSON.stringify({
-              domain: updated.customDomain ?? updated.generatedDomain,
-            }),
-          })
-        )
+        const updatedReachability = await checkDomainConnection(updated.domain, {
+          force: true,
+        })
+        setReachability(updatedReachability)
       } catch (requestError) {
         setCheckError(
           requestError instanceof Error
@@ -135,16 +132,13 @@ export function DomainSettingsPage() {
     setChecking(true)
     setCheckError(null)
     setReachability(null)
+    const checkedDomain =
+      domainType === "custom" ? normalizedDomain : settings.generatedDomain
     try {
-      setReachability(
-        await apiRequest<DomainReachability>("/api/v1/ddns/domain/check", {
-          method: "POST",
-          body: JSON.stringify({
-            domain:
-              domainType === "custom" ? normalizedDomain : settings.generatedDomain,
-          }),
-        })
-      )
+      const updatedReachability = await checkDomainConnection(checkedDomain, {
+        force: true,
+      })
+      setReachability(updatedReachability)
     } catch (requestError) {
       setCheckError(
         requestError instanceof Error
