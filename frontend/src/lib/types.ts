@@ -70,6 +70,7 @@ export type RegistryApp = {
   category: string
   version: number
   name: string
+  logoUrl: string
   port: number
   description: string
   website: string

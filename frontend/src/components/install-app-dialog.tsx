@@ -331,7 +331,7 @@ function InstallAppDialogContent({ onClose, onCreated }: DialogProps) {
                       >
                         <div className="flex items-start gap-3">
                           <AppLogo
-                            registryId={id}
+                            logoUrl={app.logoUrl}
                             alt={`${app.name} logo`}
                             className="size-11"
                           />
@@ -449,7 +449,7 @@ function RegistryInstallForm({
         <div className="min-w-0 max-w-full space-y-6">
           <div className="flex items-start gap-4 rounded-xl border bg-muted/20 p-4">
             <AppLogo
-              registryId={registryId}
+              logoUrl={app.logoUrl}
               alt={`${app.name} logo`}
               className="size-14"
             />

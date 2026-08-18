@@ -7,21 +7,19 @@ type AppLogoProps = {
   alt: string
   appId?: string
   className?: string
-  registryId?: string
+  logoUrl?: string
 }
 
 export function AppLogo({
   alt,
   appId,
   className,
-  registryId,
+  logoUrl,
 }: AppLogoProps) {
   const [failed, setFailed] = useState(false)
   const src = appId
     ? `/api/v1/app/${appId}/logo`
-    : registryId
-      ? `https://registry.containarr.com/${registryId}.png`
-      : null
+    : logoUrl ?? null
 
   useEffect(() => setFailed(false), [src])
 
