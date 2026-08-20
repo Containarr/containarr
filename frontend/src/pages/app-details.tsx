@@ -361,7 +361,7 @@ export function AppDetailsPage() {
           if (
             dockerPropertiesChanged
             && !saved.disabled
-            && saved.state?.toLowerCase() === "running"
+            && saved.containerId
           ) {
             setRecreatePrompt(saved)
           }

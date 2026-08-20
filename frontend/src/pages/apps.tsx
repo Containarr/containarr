@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type KeyboardEvent } from "react"
-import { ArrowUpRight, Globe2, Pencil, Plus, Power, PowerOff, Trash2 } from "lucide-react"
+import { ArrowUpRight, Globe2, Pencil, Plus, Power, PowerOff, ShieldCheck, Trash2 } from "lucide-react"
 import { Link, useNavigate, useSearchParams } from "react-router-dom"
 
 import { AppLogo } from "@/components/app-logo"
@@ -243,8 +243,13 @@ function AppsCardGrid({
             >
               <Link
                 to={app.policyId === "public" ? "/firewall" : `/firewall?edit=${encodeURIComponent(app.policyId)}`}
-                className="shrink-0 font-medium underline-offset-4 hover:text-foreground hover:underline"
+                className="inline-flex shrink-0 items-center gap-1.5 font-medium underline-offset-4 hover:text-foreground hover:underline"
               >
+                {app.policyId === "public" ? (
+                  <Globe2 className="size-3.5 shrink-0" />
+                ) : (
+                  <ShieldCheck className="size-3.5 shrink-0" />
+                )}
                 {policyNames[app.policyId] ?? "Unknown"}
               </Link>
               {publicUrl && (
@@ -407,8 +412,13 @@ function AppsTable({
                 <td className="px-4 py-3 text-muted-foreground">
                   <Link
                     to={app.policyId === "public" ? "/firewall" : `/firewall?edit=${encodeURIComponent(app.policyId)}`}
-                    className="underline-offset-4 hover:text-foreground hover:underline"
+                    className="inline-flex items-center gap-2 underline-offset-4 hover:text-foreground hover:underline"
                   >
+                    {app.policyId === "public" ? (
+                      <Globe2 className="size-4 shrink-0" />
+                    ) : (
+                      <ShieldCheck className="size-4 shrink-0" />
+                    )}
                     {policyNames[app.policyId] ?? "Unknown"}
                   </Link>
                 </td>

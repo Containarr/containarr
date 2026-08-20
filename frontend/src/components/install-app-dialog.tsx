@@ -4,6 +4,7 @@ import {
   Box,
   Check,
   ChevronDown,
+  Globe2,
   Info,
   LoaderCircle,
   Minus,
@@ -11,6 +12,7 @@ import {
   Plus,
   Save,
   Search,
+  ShieldCheck,
   X,
 } from "lucide-react"
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom"
@@ -896,18 +898,29 @@ function PolicyField({
   const selectedPolicy = policies.status === "success" ? policies.data[value] : null
 
   return (
-    <FormField label="Firewall Policy">
+    <div className="block min-w-0 max-w-full space-y-1.5">
+      <span className="block text-sm font-medium">Firewall Policy</span>
       <div ref={menu} className="relative">
         <button
           type="button"
           role="combobox"
+          aria-label="Firewall Policy"
           aria-expanded={open}
           aria-haspopup="listbox"
           disabled={policies.status !== "success"}
           onClick={() => setOpen(!open)}
           className="flex h-9 w-full cursor-pointer items-center justify-between rounded-lg border bg-background px-3 text-left text-sm shadow-xs outline-none focus:border-foreground/30 focus:ring-2 focus:ring-ring/30 disabled:cursor-default disabled:opacity-50"
         >
-          <span>{selectedPolicy?.name ?? "Loading policies…"}</span>
+          <span className="flex min-w-0 items-center gap-2">
+            {selectedPolicy && (
+              selectedPolicy.id === "public" ? (
+                <Globe2 className="size-4 shrink-0 text-muted-foreground" />
+              ) : (
+                <ShieldCheck className="size-4 shrink-0 text-muted-foreground" />
+              )
+            )}
+            <span className="truncate">{selectedPolicy?.name ?? "Loading policies…"}</span>
+          </span>
           <ChevronDown className={`size-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
         </button>
 
@@ -926,7 +939,14 @@ function PolicyField({
                   }}
                   className="flex w-full cursor-pointer items-center justify-between rounded-md px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
                 >
-                  {policy.name}
+                  <span className="flex min-w-0 items-center gap-2">
+                    {policy.id === "public" ? (
+                      <Globe2 className="size-4 shrink-0 text-muted-foreground" />
+                    ) : (
+                      <ShieldCheck className="size-4 shrink-0 text-muted-foreground" />
+                    )}
+                    <span className="truncate">{policy.name}</span>
+                  </span>
                   {policy.id === value && <Check className="size-4" />}
                 </button>
               ))}
@@ -949,7 +969,7 @@ function PolicyField({
           </div>
         )}
       </div>
-    </FormField>
+    </div>
   )
 }
 
