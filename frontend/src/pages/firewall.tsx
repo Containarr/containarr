@@ -207,7 +207,7 @@ function PolicyCardGrid({
             ) : (
               <div className="flex flex-wrap gap-1.5">
                 {policy.allowedIps.map((entry) => (
-                  <span key={entry} className="rounded-md bg-muted px-2 py-1 font-mono text-xs">{entry}</span>
+                  <span key={entry} title={getIpv4CidrRange(entry)} className="rounded-md bg-muted px-2 py-1 font-mono text-xs">{entry}</span>
                 ))}
                 {policy.allowedIps.length === 0 && (
                   <p className="text-xs text-muted-foreground">No addresses are allowed.</p>
@@ -325,7 +325,7 @@ function PolicyTable({
                   <span className="text-muted-foreground">All addresses</span>
                 ) : (
                   <div className="flex flex-wrap gap-1.5">
-                    {policy.allowedIps.map((entry) => <span key={entry} className="rounded-md bg-muted px-2 py-1 font-mono text-xs">{entry}</span>)}
+                    {policy.allowedIps.map((entry) => <span key={entry} title={getIpv4CidrRange(entry)} className="rounded-md bg-muted px-2 py-1 font-mono text-xs">{entry}</span>)}
                     {policy.allowedIps.length === 0 && <span className="text-muted-foreground">None</span>}
                   </div>
                 )}
@@ -376,6 +376,9 @@ function PolicyDialog({
   const [entry, setEntry] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const suggestions = useApi<string[]>("/api/v1/firewall/suggestions")
+  const suggestedIps = (suggestions.status === "success" ? suggestions.data : ["0.0.0.0/0"])
+    .filter((ip) => !allowedIps.includes(ip))
 
   useEffect(() => {
     function onKeyDown(event: globalThis.KeyboardEvent) {
@@ -447,7 +450,7 @@ function PolicyDialog({
                 {allowedIps.length > 0 && (
                   <div className="mb-2 flex flex-wrap gap-1.5">
                     {allowedIps.map((ip) => (
-                      <span key={ip} className="inline-flex items-center gap-1 rounded-md bg-muted py-1 pr-1 pl-2 font-mono text-xs">
+                      <span key={ip} title={getIpv4CidrRange(ip)} className="inline-flex items-center gap-1 rounded-md bg-muted py-1 pr-1 pl-2 font-mono text-xs">
                         {ip}
                         <button type="button" aria-label={`Remove ${ip}`} className="flex size-5 items-center justify-center rounded hover:bg-background" onClick={() => setAllowedIps(allowedIps.filter((item) => item !== ip))}>
                           <X className="size-3" />
@@ -474,6 +477,22 @@ function PolicyDialog({
                 </div>
               </div>
               <p className="mt-1.5 text-xs text-muted-foreground">Press Enter after an IP address or CIDR range.</p>
+              {suggestedIps.length > 0 && (
+                <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                  <span className="mr-0.5 text-xs text-muted-foreground">Suggestions</span>
+                  {suggestedIps.map((ip) => (
+                    <button
+                      key={ip}
+                      type="button"
+                      title={getIpv4CidrRange(ip)}
+                      className="rounded-md border px-2 py-1 font-mono text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      onClick={() => setAllowedIps([...allowedIps, ip])}
+                    >
+                      {ip}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>}
@@ -489,4 +508,36 @@ function PolicyDialog({
       </div>
     </div>
   )
+}
+
+function getIpv4CidrRange(value: string) {
+  const [address, prefixText, extra] = value.split("/")
+  const octets = address.split(".").map(Number)
+  const prefix = Number(prefixText)
+  if (
+    extra !== undefined
+    || prefixText === undefined
+    || !Number.isInteger(prefix)
+    || prefix < 0
+    || prefix > 32
+    || octets.length !== 4
+    || octets.some((octet) => !Number.isInteger(octet) || octet < 0 || octet > 255)
+  ) return undefined
+
+  const numericAddress = octets.reduce((result, octet) => result * 256 + octet, 0)
+  const blockSize = 2 ** (32 - prefix)
+  const first = Math.floor(numericAddress / blockSize) * blockSize
+  const last = first + blockSize - 1
+
+  return `${[
+    Math.floor(first / 16777216),
+    Math.floor(first / 65536) % 256,
+    Math.floor(first / 256) % 256,
+    first % 256,
+  ].join(".")} - ${[
+    Math.floor(last / 16777216),
+    Math.floor(last / 65536) % 256,
+    Math.floor(last / 256) % 256,
+    last % 256,
+  ].join(".")}`
 }
