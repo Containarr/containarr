@@ -99,7 +99,6 @@ Open http://localhost in your web browser to set-up Containarr, and run your fir
 - Create a native iOS app. _Maybe Android?_
 - Create a Command-Line Interface `@containarr/cli`.
 - Expand the [Apps Registry](https://github.com/Containarr/registry.containarr.com).
-- Import existing containers as apps
 
 # Architecture
 
