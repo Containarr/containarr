@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type KeyboardEvent } from "react"
-import { ArrowUpRight, Globe2, Pencil, Plus, Power, PowerOff, ShieldCheck, Trash2 } from "lucide-react"
+import { ArrowUpRight, FileDown, Globe2, Pencil, Plus, Power, PowerOff, ShieldCheck, Trash2 } from "lucide-react"
 import { Link, useNavigate, useSearchParams } from "react-router-dom"
 
 import { AppLogo } from "@/components/app-logo"
@@ -23,7 +23,7 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/card"
 import { ViewToggle } from "@/components/view-toggle"
 import { useApi } from "@/hooks/use-api"
 import { useStoredViewMode } from "@/hooks/use-stored-view-mode"
-import { getPublicAppUrl } from "@/lib/apps"
+import { exportAppYaml, getPublicAppUrl } from "@/lib/apps"
 import { apiRequest } from "@/lib/api"
 import type { AppResource, ContainerResource, PolicyResource } from "@/lib/types"
 
@@ -198,6 +198,11 @@ function AppsCardGrid({
             onSelect: () => { window.open(publicUrl, "_blank", "noopener,noreferrer") },
           }] : []),
           {
+            label: "Export as YAML",
+            icon: FileDown,
+            onSelect: () => exportAppYaml(app),
+          },
+          {
             label: app.disabled ? "Enable" : "Disable",
             icon: app.disabled ? Power : PowerOff,
             onSelect: () => apiRequest(`/api/v1/app/${app.id}/disabled`, {
@@ -363,6 +368,11 @@ function AppsTable({
                 icon: Globe2,
                 onSelect: () => { window.open(publicUrl, "_blank", "noopener,noreferrer") },
               }] : []),
+              {
+                label: "Export as YAML",
+                icon: FileDown,
+                onSelect: () => exportAppYaml(app),
+              },
               {
                 label: app.disabled ? "Enable" : "Disable",
                 icon: app.disabled ? Power : PowerOff,
