@@ -167,6 +167,9 @@ export type DomainSettings = {
   domain: string
   customDomain: string | null
   generatedDomain: string
+  httpPort: number
+  httpsPort: number
+  installationIp: string | null
 }
 
 export type BackupSettings = {

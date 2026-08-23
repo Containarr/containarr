@@ -66,12 +66,16 @@ export function DomainSettingsPage() {
   const settings = savedSettings ?? domainRequest.data
   const normalizedDomain = domain.trim().toLowerCase().replace(/\.$/, "")
   const cnameName = `*.${normalizedDomain || "homelab.yourdomain.com"}`
-  const installationIp = /^(?:10\.|192\.168\.|172\.(?:1[6-9]|2\d|3[01])\.)/.test(
-    window.location.hostname
-  )
-    ? window.location.hostname
-    : null
-  const installationTarget = installationIp ?? "your installation's LAN IP"
+  const browserInstallationIp =
+    /^(?:10\.|192\.168\.|172\.(?:1[6-9]|2\d|3[01])\.)/.test(
+      window.location.hostname
+    )
+      ? window.location.hostname
+      : null
+  const installationTarget =
+    browserInstallationIp ??
+    settings.installationIp ??
+    "your installation's LAN IP"
   const savedDomainType = settings.customDomain ? "custom" : "containarr"
   const unchanged =
     domainType === savedDomainType &&
@@ -368,8 +372,14 @@ export function DomainSettingsPage() {
               </p>
 
               <dl className="mt-4 grid overflow-hidden rounded-lg border sm:grid-cols-[7rem_1fr]">
-                <DnsRow label="HTTP" value={`TCP 80 → ${installationTarget}:80`} />
-                <DnsRow label="HTTPS" value={`TCP 443 → ${installationTarget}:443`} />
+                <DnsRow
+                  label="HTTP"
+                  value={`TCP 80 → ${installationTarget}:${settings.httpPort}`}
+                />
+                <DnsRow
+                  label="HTTPS"
+                  value={`TCP 443 → ${installationTarget}:${settings.httpsPort}`}
+                />
               </dl>
             </CardContent>
           </Card>

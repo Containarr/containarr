@@ -15,12 +15,12 @@ export async function apiRequest<T>(path: string, init?: RequestInit) {
       window.dispatchEvent(new Event("containarr:unauthorized"))
     }
 
-    let message = detail
+    let message = ""
     try {
       const body = JSON.parse(detail) as { error?: unknown }
       if (typeof body.error === "string") message = body.error
     } catch {
-      // Keep the plain-text response.
+      if (!detail.trimStart().startsWith("<")) message = detail
     }
 
     throw new Error(
