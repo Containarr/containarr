@@ -45,7 +45,7 @@ function ProxyDialogContent({
   const domainRequest = useApi<{ domain: string }>("/api/v1/ddns/domain")
   const domain =
     domainRequest.status === "success" ? domainRequest.data.domain : "…"
-  const [subdomain, setSubdomain] = useState(proxy?.subdomain ?? "")
+  const [subdomain, setSubdomain] = useState((proxy?.subdomain ?? "").toLowerCase())
   const [tls, setTls] = useState(proxy?.tls ?? "only_https")
   const [sourceUrl, setSourceUrl] = useState(proxy?.sourceUrl ?? "")
   const [policyId, setPolicyId] = useState(
@@ -164,7 +164,7 @@ function ProxyDialogContent({
                     required
                     pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
                     value={subdomain}
-                    onChange={(event) => setSubdomain(event.target.value)}
+                    onChange={(event) => setSubdomain(event.target.value.toLowerCase())}
                     placeholder="unifi"
                     className="h-full min-w-0 rounded-none border-0 font-mono text-xs shadow-none focus:ring-0"
                   />

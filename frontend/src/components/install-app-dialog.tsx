@@ -577,7 +577,7 @@ function RegistryInstallForm({
   registryId: string
 }) {
   const [searchParams] = useSearchParams()
-  const [subdomain, setSubdomain] = useState(registryId)
+  const [subdomain, setSubdomain] = useState(registryId.toLowerCase())
   const [tls, setTls] = useState("only_https")
   const [networkMode, setNetworkMode] = useState(app.dockerNetworkMode || "bridge")
   const [policyId, setPolicyId] = useState(searchParams.get("policyId") ?? "public")
@@ -764,7 +764,7 @@ function CustomAppForm({
   const importing = importContainerId !== null
   const defaults = app ?? initialApp
   const [name, setName] = useState(defaults?.name ?? "")
-  const [subdomain, setSubdomain] = useState(defaults?.subdomain ?? "")
+  const [subdomain, setSubdomain] = useState((defaults?.subdomain ?? "").toLowerCase())
   const [port, setPort] = useState(defaults?.port ? String(defaults.port) : "")
   const [tls, setTls] = useState(defaults?.tls ?? "only_https")
   const [dockerImage, setDockerImage] = useState(defaults?.dockerImage ?? "")
@@ -1311,8 +1311,9 @@ function SubdomainField({
           <div className="flex h-10 min-w-0 flex-1 overflow-hidden rounded-r-lg border border-l-0 bg-background shadow-xs focus-within:border-foreground/30 focus-within:ring-2 focus-within:ring-ring/30">
             <Input
               required
+              pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
               value={value}
-              onChange={(event) => onChange(event.target.value)}
+              onChange={(event) => onChange(event.target.value.toLowerCase())}
               placeholder="my-app"
               className="h-full min-w-16 w-auto flex-1 rounded-none border-0 font-mono text-xs shadow-none focus:ring-0"
             />
