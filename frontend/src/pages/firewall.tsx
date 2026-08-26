@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent, type KeyboardEvent } from "react"
 import { Globe2, LoaderCircle, Pencil, Plus, ShieldCheck, Trash2, X } from "lucide-react"
-import { useNavigate, useSearchParams } from "react-router-dom"
+import { Link, useNavigate, useSearchParams } from "react-router-dom"
 
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { MobileHeaderAction } from "@/components/mobile-header-action"
@@ -16,10 +16,11 @@ import { ViewToggle } from "@/components/view-toggle"
 import { useApi } from "@/hooks/use-api"
 import { useStoredViewMode } from "@/hooks/use-stored-view-mode"
 import { apiRequest } from "@/lib/api"
-import type { PolicyResource } from "@/lib/types"
+import type { AppResource, PolicyResource } from "@/lib/types"
 
 export function FirewallPage() {
   const policies = useApi<Record<string, PolicyResource>>("/api/v1/firewall/policy")
+  const apps = useApi<Record<string, AppResource>>("/api/v1/app")
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const [dialogPolicy, setDialogPolicy] = useState<PolicyResource | null | undefined>(undefined)
@@ -39,6 +40,12 @@ export function FirewallPage() {
   }, [searchParams, policies.status])
 
   const items = policies.status === "success" ? Object.values(policies.data) : []
+  const appUsage = apps.status === "success"
+    ? Object.values(apps.data).reduce<Record<string, number>>((counts, app) => {
+        counts[app.policyId] = (counts[app.policyId] ?? 0) + 1
+        return counts
+      }, {})
+    : null
 
   return (
     <section>
@@ -76,19 +83,19 @@ export function FirewallPage() {
       )}
       {policies.status === "success" && items.length > 0 && (
         view === "cards" ? (
-          <PolicyCardGrid items={items} onEdit={setDialogPolicy} onDelete={(policy) => {
+          <PolicyCardGrid items={items} appUsage={appUsage} onEdit={setDialogPolicy} onDelete={(policy) => {
             setDeleteError(null)
             setDeleting(policy)
           }} />
         ) : (
           <>
             <div className="sm:hidden">
-              <PolicyCardGrid items={items} onEdit={setDialogPolicy} onDelete={(policy) => {
+              <PolicyCardGrid items={items} appUsage={appUsage} onEdit={setDialogPolicy} onDelete={(policy) => {
                 setDeleteError(null)
                 setDeleting(policy)
               }} />
             </div>
-            <PolicyTable items={items} onEdit={setDialogPolicy} onDelete={(policy) => {
+            <PolicyTable items={items} appUsage={appUsage} onEdit={setDialogPolicy} onDelete={(policy) => {
               setDeleteError(null)
               setDeleting(policy)
             }} />
@@ -146,10 +153,12 @@ export function FirewallPage() {
 }
 
 function PolicyCardGrid({
+  appUsage,
   items,
   onDelete,
   onEdit,
 }: {
+  appUsage: Record<string, number> | null
   items: PolicyResource[]
   onDelete: (policy: PolicyResource) => void
   onEdit: (policy: PolicyResource) => void
@@ -193,8 +202,17 @@ function PolicyCardGrid({
                 <CardTitle className="truncate text-base">{policy.name}</CardTitle>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {policy.id === "public"
-                    ? "Everyone can access apps with this policy."
+                    ? "Everyone can access apps"
                     : `${policy.allowedIps.length} allowed ${policy.allowedIps.length === 1 ? "source" : "sources"}`}
+                  <span aria-hidden="true"> ・ </span>
+                  <Link
+                    to={`/apps?policy=${encodeURIComponent(policy.id)}`}
+                    className="font-medium underline-offset-4 hover:text-foreground hover:underline"
+                  >
+                    {appUsage
+                      ? `Used in ${appUsage[policy.id] ?? 0} ${(appUsage[policy.id] ?? 0) === 1 ? "app" : "apps"}`
+                      : "View apps"}
+                  </Link>
                 </p>
               </div>
             </div>
@@ -235,16 +253,18 @@ function PolicyCardGrid({
 }
 
 function PolicyTable({
+  appUsage,
   items,
   onDelete,
   onEdit,
 }: {
+  appUsage: Record<string, number> | null
   items: PolicyResource[]
   onDelete: (policy: PolicyResource) => void
   onEdit: (policy: PolicyResource) => void
 }) {
   const [sort, setSort] = useState<{
-    key: "name" | "sources" | "allowed"
+    key: "name" | "sources" | "allowed" | "apps"
     direction: SortDirection
   } | null>(null)
   const sortedItems = useMemo(() => {
@@ -254,21 +274,25 @@ function PolicyTable({
         ? left.name
         : sort.key === "sources"
           ? String(left.id === "public" ? Number.MAX_SAFE_INTEGER : left.allowedIps.length)
-          : left.allowedIps.join(" ")
+          : sort.key === "apps"
+            ? String(appUsage?.[left.id] ?? 0)
+            : left.allowedIps.join(" ")
       const rightValue = sort.key === "name"
         ? right.name
         : sort.key === "sources"
           ? String(right.id === "public" ? Number.MAX_SAFE_INTEGER : right.allowedIps.length)
-          : right.allowedIps.join(" ")
+          : sort.key === "apps"
+            ? String(appUsage?.[right.id] ?? 0)
+            : right.allowedIps.join(" ")
       const comparison = leftValue.localeCompare(rightValue, undefined, {
         numeric: true,
         sensitivity: "base",
       })
       return sort.direction === "asc" ? comparison : -comparison
     })
-  }, [items, sort])
+  }, [appUsage, items, sort])
 
-  function changeSort(key: "name" | "sources" | "allowed") {
+  function changeSort(key: "name" | "sources" | "allowed" | "apps") {
     setSort((current) => ({
       key,
       direction: current?.key === key && current.direction === "asc" ? "desc" : "asc",
@@ -283,6 +307,7 @@ function PolicyTable({
             <SortableTableHeader label="Policy" active={sort?.key === "name"} direction={sort?.direction || "asc"} onClick={() => changeSort("name")} />
             <SortableTableHeader label="Sources" active={sort?.key === "sources"} direction={sort?.direction || "asc"} onClick={() => changeSort("sources")} />
             <SortableTableHeader label="Allowed IPs" active={sort?.key === "allowed"} direction={sort?.direction || "asc"} onClick={() => changeSort("allowed")} />
+            <SortableTableHeader label="Apps" active={sort?.key === "apps"} direction={sort?.direction || "asc"} onClick={() => changeSort("apps")} />
             <th className="w-12 px-2 py-3"><span className="sr-only">Actions</span></th>
           </tr>
         </thead>
@@ -329,6 +354,16 @@ function PolicyTable({
                     {policy.allowedIps.length === 0 && <span className="text-muted-foreground">None</span>}
                   </div>
                 )}
+              </td>
+              <td className="px-4 py-3">
+                <Link
+                  to={`/apps?policy=${encodeURIComponent(policy.id)}`}
+                  className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                >
+                  {appUsage
+                    ? `Used in ${appUsage[policy.id] ?? 0} ${(appUsage[policy.id] ?? 0) === 1 ? "app" : "apps"}`
+                    : "View apps"}
+                </Link>
               </td>
               <td className="w-12 px-2 py-3">
                 <ResourceMenu
