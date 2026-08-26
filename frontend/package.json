@@ -19,7 +19,8 @@
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.9.0",
     "recharts": "^3.10.1",
-    "tailwind-merge": "^3.4.0"
+    "tailwind-merge": "^3.4.0",
+    "yaml": "^2.9.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.0",

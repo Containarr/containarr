@@ -4,6 +4,7 @@ import {
   Box,
   Check,
   ChevronDown,
+  FileUp,
   Globe2,
   Info,
   LoaderCircle,
@@ -21,8 +22,10 @@ import { AppLogo } from "@/components/app-logo"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
 import { useApi } from "@/hooks/use-api"
 import { apiRequest } from "@/lib/api"
+import { appConfigurationFromCompose } from "@/lib/docker-compose"
 import { TLS_OPTIONS } from "@/lib/tls"
 import type { AppConfiguration, AppResource, DockerPort, PolicyResource, RegistryApp } from "@/lib/types"
 
@@ -188,9 +191,10 @@ function EditAppDialogContent({
 function InstallAppDialogContent({ onClose, onCreated }: DialogProps) {
   const [searchParams] = useSearchParams()
   const importContainerId = searchParams.get("import")
-  const [mode, setMode] = useState<"registry" | "custom">(
+  const [mode, setMode] = useState<"registry" | "custom" | "compose">(
     searchParams.get("mode") === "custom" ? "custom" : "registry"
   )
+  const [composeConfiguration, setComposeConfiguration] = useState<AppConfiguration | null>(null)
   const [registryFilter, setRegistryFilter] = useState("")
   const [selected, setSelected] = useState<{
     id: string
@@ -252,7 +256,7 @@ function InstallAppDialogContent({ onClose, onCreated }: DialogProps) {
             )}
             <div className="min-w-0">
               <h2 id="install-app-title" className="truncate font-semibold">
-                {importContainerId
+                {importContainerId || composeConfiguration
                   ? "New App"
                   : selected
                     ? `Install ${selected.app.name}`
@@ -261,9 +265,13 @@ function InstallAppDialogContent({ onClose, onCreated }: DialogProps) {
               <p className="mt-0.5 text-xs text-muted-foreground">
                 {importContainerId
                   ? "Review and adjust the imported container settings."
-                  : selected
-                    ? "Review the defaults and add optional overrides."
-                    : "Choose a registry app or configure your own container."}
+                  : composeConfiguration
+                    ? "Review and adjust the imported Compose settings."
+                    : mode === "compose"
+                      ? "Paste or drop a Compose file to configure a custom app."
+                      : selected
+                        ? "Review the defaults and add optional overrides."
+                        : "Choose a registry app or configure your own container."}
               </p>
             </div>
           </div>
@@ -280,18 +288,21 @@ function InstallAppDialogContent({ onClose, onCreated }: DialogProps) {
         {!selected && !importContainerId && (
           <div className="border-b px-5 pt-3 sm:px-6">
             <div className="flex gap-5">
-              {(["registry", "custom"] as const).map((option) => (
+              {(["registry", "compose", "custom"] as const).map((option) => (
                 <button
                   type="button"
                   key={option}
-                  onClick={() => setMode(option)}
+                  onClick={() => {
+                    if (option !== "custom") setComposeConfiguration(null)
+                    setMode(option)
+                  }}
                   className={`border-b-2 px-0.5 pb-3 text-sm font-medium capitalize transition-colors ${
                     mode === option
                       ? "border-foreground text-foreground"
                       : "border-transparent text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  {option}
+                  {option === "compose" ? "Docker Compose" : option}
                 </button>
               ))}
             </div>
@@ -304,6 +315,13 @@ function InstallAppDialogContent({ onClose, onCreated }: DialogProps) {
             domain={domain}
             onCreated={onCreated}
           />
+        ) : mode === "compose" ? (
+          <ComposeImportForm
+            onNext={(configuration) => {
+              setComposeConfiguration(configuration)
+              setMode("custom")
+            }}
+          />
         ) : selected ? (
           <RegistryInstallForm
             registryId={selected.id}
@@ -312,7 +330,11 @@ function InstallAppDialogContent({ onClose, onCreated }: DialogProps) {
             onCreated={onCreated}
           />
         ) : mode === "custom" ? (
-          <CustomAppForm domain={domain} onSaved={onCreated} />
+          <CustomAppForm
+            domain={domain}
+            initialApp={composeConfiguration}
+            onSaved={onCreated}
+          />
         ) : (
           <div className="min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto p-5 sm:p-6">
             {registry.status === "loading" ? (
@@ -381,6 +403,122 @@ function InstallAppDialogContent({ onClose, onCreated }: DialogProps) {
         )}
       </div>
     </div>
+  )
+}
+
+function ComposeImportForm({
+  onNext,
+}: {
+  onNext: (configuration: AppConfiguration) => void
+}) {
+  const fileInput = useRef<HTMLInputElement>(null)
+  const [source, setSource] = useState("")
+  const [dragging, setDragging] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  return (
+    <form
+      className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+      onSubmit={(event) => {
+        event.preventDefault()
+        setError(null)
+        try {
+          onNext(appConfigurationFromCompose(source))
+        } catch (parseError) {
+          setError(parseError instanceof Error ? parseError.message : "Unable to read the Compose file.")
+        }
+      }}
+    >
+      <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-6">
+        <input
+          ref={fileInput}
+          type="file"
+          accept=".yaml,.yml,application/yaml,text/yaml,text/x-yaml"
+          className="sr-only"
+          onChange={(event) => {
+            const file = event.target.files?.[0]
+            if (!file) return
+            void file.text().then((text) => {
+              setSource(text)
+              setError(null)
+            }).catch(() => setError("Unable to read that file."))
+            event.target.value = ""
+          }}
+        />
+        <div
+          className={`overflow-hidden rounded-xl border transition-colors ${
+            dragging ? "border-primary bg-primary/5 ring-2 ring-primary/20" : "bg-muted/10"
+          }`}
+          onDragEnter={(event) => {
+            event.preventDefault()
+            setDragging(true)
+          }}
+          onDragOver={(event) => {
+            event.preventDefault()
+            event.dataTransfer.dropEffect = "copy"
+            setDragging(true)
+          }}
+          onDragLeave={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragging(false)
+          }}
+          onDrop={(event) => {
+            event.preventDefault()
+            setDragging(false)
+            const file = event.dataTransfer.files[0]
+            if (!file) return
+            void file.text().then((text) => {
+              setSource(text)
+              setError(null)
+            }).catch(() => setError("Unable to read that file."))
+          }}
+        >
+          <div className="flex items-center justify-between gap-4 border-b bg-muted/30 px-3 py-2">
+            <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+              <FileUp className="size-4 shrink-0" />
+              <span className="truncate">docker-compose.yaml</span>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-7 px-2 text-xs"
+              onClick={() => fileInput.current?.click()}
+            >
+              Choose file
+            </Button>
+          </div>
+          <Textarea
+            autoFocus
+            aria-label="Docker Compose YAML"
+            value={source}
+            onChange={(event) => {
+              setSource(event.target.value)
+              setError(null)
+            }}
+            onKeyDown={(event) => {
+              if (event.key !== "Tab") return
+              event.preventDefault()
+              const textarea = event.currentTarget
+              const next = `${source.slice(0, textarea.selectionStart)}  ${source.slice(textarea.selectionEnd)}`
+              const cursor = textarea.selectionStart + 2
+              setSource(next)
+              window.setTimeout(() => textarea.setSelectionRange(cursor, cursor))
+            }}
+            placeholder={"services:\n  app:\n    image: ghcr.io/example/app:latest\n    ports:\n      - \"8080:80\""}
+            spellCheck={false}
+            className="min-h-[22rem] resize-none rounded-none border-0 bg-transparent font-mono text-xs leading-5 shadow-none focus:border-transparent focus:ring-0"
+          />
+        </div>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Drop a .yaml or .yml file anywhere on the editor. One Compose service can be imported at a time.
+        </p>
+        {error && <p role="alert" className="mt-3 text-sm text-red-600">{error}</p>}
+      </div>
+      <div className="flex shrink-0 justify-end border-t bg-background px-5 py-4 sm:px-6">
+        <Button type="submit" disabled={!source.trim()}>
+          Next
+        </Button>
+      </div>
+    </form>
   )
 }
 
