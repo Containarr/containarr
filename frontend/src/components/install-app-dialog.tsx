@@ -155,7 +155,7 @@ function EditAppDialogContent({
         role="dialog"
         aria-modal="true"
         aria-labelledby="edit-app-title"
-        className="flex max-h-[92vh] min-w-0 w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl border bg-background shadow-2xl sm:rounded-2xl"
+        className="relative flex max-h-[92vh] min-w-0 w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl border bg-background shadow-2xl sm:rounded-2xl"
       >
         <div className="flex items-center justify-between border-b px-5 py-4 sm:px-6">
           <div className="min-w-0">
@@ -236,7 +236,7 @@ function InstallAppDialogContent({ onClose, onCreated }: DialogProps) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="install-app-title"
-        className="flex max-h-[92vh] min-w-0 w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl border bg-background shadow-2xl sm:rounded-2xl"
+        className="relative flex max-h-[92vh] min-w-0 w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl border bg-background shadow-2xl sm:rounded-2xl"
       >
         <div className="flex items-center justify-between border-b px-5 py-4 sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
@@ -502,10 +502,12 @@ function RegistryInstallForm({
   return (
     <>
       <form
-      onSubmit={(event) => void submit(event)}
-      className="flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col overflow-hidden"
-    >
-      <div className="min-h-0 min-w-0 w-full max-w-full flex-1 overflow-x-hidden overflow-y-auto p-5 sm:p-6">
+        aria-busy={submitting}
+        onSubmit={(event) => void submit(event)}
+        className="flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col overflow-hidden"
+      >
+      <fieldset disabled={submitting} className="contents">
+        <div className="min-h-0 min-w-0 w-full max-w-full flex-1 overflow-x-hidden overflow-y-auto p-5 sm:p-6">
         <div className="min-w-0 max-w-full space-y-6">
           <div className="flex items-start gap-4 rounded-xl border bg-muted/20 p-4">
             <AppLogo
@@ -583,17 +585,24 @@ function RegistryInstallForm({
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
         </div>
-      </div>
-      <div className="flex shrink-0 justify-end border-t bg-background px-5 py-4 sm:px-6">
-        <Button type="submit" disabled={submitting}>
-          {submitting ? (
-            <LoaderCircle className="mr-2 size-4 animate-spin" />
-          ) : (
-            <Plus className="mr-2 size-4" />
-          )}
-          {submitting ? "Installing…" : `Install ${app.name}`}
-        </Button>
-      </div>
+        </div>
+        <div className="relative z-30 flex shrink-0 justify-end border-t bg-background px-5 py-4 sm:px-6">
+          <Button type="submit">
+            {submitting ? (
+              <LoaderCircle className="mr-2 size-4 animate-spin" />
+            ) : (
+              <Plus className="mr-2 size-4" />
+            )}
+            {submitting ? "Installing…" : `Install ${app.name}`}
+          </Button>
+        </div>
+      </fieldset>
+      {submitting && (
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 z-20 cursor-wait bg-background/70 backdrop-blur-[1px]"
+        />
+      )}
       </form>
     </>
   )
@@ -706,10 +715,12 @@ function CustomAppForm({
   return (
     <>
       <form
-      onSubmit={(event) => void submit(event)}
-      className="flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col overflow-hidden"
-    >
-      <div className="min-h-0 min-w-0 w-full max-w-full flex-1 overflow-x-hidden overflow-y-auto p-5 sm:p-6">
+        aria-busy={submitting}
+        onSubmit={(event) => void submit(event)}
+        className="flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col overflow-hidden"
+      >
+      <fieldset disabled={submitting} className="contents">
+        <div className="min-h-0 min-w-0 w-full max-w-full flex-1 overflow-x-hidden overflow-y-auto p-5 sm:p-6">
         <div className="min-w-0 max-w-full space-y-6">
           {importing && (
             <div className="flex items-start gap-3 rounded-xl border bg-muted/20 p-4 text-sm text-muted-foreground">
@@ -825,38 +836,45 @@ function CustomAppForm({
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
         </div>
-      </div>
-      <div className="flex shrink-0 justify-end border-t bg-background px-5 py-4 sm:px-6">
-        {(editing || importing) && (
-          <p className="mr-auto self-center text-xs text-muted-foreground">
-            {importing
-              ? "The old container is replaced when you import."
-              : "Container changes require a restart."}
-          </p>
-        )}
-        <Button type="submit" disabled={submitting}>
-          {submitting ? (
-            <LoaderCircle className="mr-2 size-4 animate-spin" />
-          ) : importing ? (
-            <PackagePlus className="mr-2 size-4" />
-          ) : editing ? (
-            <Save className="mr-2 size-4" />
-          ) : (
-            <Box className="mr-2 size-4" />
+        </div>
+        <div className="relative z-30 flex shrink-0 justify-end border-t bg-background px-5 py-4 sm:px-6">
+          {(editing || importing) && (
+            <p className="mr-auto self-center text-xs text-muted-foreground">
+              {importing
+                ? "The old container is replaced when you import."
+                : "Container changes require a restart."}
+            </p>
           )}
-          {submitting
-            ? importing
-              ? "Importing…"
-              : editing
-                ? "Saving…"
-                : "Creating…"
-            : importing
-              ? "Import"
-              : editing
-                ? "Save"
-                : "Create"}
-        </Button>
-      </div>
+          <Button type="submit">
+            {submitting ? (
+              <LoaderCircle className="mr-2 size-4 animate-spin" />
+            ) : importing ? (
+              <PackagePlus className="mr-2 size-4" />
+            ) : editing ? (
+              <Save className="mr-2 size-4" />
+            ) : (
+              <Box className="mr-2 size-4" />
+            )}
+            {submitting
+              ? importing
+                ? "Importing…"
+                : editing
+                  ? "Saving…"
+                  : "Creating…"
+              : importing
+                ? "Import"
+                : editing
+                  ? "Save"
+                  : "Create"}
+          </Button>
+        </div>
+      </fieldset>
+      {submitting && (
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 z-20 cursor-wait bg-background/70 backdrop-blur-[1px]"
+        />
+      )}
       </form>
     </>
   )
