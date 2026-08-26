@@ -177,7 +177,7 @@ function ProxyDialogContent({
 
             <FormField
               label="Source URL"
-              hint="The HTTP or HTTPS address Traefik should forward requests to."
+              hint="The HTTP or HTTPS address Containarr should forward requests to."
             >
               <Input
                 required
