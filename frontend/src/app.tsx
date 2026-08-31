@@ -12,12 +12,15 @@ import { BackupsPage } from "@/pages/backups"
 import { ContainerDetailsPage } from "@/pages/container-details"
 import { ContainersPage } from "@/pages/containers"
 import { LoginPage } from "@/pages/login"
+import { ImagesPage } from "@/pages/images"
+import { NetworksPage } from "@/pages/networks"
 import { OnboardingPage } from "@/pages/onboarding"
 import { ProxiesPage } from "@/pages/proxies"
 import { ProxyDetailsPage } from "@/pages/proxy-details"
 import { FirewallPage } from "@/pages/firewall"
 import { DomainSettingsPage } from "@/pages/settings"
 import { UpdatesPage } from "@/pages/updates"
+import { VolumesPage } from "@/pages/volumes"
 
 export default function App() {
   return (
@@ -87,6 +90,9 @@ function AppRoutes() {
           path="/containers/:containerId"
           element={<ContainerDetailsPage />}
         />
+        <Route path="/images" element={<ImagesPage />} />
+        <Route path="/volumes" element={<VolumesPage />} />
+        <Route path="/networks" element={<NetworksPage />} />
         <Route path="/proxies" element={<ProxiesPage />} />
         <Route path="/proxies/:proxyId" element={<ProxyDetailsPage />} />
         <Route path="/firewall" element={<FirewallPage />} />

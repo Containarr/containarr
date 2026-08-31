@@ -149,6 +149,52 @@ export type ContainerStats = {
   demoHistory?: Array<Omit<ContainerStats, "demoHistory">>
 }
 
+export type DockerImageResource = {
+  id: string
+  tags: string[]
+  digests: string[]
+  created: string
+  size: number
+  containers: Array<{
+    id: string
+    name: string
+  }>
+  labels: Record<string, string>
+}
+
+export type DockerVolumeResource = {
+  name: string
+  driver: string
+  mountpoint: string
+  created: string | null
+  scope: string
+  labels: Record<string, string>
+  options: Record<string, string>
+  size: number | null
+  refCount: number | null
+  deletable: boolean
+}
+
+export type DockerNetworkResource = {
+  id: string
+  name: string
+  driver: string
+  scope: string
+  created: string
+  internal: boolean
+  attachable: boolean
+  ingress: boolean
+  containers: number
+  deletable: boolean
+  subnets: string[]
+  labels: Record<string, string>
+}
+
+export type DockerCleanupResult = {
+  deleted: unknown[]
+  spaceReclaimed?: number
+}
+
 export type ProxyResource = {
   id: string
   subdomain: string

@@ -2,13 +2,16 @@ import { useEffect, useRef, useState } from "react"
 import {
   ArrowRight,
   Container,
+  Database,
   DatabaseBackup,
   Download,
   Globe2,
+  Images,
   KeyRound,
   LayoutGrid,
   LogOut,
   Menu,
+  Network,
   ShieldCheck,
   UserRound,
   Waypoints,
@@ -29,9 +32,15 @@ import type { ContainarrUpdateStatus, DomainSettings } from "@/lib/types"
 
 const navigation = [
   { label: "Apps", to: "/apps", icon: LayoutGrid },
-  { label: "Containers", to: "/containers", icon: Container },
   { label: "Proxies", to: "/proxies", icon: Waypoints },
   { label: "Firewall", to: "/firewall", icon: ShieldCheck },
+]
+
+const dockerNavigation = [
+  { label: "Containers", to: "/containers", icon: Container },
+  { label: "Images", to: "/images", icon: Images },
+  { label: "Volumes", to: "/volumes", icon: Database },
+  { label: "Networks", to: "/networks", icon: Network },
 ]
 
 const settingsNavigation = [
@@ -47,6 +56,8 @@ export function DashboardLayout() {
   const latestDomainCheck = useRef(0)
   const location = useLocation()
   const pageTitle = navigation.find(({ to }) =>
+    location.pathname.startsWith(to)
+  )?.label ?? dockerNavigation.find(({ to }) =>
     location.pathname.startsWith(to)
   )?.label ?? settingsNavigation.find(({ to }) =>
     location.pathname.startsWith(to)
@@ -212,6 +223,28 @@ function SidebarNavigation({
       </p>
       <div className="flex flex-col gap-1">
         {navigation.map(({ icon: Icon, label, to }) => (
+          <NavLink
+            key={to}
+            to={to}
+            onClick={onNavigate}
+            className={({ isActive }) =>
+              `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring ${
+                isActive
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-xs"
+                  : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
+              }`
+            }
+          >
+            <Icon className="size-4" aria-hidden="true" />
+            {label}
+          </NavLink>
+        ))}
+      </div>
+      <p className="mt-6 mb-2 px-2 text-[11px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+        Docker
+      </p>
+      <div className="flex flex-col gap-1">
+        {dockerNavigation.map(({ icon: Icon, label, to }) => (
           <NavLink
             key={to}
             to={to}

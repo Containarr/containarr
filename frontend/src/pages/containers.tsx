@@ -1,8 +1,9 @@
 import { useMemo, useState, type KeyboardEvent } from "react"
-import { ArrowUpRight, Fingerprint, Link2, Package, PackagePlus, Play, RefreshCw, Square, Trash2 } from "lucide-react"
+import { ArrowUpRight, Eraser, Fingerprint, Link2, Package, PackagePlus, Play, RefreshCw, Square, Trash2 } from "lucide-react"
 import { Link, useNavigate } from "react-router-dom"
 
 import { ContainerAvatar } from "@/components/container-avatar"
+import { CleanupConfirmDialog } from "@/components/cleanup-confirm-dialog"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { PageHeader } from "@/components/page-header"
 import { ResourceMenu, type ResourceMenuItem } from "@/components/resource-menu"
@@ -17,12 +18,13 @@ import {
   type SortDirection,
 } from "@/components/sortable-table-header"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { ViewToggle } from "@/components/view-toggle"
 import { useApi } from "@/hooks/use-api"
 import { useStoredViewMode } from "@/hooks/use-stored-view-mode"
 import { getComposeProject, getContainerAppId } from "@/lib/container-labels"
 import { apiRequest } from "@/lib/api"
-import type { AppResource, ContainerResource } from "@/lib/types"
+import type { AppResource, ContainerResource, DockerCleanupResult } from "@/lib/types"
 
 export function ContainersPage() {
   const containers = useApi<ContainerResource[]>("/api/v1/container", {
@@ -35,6 +37,9 @@ export function ContainersPage() {
   const [deleting, setDeleting] = useState<ContainerResource | null>(null)
   const [deletePending, setDeletePending] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [confirmingCleanup, setConfirmingCleanup] = useState(false)
+  const [cleanupPending, setCleanupPending] = useState(false)
+  const [cleanupError, setCleanupError] = useState<string | null>(null)
   const navigate = useNavigate()
   const items = containers.status === "success" ? containers.data : []
   const appsById = apps.status === "success" ? apps.data : {}
@@ -46,7 +51,13 @@ export function ContainersPage() {
           title="Containers"
           description="All containers, running and inactive, on this host."
         />
-        <ViewToggle value={view} onChange={setView} />
+        <div className="flex items-center gap-2">
+          <Button type="button" variant="outline" onClick={() => setConfirmingCleanup(true)}>
+            <Eraser className="mr-2 size-4" />
+            Cleanup
+          </Button>
+          <ViewToggle value={view} onChange={setView} />
+        </div>
       </div>
 
       {containers.status === "loading" && <CardGridSkeleton />}
@@ -100,6 +111,28 @@ export function ContainersPage() {
             })
             .catch((error) => setDeleteError(error instanceof Error ? error.message : "Delete failed."))
             .finally(() => setDeletePending(false))
+        }}
+      />
+      <CleanupConfirmDialog
+        open={confirmingCleanup}
+        resource="containers"
+        description="This permanently removes every stopped container. Running containers are preserved."
+        pending={cleanupPending}
+        error={cleanupError}
+        onCancel={() => {
+          setConfirmingCleanup(false)
+          setCleanupError(null)
+        }}
+        onConfirm={() => {
+          setCleanupPending(true)
+          setCleanupError(null)
+          void apiRequest<DockerCleanupResult>("/api/v1/container/cleanup", { method: "POST" })
+            .then(() => {
+              setConfirmingCleanup(false)
+              containers.reload()
+            })
+            .catch((error) => setCleanupError(error instanceof Error ? error.message : "Cleanup failed."))
+            .finally(() => setCleanupPending(false))
         }}
       />
     </section>
@@ -276,6 +309,10 @@ function ContainersTable({
     key: ContainerSortKey
     direction: SortDirection
   } | null>(null)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [confirmingBulkDelete, setConfirmingBulkDelete] = useState(false)
+  const [bulkDeletePending, setBulkDeletePending] = useState(false)
+  const [bulkDeleteError, setBulkDeleteError] = useState<string | null>(null)
   const groupedItems = useMemo(() => {
     const defaultItems = groupContainers(items).flatMap((group) => group.items)
     if (!sort) return defaultItems
@@ -293,6 +330,9 @@ function ContainersTable({
       return sort.direction === "asc" ? comparison : -comparison
     })
   }, [apps, items, sort])
+  const selectableItems = groupedItems.filter((container) => !getContainerAppId(container))
+  const allSelected = selectableItems.length > 0 && selectableItems.every((container) => selected.has(container.id))
+  const someSelected = selectableItems.some((container) => selected.has(container.id))
 
   function changeSort(key: ContainerSortKey) {
     setSort((current) => ({
@@ -303,10 +343,31 @@ function ContainersTable({
   }
 
   return (
-    <div className="hidden overflow-hidden rounded-xl border bg-card shadow-xs sm:block">
-      <table className="w-full text-left text-sm">
+    <>
+    <div className="hidden sm:block">
+      {selected.size > 0 && (
+        <div className="mb-3 flex items-center justify-between rounded-lg border bg-card px-3 py-2 shadow-xs">
+          <span className="text-sm text-muted-foreground">{selected.size} selected</span>
+          <Button type="button" variant="destructive" onClick={() => setConfirmingBulkDelete(true)}>
+            <Trash2 className="mr-2 size-4" />
+            Delete
+          </Button>
+        </div>
+      )}
+      <div className="overflow-hidden rounded-xl border bg-card shadow-xs">
+       <table className="w-full text-left text-sm">
         <thead className="border-b bg-muted/40 text-xs text-muted-foreground">
           <tr>
+            <th className="w-12 px-4 py-3">
+              <input
+                type="checkbox"
+                aria-label="Select all unmanaged containers"
+                checked={allSelected}
+                ref={(input) => { if (input) input.indeterminate = someSelected && !allSelected }}
+                onChange={() => setSelected(allSelected ? new Set() : new Set(selectableItems.map((container) => container.id)))}
+                className="size-4 accent-primary"
+              />
+            </th>
             {(["container", "group", "status", "image", "app"] as const).map(
               (key) => (
                 <SortableTableHeader
@@ -367,6 +428,22 @@ function ContainersTable({
             return (
             <ResourceMenu key={container.id} items={menuItems} triggerLabel={`Actions for ${container.name || "container"}`}>
             <tr className="hover:bg-muted/25">
+              <td className="w-12 px-4 py-3">
+                <input
+                  type="checkbox"
+                  aria-label={`Select ${container.name || "container"}`}
+                  checked={selected.has(container.id)}
+                  disabled={Boolean(appId)}
+                  title={appId ? "Managed containers must be deleted through their app." : undefined}
+                  onChange={() => setSelected((current) => {
+                    const next = new Set(current)
+                    if (next.has(container.id)) next.delete(container.id)
+                    else next.add(container.id)
+                    return next
+                  })}
+                  className="size-4 accent-primary disabled:cursor-not-allowed disabled:opacity-40"
+                />
+              </td>
               <td className="px-4 py-3">
                 <div className="flex items-center gap-3">
                   <ContainerAvatar
@@ -418,7 +495,40 @@ function ContainersTable({
           })}
         </tbody>
       </table>
+      </div>
     </div>
+    <DeleteConfirmDialog
+      open={confirmingBulkDelete}
+      title={`Delete ${selected.size} ${selected.size === 1 ? "container" : "containers"}?`}
+      description="Selected containers will be permanently removed. This action cannot be undone."
+      deleting={bulkDeletePending}
+      error={bulkDeleteError}
+      onCancel={() => {
+        setConfirmingBulkDelete(false)
+        setBulkDeleteError(null)
+      }}
+      onConfirm={() => {
+        setBulkDeletePending(true)
+        setBulkDeleteError(null)
+        const ids = [...selected]
+        void Promise.allSettled(ids.map((id) => apiRequest(`/api/v1/container/${encodeURIComponent(id)}`, { method: "DELETE" })))
+          .then((results) => {
+            const failed = results.flatMap((result, index) => result.status === "rejected" ? [ids[index]] : [])
+            onReload()
+            setSelected(new Set(failed))
+            if (failed.length === 0) {
+              setConfirmingBulkDelete(false)
+            } else {
+              const rejection = results.find((result) => result.status === "rejected")
+              setBulkDeleteError(rejection?.status === "rejected" && rejection.reason instanceof Error
+                ? rejection.reason.message
+                : `${failed.length} ${failed.length === 1 ? "container" : "containers"} could not be deleted.`)
+            }
+          })
+          .finally(() => setBulkDeletePending(false))
+      }}
+    />
+    </>
   )
 }
 
