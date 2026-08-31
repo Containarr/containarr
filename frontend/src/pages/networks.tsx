@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react"
-import { Boxes, CalendarDays, Eraser, Fingerprint, Globe2, Network, Settings2, Trash2 } from "lucide-react"
+import { ArrowUpRight, Boxes, CalendarDays, Eraser, Fingerprint, Globe2, Network, Settings2, Trash2 } from "lucide-react"
+import { Link, useNavigate } from "react-router-dom"
 
 import { CleanupConfirmDialog } from "@/components/cleanup-confirm-dialog"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
@@ -16,6 +17,7 @@ import { apiRequest } from "@/lib/api"
 import type { DockerCleanupResult, DockerNetworkResource } from "@/lib/types"
 
 export function NetworksPage() {
+  const navigate = useNavigate()
   const networks = useApi<DockerNetworkResource[]>("/api/v1/network", { pollInterval: 5000 })
   const [view, setView] = useStoredViewMode("containarr-networks-view")
   const [confirmingCleanup, setConfirmingCleanup] = useState(false)
@@ -34,13 +36,13 @@ export function NetworksPage() {
         : sort.key === "driver" ? left.driver
           : sort.key === "scope" ? left.scope
             : sort.key === "subnet" ? left.subnets.join(", ")
-              : sort.key === "containers" ? left.containers
+              : sort.key === "containers" ? left.containers.map((container) => container.name).join(", ")
                 : left.created
       const rightValue = sort.key === "network" ? right.name
         : sort.key === "driver" ? right.driver
           : sort.key === "scope" ? right.scope
             : sort.key === "subnet" ? right.subnets.join(", ")
-              : sort.key === "containers" ? right.containers
+              : sort.key === "containers" ? right.containers.map((container) => container.name).join(", ")
                 : right.created
       const comparison = String(leftValue).localeCompare(String(rightValue), undefined, { numeric: true, sensitivity: "base" })
       return sort.direction === "asc" ? comparison : -comparison
@@ -77,16 +79,23 @@ export function NetworksPage() {
         <>
           <div className={view === "cards" ? "grid gap-4 sm:grid-cols-2 xl:grid-cols-3" : "grid gap-4 sm:hidden"}>
             {items.map((network) => {
-              const menuItems: ResourceMenuItem[] = [{
-                label: "Delete",
-                icon: Trash2,
-                destructive: true,
-                disabled: !network.deletable,
-                onSelect: () => {
-                  setSelected(new Set([network.id]))
-                  setConfirmingDelete(true)
+              const menuItems: ResourceMenuItem[] = [
+                ...network.containers.map((container) => ({
+                  label: `Open ${container.name}`,
+                  icon: ArrowUpRight,
+                  onSelect: () => navigate(`/containers/${container.id}`),
+                })),
+                {
+                  label: "Delete",
+                  icon: Trash2,
+                  destructive: true,
+                  disabled: !network.deletable,
+                  onSelect: () => {
+                    setSelected(new Set([network.id]))
+                    setConfirmingDelete(true)
+                  },
                 },
-              }]
+              ]
               return (
               <ResourceMenu key={network.id} items={menuItems} triggerLabel={`Actions for ${network.name}`}>
               <Card className="gap-5 p-5 shadow-none">
@@ -103,7 +112,25 @@ export function NetworksPage() {
                 </CardHeader>
                 <CardContent className="space-y-2.5 p-0">
                   <NetworkDataRow icon={Fingerprint} label="ID" value={network.id.slice(0, 12)} mono />
-                  <NetworkDataRow icon={Boxes} label="Containers" value={`${network.containers}`} />
+                  <div className="flex min-w-0 items-start gap-2 text-sm">
+                    <Boxes className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                    <span className="shrink-0 text-muted-foreground">Containers</span>
+                    {network.containers.length > 0 ? (
+                      <div className="ml-auto flex min-w-0 flex-wrap justify-end gap-x-2 gap-y-1 text-xs">
+                        {network.containers.map((container) => (
+                          <Link
+                            key={container.id}
+                            to={`/containers/${container.id}`}
+                            className="max-w-40 truncate font-medium hover:underline"
+                          >
+                            {container.name}
+                          </Link>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="ml-auto text-xs font-medium text-muted-foreground">None</span>
+                    )}
+                  </div>
                   <NetworkDataRow icon={Globe2} label="Subnet" value={network.subnets.join(", ") || "None"} mono />
                   <NetworkDataRow icon={Settings2} label="Scope" value={network.scope} />
                   <NetworkDataRow icon={CalendarDays} label="Created" value={new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(network.created))} />
@@ -154,16 +181,23 @@ export function NetworksPage() {
                   </thead>
                   <tbody className="divide-y">
                     {sortedItems.map((network) => {
-                      const menuItems: ResourceMenuItem[] = [{
-                        label: "Delete",
-                        icon: Trash2,
-                        destructive: true,
-                        disabled: !network.deletable,
-                        onSelect: () => {
-                          setSelected(new Set([network.id]))
-                          setConfirmingDelete(true)
+                      const menuItems: ResourceMenuItem[] = [
+                        ...network.containers.map((container) => ({
+                          label: `Open ${container.name}`,
+                          icon: ArrowUpRight,
+                          onSelect: () => navigate(`/containers/${container.id}`),
+                        })),
+                        {
+                          label: "Delete",
+                          icon: Trash2,
+                          destructive: true,
+                          disabled: !network.deletable,
+                          onSelect: () => {
+                            setSelected(new Set([network.id]))
+                            setConfirmingDelete(true)
+                          },
                         },
-                      }]
+                      ]
                       return (
                       <ResourceMenu key={network.id} items={menuItems} triggerLabel={`Actions for ${network.name}`}>
                       <tr className="hover:bg-muted/25">
@@ -174,7 +208,7 @@ export function NetworksPage() {
                             checked={selected.has(network.id)}
                             disabled={!network.deletable}
                             title={!network.deletable
-                              ? network.containers > 0
+                              ? network.containers.length > 0
                                 ? "Networks used by containers cannot be deleted."
                                 : "Docker system networks cannot be deleted."
                               : undefined}
@@ -194,7 +228,23 @@ export function NetworksPage() {
                         <td className="px-4 py-3">{network.driver}</td>
                         <td className="px-4 py-3">{network.scope}</td>
                         <td className="max-w-64 truncate px-4 py-3 font-mono text-xs">{network.subnets.join(", ") || "None"}</td>
-                        <td className="px-4 py-3">{network.containers}</td>
+                        <td className="px-4 py-3">
+                          {network.containers.length > 0 ? (
+                            <div className="flex flex-wrap gap-x-3 gap-y-1">
+                              {network.containers.map((container) => (
+                                <Link
+                                  key={container.id}
+                                  to={`/containers/${container.id}`}
+                                  className="font-medium hover:underline"
+                                >
+                                  {container.name}
+                                </Link>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">None</span>
+                          )}
+                        </td>
                         <td
                           className="px-4 py-3"
                           title={new Intl.DateTimeFormat(undefined, { dateStyle: "full", timeStyle: "long" }).format(new Date(network.created))}

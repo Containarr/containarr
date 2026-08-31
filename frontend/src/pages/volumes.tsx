@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react"
-import { CalendarDays, Database, Eraser, FolderOpen, Gauge, Settings2, Trash2 } from "lucide-react"
+import { ArrowUpRight, CalendarDays, Container, Database, Eraser, FolderOpen, Settings2, Trash2 } from "lucide-react"
+import { Link, useNavigate } from "react-router-dom"
 
 import { CleanupConfirmDialog } from "@/components/cleanup-confirm-dialog"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
@@ -16,6 +17,7 @@ import { apiRequest } from "@/lib/api"
 import type { DockerCleanupResult, DockerVolumeResource } from "@/lib/types"
 
 export function VolumesPage() {
+  const navigate = useNavigate()
   const volumes = useApi<DockerVolumeResource[]>("/api/v1/volume", { pollInterval: 30000 })
   const [view, setView] = useStoredViewMode("containarr-volumes-view")
   const [confirmingCleanup, setConfirmingCleanup] = useState(false)
@@ -33,13 +35,13 @@ export function VolumesPage() {
       const leftValue = sort.key === "volume" ? left.name
         : sort.key === "driver" ? left.driver
           : sort.key === "scope" ? left.scope
-            : sort.key === "references" ? left.refCount ?? -1
+            : sort.key === "containers" ? left.containers.map((container) => container.name).join(", ")
               : sort.key === "size" ? left.size ?? -1
                 : left.created ?? ""
       const rightValue = sort.key === "volume" ? right.name
         : sort.key === "driver" ? right.driver
           : sort.key === "scope" ? right.scope
-            : sort.key === "references" ? right.refCount ?? -1
+            : sort.key === "containers" ? right.containers.map((container) => container.name).join(", ")
               : sort.key === "size" ? right.size ?? -1
                 : right.created ?? ""
       const comparison = String(leftValue).localeCompare(String(rightValue), undefined, { numeric: true, sensitivity: "base" })
@@ -77,16 +79,23 @@ export function VolumesPage() {
         <>
           <div className={view === "cards" ? "grid gap-4 sm:grid-cols-2 xl:grid-cols-3" : "grid gap-4 sm:hidden"}>
             {items.map((volume) => {
-              const menuItems: ResourceMenuItem[] = [{
-                label: "Delete",
-                icon: Trash2,
-                destructive: true,
-                disabled: !volume.deletable,
-                onSelect: () => {
-                  setSelected(new Set([volume.name]))
-                  setConfirmingDelete(true)
+              const menuItems: ResourceMenuItem[] = [
+                ...volume.containers.map((container) => ({
+                  label: `Open ${container.name}`,
+                  icon: ArrowUpRight,
+                  onSelect: () => navigate(`/containers/${container.id}`),
+                })),
+                {
+                  label: "Delete",
+                  icon: Trash2,
+                  destructive: true,
+                  disabled: !volume.deletable,
+                  onSelect: () => {
+                    setSelected(new Set([volume.name]))
+                    setConfirmingDelete(true)
+                  },
                 },
-              }]
+              ]
               return (
               <ResourceMenu key={volume.name} items={menuItems} triggerLabel={`Actions for ${volume.name}`}>
               <Card className="gap-5 p-5 shadow-none">
@@ -101,7 +110,25 @@ export function VolumesPage() {
                 </CardHeader>
                 <CardContent className="space-y-2.5 p-0">
                   <VolumeDataRow icon={Settings2} label="Scope" value={volume.scope} />
-                  <VolumeDataRow icon={Gauge} label="References" value={volume.refCount === null ? "Unknown" : `${volume.refCount}`} />
+                  <div className="flex min-w-0 items-start gap-2 text-sm">
+                    <Container className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                    <span className="shrink-0 text-muted-foreground">Containers</span>
+                    {volume.containers.length > 0 ? (
+                      <div className="ml-auto flex min-w-0 flex-wrap justify-end gap-x-2 gap-y-1 text-xs">
+                        {volume.containers.map((container) => (
+                          <Link
+                            key={container.id}
+                            to={`/containers/${container.id}`}
+                            className="max-w-40 truncate font-medium hover:underline"
+                          >
+                            {container.name}
+                          </Link>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="ml-auto text-xs font-medium text-muted-foreground">None</span>
+                    )}
+                  </div>
                   <VolumeDataRow icon={Database} label="Size" value={volume.size === null || volume.size < 0 ? "Unknown" : formatVolumeBytes(volume.size)} />
                   <VolumeDataRow icon={FolderOpen} label="Mountpoint" value={volume.mountpoint} mono />
                   <VolumeDataRow icon={CalendarDays} label="Created" value={volume.created ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(volume.created)) : "Unknown"} />
@@ -138,7 +165,7 @@ export function VolumesPage() {
                           className="size-4 accent-primary disabled:cursor-not-allowed disabled:opacity-40"
                         />
                       </th>
-                      {(["volume", "driver", "scope", "references", "size", "created"] as const).map((key) => (
+                      {(["volume", "driver", "scope", "containers", "size", "created"] as const).map((key) => (
                         <SortableTableHeader
                           key={key}
                           label={key.charAt(0).toUpperCase() + key.slice(1)}
@@ -152,16 +179,23 @@ export function VolumesPage() {
                   </thead>
                   <tbody className="divide-y">
                     {sortedItems.map((volume) => {
-                      const menuItems: ResourceMenuItem[] = [{
-                        label: "Delete",
-                        icon: Trash2,
-                        destructive: true,
-                        disabled: !volume.deletable,
-                        onSelect: () => {
-                          setSelected(new Set([volume.name]))
-                          setConfirmingDelete(true)
+                      const menuItems: ResourceMenuItem[] = [
+                        ...volume.containers.map((container) => ({
+                          label: `Open ${container.name}`,
+                          icon: ArrowUpRight,
+                          onSelect: () => navigate(`/containers/${container.id}`),
+                        })),
+                        {
+                          label: "Delete",
+                          icon: Trash2,
+                          destructive: true,
+                          disabled: !volume.deletable,
+                          onSelect: () => {
+                            setSelected(new Set([volume.name]))
+                            setConfirmingDelete(true)
+                          },
                         },
-                      }]
+                      ]
                       return (
                       <ResourceMenu key={volume.name} items={menuItems} triggerLabel={`Actions for ${volume.name}`}>
                       <tr className="hover:bg-muted/25">
@@ -191,7 +225,23 @@ export function VolumesPage() {
                         </td>
                         <td className="px-4 py-3">{volume.driver}</td>
                         <td className="px-4 py-3">{volume.scope}</td>
-                        <td className="px-4 py-3">{volume.refCount ?? "Unknown"}</td>
+                        <td className="px-4 py-3">
+                          {volume.containers.length > 0 ? (
+                            <div className="flex flex-wrap gap-x-3 gap-y-1">
+                              {volume.containers.map((container) => (
+                                <Link
+                                  key={container.id}
+                                  to={`/containers/${container.id}`}
+                                  className="font-medium hover:underline"
+                                >
+                                  {container.name}
+                                </Link>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">None</span>
+                          )}
+                        </td>
                         <td className="px-4 py-3">{volume.size === null || volume.size < 0 ? "Unknown" : formatVolumeBytes(volume.size)}</td>
                         <td
                           className="px-4 py-3"
@@ -273,7 +323,7 @@ export function VolumesPage() {
   )
 }
 
-type VolumeSortKey = "volume" | "driver" | "scope" | "references" | "size" | "created"
+type VolumeSortKey = "volume" | "driver" | "scope" | "containers" | "size" | "created"
 
 function VolumeDataRow({ icon: Icon, label, mono = false, value }: { icon: typeof Database; label: string; mono?: boolean; value: string }) {
   return (

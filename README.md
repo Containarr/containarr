@@ -49,14 +49,11 @@ And log in again.
 ## 2. Run Containarr
 
 ```bash
-$ docker network create containarr
 $ docker run -d \
   --name=containarr \
-  --network=containarr \
+  --network=host \
   -v ~/.containarr/:/data/ \
   -v /var/run/docker.sock:/var/run/docker.sock \
-  -p 80:80 \
-  -p 443:443 \
   --restart unless-stopped \
   ghcr.io/containarr/containarr:latest
 ```
@@ -76,16 +73,7 @@ $ docker run -d \
       volumes:
         - ~/.containarr:/data
         - /var/run/docker.sock:/var/run/docker.sock
-      ports:
-        - "80:80"
-        - "443:443"
-      networks:
-        - containarr
-
-  networks:
-    containarr:
-      name: containarr
-      driver: bridge
+      network_mode: host
   ```
 </details>
 
@@ -111,10 +99,10 @@ Internet → Router → Host → Traefik inside Containarr → App
 For example:
 
 ```
-https://plex.mydomain.com → Router → 192.168.1.100:443 → Traefik → http://plex:32400
+https://plex.mydomain.com → Router → 192.168.1.100:443 → Traefik → http://172.17.0.2:32400
 ```
 
-> Containarr's own web ui is hosted on port 81, but it does not need to be exposed outside of Docker, because Traefik also proxies that.
+> Containarr's own web UI listens on `127.0.0.1:81`, and Traefik proxies it on ports 80 and 443.
 
 # Contributing
 

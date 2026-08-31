@@ -172,6 +172,10 @@ export type DockerVolumeResource = {
   options: Record<string, string>
   size: number | null
   refCount: number | null
+  containers: Array<{
+    id: string
+    name: string
+  }>
   deletable: boolean
 }
 
@@ -184,7 +188,10 @@ export type DockerNetworkResource = {
   internal: boolean
   attachable: boolean
   ingress: boolean
-  containers: number
+  containers: Array<{
+    id: string
+    name: string
+  }>
   deletable: boolean
   subnets: string[]
   labels: Record<string, string>

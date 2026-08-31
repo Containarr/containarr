@@ -1148,7 +1148,7 @@ function NetworkEditor({
           <p className="mt-0.5 text-xs text-muted-foreground">
             {mode === "host"
               ? "Uses the host network directly."
-              : "Connects the container to Containarr's private network."}
+              : "Connects the container to Docker's default bridge network."}
           </p>
         </div>
         <div className="relative w-36 shrink-0">

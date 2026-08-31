@@ -112,7 +112,25 @@ export function ImagesPage() {
                   <CardContent className="space-y-2.5 p-0">
                     <ImageDataRow icon={Fingerprint} label="ID" value={image.id.replace(/^sha256:/, "").slice(0, 12)} />
                     <ImageDataRow icon={Tags} label="Tags" value={`${image.tags.length}`} />
-                    <ImageDataRow icon={Container} label="Containers" value={`${image.containers.length}`} />
+                    <div className="flex min-w-0 items-start gap-2 text-sm">
+                      <Container className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                      <span className="shrink-0 text-muted-foreground">Containers</span>
+                      {image.containers.length > 0 ? (
+                        <div className="ml-auto flex min-w-0 flex-wrap justify-end gap-x-2 gap-y-1 text-xs">
+                          {image.containers.map((container) => (
+                            <Link
+                              key={container.id}
+                              to={`/containers/${container.id}`}
+                              className="max-w-40 truncate font-medium hover:underline"
+                            >
+                              {container.name}
+                            </Link>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="ml-auto text-xs font-medium text-muted-foreground">None</span>
+                      )}
+                    </div>
                     <ImageDataRow icon={HardDrive} label="Size" value={formatImageBytes(image.size)} />
                     <ImageDataRow icon={CalendarDays} label="Created" value={new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(image.created))} />
                   </CardContent>
