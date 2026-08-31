@@ -180,7 +180,7 @@ function ContainersCardGrid({
                   label: "Open app",
                   icon: Link2,
                   onSelect: () => navigate(`/apps/${appId}`),
-                }] : [
+                }] : container.protected ? [] : [
                   ...(container.importable ? [{
                     label: "Import as app",
                     icon: PackagePlus,
@@ -330,7 +330,7 @@ function ContainersTable({
       return sort.direction === "asc" ? comparison : -comparison
     })
   }, [apps, items, sort])
-  const selectableItems = groupedItems.filter((container) => !getContainerAppId(container))
+  const selectableItems = groupedItems.filter((container) => container.deletable)
   const allSelected = selectableItems.length > 0 && selectableItems.every((container) => selected.has(container.id))
   const someSelected = selectableItems.some((container) => selected.has(container.id))
 
@@ -396,7 +396,7 @@ function ContainersTable({
                 label: "Open app",
                 icon: Link2,
                 onSelect: () => navigate(`/apps/${appId}`),
-              }] : [
+              }] : container.protected ? [] : [
                 ...(container.importable ? [{
                   label: "Import as app",
                   icon: PackagePlus,
@@ -433,8 +433,12 @@ function ContainersTable({
                   type="checkbox"
                   aria-label={`Select ${container.name || "container"}`}
                   checked={selected.has(container.id)}
-                  disabled={Boolean(appId)}
-                  title={appId ? "Managed containers must be deleted through their app." : undefined}
+                  disabled={!container.deletable}
+                  title={appId
+                    ? "Managed containers must be deleted through their app."
+                    : container.protected
+                      ? "Containarr cannot delete its own container."
+                      : undefined}
                   onChange={() => setSelected((current) => {
                     const next = new Set(current)
                     if (next.has(container.id)) next.delete(container.id)

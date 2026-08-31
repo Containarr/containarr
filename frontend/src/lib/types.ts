@@ -113,6 +113,8 @@ export type ContainerResource = {
   state: string
   status: string
   labels: Record<string, string>
+  protected: boolean
+  deletable: boolean
   importable: boolean
 }
 

@@ -217,12 +217,14 @@ export function ContainerDetailsPage() {
         </div>
         <div className="space-y-2">
           <div className="flex flex-wrap gap-2">
-            <ResourceActions
-              id={resource.id}
-              kind="container"
-              state={resource.state}
-              onComplete={container.reload}
-            />
+            {!resource.protected && (
+              <ResourceActions
+                id={resource.id}
+                kind="container"
+                state={resource.state}
+                onComplete={container.reload}
+              />
+            )}
             {resource.importable && (
               <Button
                 type="button"
@@ -242,22 +244,24 @@ export function ContainerDetailsPage() {
               <Terminal className="mr-2 size-4" />
               Shell
             </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={deleting}
-              onClick={() => {
-                setDeleteError(null)
-                setConfirmingDelete(true)
-              }}
-            >
-              {deleting ? (
-                <LoaderCircle className="mr-2 size-4 animate-spin" />
-              ) : (
-                <Trash2 className="mr-2 size-4" />
-              )}
-              Delete
-            </Button>
+            {resource.deletable && (
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={deleting}
+                onClick={() => {
+                  setDeleteError(null)
+                  setConfirmingDelete(true)
+                }}
+              >
+                {deleting ? (
+                  <LoaderCircle className="mr-2 size-4 animate-spin" />
+                ) : (
+                  <Trash2 className="mr-2 size-4" />
+                )}
+                Delete
+              </Button>
+            )}
           </div>
         </div>
       </div>
