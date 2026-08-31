@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type KeyboardEvent } from "react"
-import { ArrowRight, ArrowUpRight, Globe2, Pencil, Plus, Power, PowerOff, Trash2, Waypoints } from "lucide-react"
+import { ArrowRight, ArrowUpRight, Globe2, Pencil, Plus, Power, PowerOff, ShieldCheck, Trash2, Waypoints } from "lucide-react"
 import { Link, useNavigate, useSearchParams } from "react-router-dom"
 
 import { ProxyDialog } from "@/components/new-proxy-dialog"
@@ -250,8 +250,13 @@ function ProxyCardGrid({
             >
               <Link
                 to={proxy.policyId === "public" ? "/firewall" : `/firewall?edit=${encodeURIComponent(proxy.policyId)}`}
-                className="font-medium underline-offset-4 hover:text-foreground hover:underline"
+                className="inline-flex items-center gap-1.5 font-medium underline-offset-4 hover:text-foreground hover:underline"
               >
+                {proxy.policyId === "public" ? (
+                  <Globe2 className="size-3.5 shrink-0" />
+                ) : (
+                  <ShieldCheck className="size-3.5 shrink-0" />
+                )}
                 {policyNames[proxy.policyId] ?? "Unknown"}
               </Link>
             </div>

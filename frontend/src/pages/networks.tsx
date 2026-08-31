@@ -67,23 +67,29 @@ export function NetworksPage() {
       <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
         <PageHeader title="Networks" description="Docker networks and their connected containers." />
         <div className="flex items-center gap-2">
-          <Button type="button" variant="outline" onClick={() => setConfirmingCleanup(true)}>
+          <Button type="button" variant="outline" className="hidden md:inline-flex" onClick={() => setConfirmingCleanup(true)}>
             <Eraser className="mr-2 size-4" />
             Cleanup
           </Button>
           <ViewToggle value={view} onChange={setView} />
           <Button type="button" onClick={() => setCreatingNetwork(true)} className="hidden md:inline-flex">
             <Plus className="mr-1.5 size-4" />
-            New
+            Network
           </Button>
         </div>
       </div>
 
       <MobileHeaderAction>
-        <Button type="button" className="h-9" onClick={() => setCreatingNetwork(true)}>
-          <Plus className="mr-1.5 size-4" />
-          New
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button type="button" variant="outline" className="h-9" onClick={() => setConfirmingCleanup(true)}>
+            <Eraser className="mr-1.5 size-4" />
+            Cleanup
+          </Button>
+          <Button type="button" className="h-9" onClick={() => setCreatingNetwork(true)}>
+            <Plus className="mr-1.5 size-4" />
+            Network
+          </Button>
+        </div>
       </MobileHeaderAction>
 
       {networks.status === "loading" && <CardGridSkeleton />}

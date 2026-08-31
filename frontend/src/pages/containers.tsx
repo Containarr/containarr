@@ -5,6 +5,7 @@ import { Link, useNavigate } from "react-router-dom"
 import { ContainerAvatar } from "@/components/container-avatar"
 import { CleanupConfirmDialog } from "@/components/cleanup-confirm-dialog"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
+import { MobileHeaderAction } from "@/components/mobile-header-action"
 import { PageHeader } from "@/components/page-header"
 import { ResourceMenu, type ResourceMenuItem } from "@/components/resource-menu"
 import {
@@ -52,13 +53,20 @@ export function ContainersPage() {
           description="All containers, running and inactive, on this host."
         />
         <div className="flex items-center gap-2">
-          <Button type="button" variant="outline" onClick={() => setConfirmingCleanup(true)}>
+          <Button type="button" variant="outline" className="hidden md:inline-flex" onClick={() => setConfirmingCleanup(true)}>
             <Eraser className="mr-2 size-4" />
             Cleanup
           </Button>
           <ViewToggle value={view} onChange={setView} />
         </div>
       </div>
+
+      <MobileHeaderAction>
+        <Button type="button" variant="outline" className="h-9" onClick={() => setConfirmingCleanup(true)}>
+          <Eraser className="mr-1.5 size-4" />
+          Cleanup
+        </Button>
+      </MobileHeaderAction>
 
       {containers.status === "loading" && <CardGridSkeleton />}
       {containers.status === "error" && (

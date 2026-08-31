@@ -260,7 +260,7 @@ function AppsCardGrid({
             onKeyDown={(event) => openFromKeyboard(event, app.id)}
             className="cursor-pointer overflow-hidden shadow-none transition-all hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <CardHeader className="flex flex-row items-start justify-between gap-4 pb-5">
+            <CardHeader className="flex flex-row items-center justify-between gap-4 pb-5">
               <div className="flex min-w-0 items-center gap-3">
                 <AppLogo
                   appId={app.hasLogo ? app.id : undefined}
@@ -276,7 +276,7 @@ function AppsCardGrid({
               <AppStatusBadge app={app} />
             </CardHeader>
             <div
-              className="flex min-w-0 items-baseline gap-1.5 border-t px-5 pt-2 pb-3 text-xs text-muted-foreground"
+              className="flex min-w-0 items-center gap-1.5 border-t px-5 py-2.5 text-xs text-muted-foreground"
               onClick={(event) => event.stopPropagation()}
               onKeyDown={(event) => event.stopPropagation()}
             >
@@ -298,9 +298,9 @@ function AppsCardGrid({
                   href={publicUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex max-w-full items-center gap-1 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                  className="inline-flex min-w-0 flex-1 items-center gap-1 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
                 >
-                  <span className="truncate">{publicUrl}</span>
+                  <span className="min-w-0 truncate">{publicUrl}</span>
                   <ArrowUpRight className="size-3 shrink-0" />
                 </a>
                 </>

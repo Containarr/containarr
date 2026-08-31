@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom"
 
 import { CleanupConfirmDialog } from "@/components/cleanup-confirm-dialog"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
+import { MobileHeaderAction } from "@/components/mobile-header-action"
 import { PageHeader } from "@/components/page-header"
 import { ResourceMenu, type ResourceMenuItem } from "@/components/resource-menu"
 import { CardGridSkeleton, EmptyState, ErrorState } from "@/components/resource-states"
@@ -64,13 +65,20 @@ export function VolumesPage() {
       <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
         <PageHeader title="Volumes" description="Persistent Docker data stored on this host." />
         <div className="flex items-center gap-2">
-          <Button type="button" variant="outline" onClick={() => setConfirmingCleanup(true)}>
+          <Button type="button" variant="outline" className="hidden md:inline-flex" onClick={() => setConfirmingCleanup(true)}>
             <Eraser className="mr-2 size-4" />
             Cleanup
           </Button>
           <ViewToggle value={view} onChange={setView} />
         </div>
       </div>
+
+      <MobileHeaderAction>
+        <Button type="button" variant="outline" className="h-9" onClick={() => setConfirmingCleanup(true)}>
+          <Eraser className="mr-1.5 size-4" />
+          Cleanup
+        </Button>
+      </MobileHeaderAction>
 
       {volumes.status === "loading" && <CardGridSkeleton />}
       {volumes.status === "error" && <ErrorState message={volumes.error} onRetry={volumes.reload} />}
