@@ -587,6 +587,7 @@ function RegistryInstallForm({
   const [searchParams] = useSearchParams()
   const [subdomain, setSubdomain] = useState(registryId.toLowerCase())
   const [tls, setTls] = useState("only_https")
+  const [port, setPort] = useState(String(app.port))
   const [networkMode, setNetworkMode] = useState(app.dockerNetworkMode || "bridge")
   const [dockerNetworks, setDockerNetworks] = useState<DockerNetworkAttachment[]>([])
   const [policyId, setPolicyId] = useState(searchParams.get("policyId") ?? "public")
@@ -626,6 +627,7 @@ function RegistryInstallForm({
           registryId,
           subdomain,
           tls,
+          port: Number(port),
           dockerNetworkMode: networkMode,
           dockerNetworks,
           policyId,
@@ -678,10 +680,31 @@ function RegistryInstallForm({
             onChange={setSubdomain}
             onTlsChange={setTls}
           />
-          <PolicyField
-            value={policyId}
-            onChange={setPolicyId}
-          />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <PolicyField
+              value={policyId}
+              onChange={setPolicyId}
+            />
+            <FormField
+              label={
+                <span className="inline-flex items-center gap-1.5">
+                  Internal Port
+                  <InfoTooltip text="The internal HTTP port of the container, that will be mapped to the app's subdomain." />
+                </span>
+              }
+            >
+              <Input
+                required
+                type="number"
+                min="1"
+                max="65535"
+                value={port}
+                onChange={(event) => setPort(event.target.value)}
+                placeholder="8080"
+                className="appearance-none font-mono text-xs [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              />
+            </FormField>
+          </div>
           <NetworkEditor
             mode={networkMode}
             onModeChange={setNetworkMode}

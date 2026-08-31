@@ -649,7 +649,7 @@ function Detail({
         <Link
           to={to}
           title={truncate ? String(value) : undefined}
-          className={`${valueClassName} inline-block underline-offset-4 hover:underline`}
+          className={`${valueClassName} inline-block ${truncate ? "" : "underline-offset-4"} hover:underline`}
         >
           {value}
         </Link>
