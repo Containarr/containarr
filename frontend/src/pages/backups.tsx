@@ -93,7 +93,7 @@ export function BackupsPage() {
               Git Repository
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-3">
             <ol className="list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
               <li>Create a private, empty Git repository.</li>
               <li>Add the deploy key below with write access.</li>
@@ -170,7 +170,7 @@ export function BackupsPage() {
                 <p className="text-xs text-muted-foreground">
                   {currentSettings.lastBackupAt
                     ? `Last backed up ${new Date(currentSettings.lastBackupAt).toLocaleString()}`
-                    : "No backup has been pushed in this session."}
+                    : "No successful backup yet."}
                 </p>
                 <div className="flex gap-2">
                   {currentSettings.configured && (
