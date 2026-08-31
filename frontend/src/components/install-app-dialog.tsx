@@ -16,9 +16,11 @@ import {
   ShieldCheck,
   X,
 } from "lucide-react"
-import { useLocation, useNavigate, useSearchParams } from "react-router-dom"
+import { useSearchParams } from "react-router-dom"
 
 import { AppLogo } from "@/components/app-logo"
+import { FirewallPolicyDialog } from "@/components/firewall-policy-dialog"
+import { NewNetworkDialog } from "@/components/new-network-dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
@@ -27,7 +29,7 @@ import { useApi } from "@/hooks/use-api"
 import { apiRequest } from "@/lib/api"
 import { appConfigurationFromCompose } from "@/lib/docker-compose"
 import { TLS_OPTIONS } from "@/lib/tls"
-import type { AppConfiguration, AppResource, DockerPort, PolicyResource, RegistryApp } from "@/lib/types"
+import type { AppConfiguration, AppResource, DockerNetworkAttachment, DockerNetworkResource, DockerPort, PolicyResource, RegistryApp } from "@/lib/types"
 
 type DialogProps = {
   onClose: () => void
@@ -580,6 +582,7 @@ function RegistryInstallForm({
   const [subdomain, setSubdomain] = useState(registryId.toLowerCase())
   const [tls, setTls] = useState("only_https")
   const [networkMode, setNetworkMode] = useState(app.dockerNetworkMode || "bridge")
+  const [dockerNetworks, setDockerNetworks] = useState<DockerNetworkAttachment[]>([])
   const [policyId, setPolicyId] = useState(searchParams.get("policyId") ?? "public")
   const [environment, setEnvironment] = useState(() =>
     environmentFromRecord(app.dockerEnvironment)
@@ -618,6 +621,7 @@ function RegistryInstallForm({
           subdomain,
           tls,
           dockerNetworkMode: networkMode,
+          dockerNetworks,
           policyId,
           dockerEnvironment: environmentToRecord(environment),
           dockerVolumes: volumesToBinds(volumes),
@@ -671,12 +675,12 @@ function RegistryInstallForm({
           <PolicyField
             value={policyId}
             onChange={setPolicyId}
-            allowCreate
-            createReturnTo={`/apps?new=1&registryId=${encodeURIComponent(registryId)}`}
           />
           <NetworkEditor
             mode={networkMode}
             onModeChange={setNetworkMode}
+            networks={dockerNetworks}
+            onNetworksChange={setDockerNetworks}
             ports={ports}
             onPortsChange={setPorts}
           />
@@ -771,6 +775,9 @@ function CustomAppForm({
   const [networkMode, setNetworkMode] = useState<AppResource["dockerNetworkMode"]>(
     defaults?.dockerNetworkMode ?? "bridge"
   )
+  const [dockerNetworks, setDockerNetworks] = useState<DockerNetworkAttachment[]>(
+    defaults?.dockerNetworks ?? []
+  )
   const [policyId, setPolicyId] = useState(
     defaults?.policyId ?? searchParams.get("policyId") ?? "public"
   )
@@ -823,6 +830,7 @@ function CustomAppForm({
             tls,
             dockerImage,
             dockerNetworkMode: networkMode,
+            dockerNetworks,
             dockerVolumes: volumesToBinds(volumes),
             dockerDevices: volumesToBinds(devices),
             dockerPorts: portsToDocker(ports),
@@ -888,14 +896,6 @@ function CustomAppForm({
         <PolicyField
           value={policyId}
           onChange={setPolicyId}
-          allowCreate
-          createReturnTo={
-            editing
-              ? undefined
-              : importing
-                ? `/apps?new=1&mode=custom&import=${encodeURIComponent(importContainerId)}`
-                : "/apps?new=1&mode=custom"
-          }
         />
         <FormField
           label={
@@ -928,6 +928,8 @@ function CustomAppForm({
           <NetworkEditor
             mode={networkMode}
             onModeChange={setNetworkMode}
+            networks={dockerNetworks}
+            onNetworksChange={setDockerNetworks}
             ports={ports}
             onPortsChange={setPorts}
           />
@@ -1019,21 +1021,17 @@ function CustomAppForm({
 }
 
 function PolicyField({
-  allowCreate = false,
-  createReturnTo,
   onChange,
   value,
 }: {
-  allowCreate?: boolean
-  createReturnTo?: string
   onChange: (value: string) => void
   value: string
 }) {
   const policies = useApi<Record<string, PolicyResource>>("/api/v1/firewall/policy")
-  const navigate = useNavigate()
-  const location = useLocation()
   const menu = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
+  const [creatingPolicy, setCreatingPolicy] = useState(false)
+  const [createdPolicy, setCreatedPolicy] = useState<PolicyResource | null>(null)
 
   useEffect(() => {
     if (!open) return
@@ -1041,17 +1039,21 @@ function PolicyField({
       if (!menu.current?.contains(event.target as Node)) setOpen(false)
     }
     function closeOnEscape(event: globalThis.KeyboardEvent) {
-      if (event.key === "Escape") setOpen(false)
+      if (event.key !== "Escape") return
+      event.stopPropagation()
+      setOpen(false)
     }
     document.addEventListener("mousedown", closeMenu)
-    window.addEventListener("keydown", closeOnEscape)
+    document.addEventListener("keydown", closeOnEscape, true)
     return () => {
       document.removeEventListener("mousedown", closeMenu)
-      window.removeEventListener("keydown", closeOnEscape)
+      document.removeEventListener("keydown", closeOnEscape, true)
     }
   }, [open])
 
-  const selectedPolicy = policies.status === "success" ? policies.data[value] : null
+  const selectedPolicy = policies.status === "success"
+    ? policies.data[value] ?? (createdPolicy?.id === value ? createdPolicy : null)
+    : createdPolicy?.id === value ? createdPolicy : null
 
   return (
     <div className="block min-w-0 max-w-full space-y-1.5">
@@ -1107,24 +1109,34 @@ function PolicyField({
                 </button>
               ))}
             </div>
-            {allowCreate && (
-              <div className="mt-1 border-t pt-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOpen(false)
-                    navigate(`/firewall?new=1&returnTo=${encodeURIComponent(createReturnTo ?? location.pathname)}`)
-                  }}
-                  className="flex w-full cursor-pointer items-center rounded-md px-3 py-2 text-left text-sm font-medium hover:bg-accent hover:text-accent-foreground"
-                >
-                  <Plus className="mr-2 size-4" />
-                  Create new Policy
-                </button>
-              </div>
-            )}
+            <div className="mt-1 border-t pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false)
+                  setCreatingPolicy(true)
+                }}
+                className="flex w-full cursor-pointer items-center rounded-md px-3 py-2 text-left text-sm font-medium hover:bg-accent hover:text-accent-foreground"
+              >
+                <Plus className="mr-2 size-4" />
+                Create new Policy
+              </button>
+            </div>
           </div>
         )}
       </div>
+      {creatingPolicy && (
+        <FirewallPolicyDialog
+          policy={null}
+          onClose={() => setCreatingPolicy(false)}
+          onSaved={(policy) => {
+            setCreatingPolicy(false)
+            setCreatedPolicy(policy)
+            onChange(policy.id)
+            policies.reload()
+          }}
+        />
+      )}
     </div>
   )
 }
@@ -1132,15 +1144,47 @@ function PolicyField({
 function NetworkEditor({
   mode,
   onModeChange,
+  networks,
+  onNetworksChange,
   onPortsChange,
   ports,
 }: {
   mode: AppResource["dockerNetworkMode"]
   onModeChange: (value: AppResource["dockerNetworkMode"]) => void
+  networks: DockerNetworkAttachment[]
+  onNetworksChange: (value: DockerNetworkAttachment[]) => void
   onPortsChange: (value: PortRow[]) => void
   ports: PortRow[]
 }) {
+  const availableNetworks = useApi<DockerNetworkResource[]>("/api/v1/network")
+  const menu = useRef<HTMLDivElement>(null)
+  const [open, setOpen] = useState(false)
+  const [creatingNetwork, setCreatingNetwork] = useState(false)
+  const selectedNetwork = mode === "host" ? "host" : networks[0]?.name ?? "bridge"
+  const customNetworks = availableNetworks.status === "success"
+    ? availableNetworks.data.filter((network) => network.driver === "bridge" && network.name !== "bridge" && !network.ingress)
+    : []
+
+  useEffect(() => {
+    if (!open) return
+    function closeMenu(event: MouseEvent) {
+      if (!menu.current?.contains(event.target as Node)) setOpen(false)
+    }
+    function closeOnEscape(event: globalThis.KeyboardEvent) {
+      if (event.key !== "Escape") return
+      event.stopPropagation()
+      setOpen(false)
+    }
+    document.addEventListener("mousedown", closeMenu)
+    document.addEventListener("keydown", closeOnEscape, true)
+    return () => {
+      document.removeEventListener("mousedown", closeMenu)
+      document.removeEventListener("keydown", closeOnEscape, true)
+    }
+  }, [open])
+
   return (
+    <>
     <section aria-label="Network" className="min-w-0 max-w-full rounded-xl border p-4">
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
@@ -1148,27 +1192,70 @@ function NetworkEditor({
           <p className="mt-0.5 text-xs text-muted-foreground">
             {mode === "host"
               ? "Uses the host network directly."
-              : "Connects the container to Docker's default bridge network."}
+              : selectedNetwork === "bridge"
+                ? "Connects the container to Docker's default bridge network."
+                : `Connects the container to the ${selectedNetwork} bridge network.`}
           </p>
         </div>
-        <div className="relative w-36 shrink-0">
-          <Select
+        <div ref={menu} className="relative w-60 shrink-0">
+          <button
+            type="button"
+            role="combobox"
             aria-label="Network mode"
-            value={mode}
-            onChange={(event) =>
-              onModeChange(
-                event.target.value as AppResource["dockerNetworkMode"]
-              )
-            }
-            className="appearance-none pr-10"
+            aria-expanded={open}
+            aria-haspopup="listbox"
+            onClick={() => setOpen(!open)}
+            className="flex h-9 w-full cursor-pointer items-center justify-between rounded-lg border bg-background px-3 text-left text-sm shadow-xs outline-none focus:border-foreground/30 focus:ring-2 focus:ring-ring/30"
           >
-            <option value="bridge">Bridge</option>
-            <option value="host">Host</option>
-          </Select>
-          <ChevronDown
-            className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted-foreground"
-            aria-hidden="true"
-          />
+            <span className="truncate">{selectedNetwork === "host" ? "Host" : selectedNetwork === "bridge" ? "Bridged — Default" : `Bridged — ${selectedNetwork}`}</span>
+            <ChevronDown className={`size-4 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
+          </button>
+
+          {open && (
+            <div className="absolute top-full right-0 left-0 z-30 mt-1 overflow-hidden rounded-lg border bg-card p-1 text-card-foreground shadow-lg">
+              <div role="listbox" aria-label="Network mode" className="max-h-52 overflow-y-auto">
+                {[
+                  { value: "host", label: "Host" },
+                  { value: "bridge", label: "Bridged — Default" },
+                  ...customNetworks.map((network) => ({ value: network.name, label: `Bridged — ${network.name}` })),
+                ].map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    role="option"
+                    aria-selected={selectedNetwork === option.value}
+                    onClick={() => {
+                      if (option.value === "host") {
+                        onModeChange("host")
+                        onNetworksChange([])
+                      } else {
+                        onModeChange("bridge")
+                        onNetworksChange(option.value === "bridge" ? [] : [{ name: option.value, aliases: [] }])
+                      }
+                      setOpen(false)
+                    }}
+                    className="flex w-full cursor-pointer items-center justify-between rounded-md px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                  >
+                    <span className="truncate">{option.label}</span>
+                    {selectedNetwork === option.value && <Check className="size-4 shrink-0" />}
+                  </button>
+                ))}
+              </div>
+              <div className="mt-1 border-t pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false)
+                    setCreatingNetwork(true)
+                  }}
+                  className="flex w-full cursor-pointer items-center rounded-md px-3 py-2 text-left text-sm font-medium hover:bg-accent hover:text-accent-foreground"
+                >
+                  <Plus className="mr-2 size-4" />
+                  Create new Network
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1257,6 +1344,17 @@ function NetworkEditor({
         </div>
       )}
     </section>
+    <NewNetworkDialog
+      open={creatingNetwork}
+      onClose={() => setCreatingNetwork(false)}
+      onCreated={(network) => {
+        setCreatingNetwork(false)
+        availableNetworks.reload()
+        onModeChange("bridge")
+        onNetworksChange([{ name: network.name, aliases: [] }])
+      }}
+    />
+    </>
   )
 }
 
@@ -1855,6 +1953,7 @@ function haveDockerPropertiesChanged(
     before.subdomain !== after.subdomain ||
     before.dockerImage !== after.dockerImage ||
     before.dockerNetworkMode !== after.dockerNetworkMode ||
+    JSON.stringify(before.dockerNetworks) !== JSON.stringify(after.dockerNetworks) ||
     before.dockerUserId !== after.dockerUserId ||
     before.dockerGroupId !== after.dockerGroupId ||
     before.dockerPrivileged !== after.dockerPrivileged ||

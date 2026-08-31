@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react"
 import { Check, ChevronDown, LoaderCircle, Plus, Save, X } from "lucide-react"
-import { useNavigate, useSearchParams } from "react-router-dom"
+import { useSearchParams } from "react-router-dom"
 
+import { FirewallPolicyDialog } from "@/components/firewall-policy-dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
@@ -191,7 +192,6 @@ function ProxyDialogContent({
             <PolicyField
               value={policyId}
               onChange={setPolicyId}
-              createReturnTo={editing ? `/proxies/${proxy.id}` : "/proxies?new=1"}
             />
             {error && <p className="text-sm text-red-600">{error}</p>}
           </div>
@@ -215,18 +215,17 @@ function ProxyDialogContent({
 }
 
 function PolicyField({
-  createReturnTo,
   onChange,
   value,
 }: {
-  createReturnTo: string
   onChange: (value: string) => void
   value: string
 }) {
   const policies = useApi<Record<string, PolicyResource>>("/api/v1/firewall/policy")
-  const navigate = useNavigate()
   const menu = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
+  const [creatingPolicy, setCreatingPolicy] = useState(false)
+  const [createdPolicy, setCreatedPolicy] = useState<PolicyResource | null>(null)
 
   useEffect(() => {
     if (!open) return
@@ -234,17 +233,21 @@ function PolicyField({
       if (!menu.current?.contains(event.target as Node)) setOpen(false)
     }
     function closeOnEscape(event: globalThis.KeyboardEvent) {
-      if (event.key === "Escape") setOpen(false)
+      if (event.key !== "Escape") return
+      event.stopPropagation()
+      setOpen(false)
     }
     document.addEventListener("mousedown", closeMenu)
-    window.addEventListener("keydown", closeOnEscape)
+    document.addEventListener("keydown", closeOnEscape, true)
     return () => {
       document.removeEventListener("mousedown", closeMenu)
-      window.removeEventListener("keydown", closeOnEscape)
+      document.removeEventListener("keydown", closeOnEscape, true)
     }
   }, [open])
 
-  const selectedPolicy = policies.status === "success" ? policies.data[value] : null
+  const selectedPolicy = policies.status === "success"
+    ? policies.data[value] ?? (createdPolicy?.id === value ? createdPolicy : null)
+    : createdPolicy?.id === value ? createdPolicy : null
 
   return (
     <FormField label="Firewall Policy">
@@ -287,7 +290,7 @@ function PolicyField({
                 type="button"
                 onClick={() => {
                   setOpen(false)
-                  navigate(`/firewall?new=1&returnTo=${encodeURIComponent(createReturnTo)}`)
+                  setCreatingPolicy(true)
                 }}
                 className="flex w-full cursor-pointer items-center rounded-md px-3 py-2 text-left text-sm font-medium hover:bg-accent hover:text-accent-foreground"
               >
@@ -298,6 +301,18 @@ function PolicyField({
           </div>
         )}
       </div>
+      {creatingPolicy && (
+        <FirewallPolicyDialog
+          policy={null}
+          onClose={() => setCreatingPolicy(false)}
+          onSaved={(policy) => {
+            setCreatingPolicy(false)
+            setCreatedPolicy(policy)
+            onChange(policy.id)
+            policies.reload()
+          }}
+        />
+      )}
     </FormField>
   )
 }

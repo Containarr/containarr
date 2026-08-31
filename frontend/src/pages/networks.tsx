@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react"
-import { ArrowUpRight, Boxes, CalendarDays, Eraser, Fingerprint, Globe2, Network, Settings2, Trash2 } from "lucide-react"
+import { ArrowUpRight, Boxes, CalendarDays, Eraser, Fingerprint, Globe2, Network, Plus, Settings2, Trash2 } from "lucide-react"
 import { Link, useNavigate } from "react-router-dom"
 
 import { CleanupConfirmDialog } from "@/components/cleanup-confirm-dialog"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
+import { MobileHeaderAction } from "@/components/mobile-header-action"
+import { NewNetworkDialog } from "@/components/new-network-dialog"
 import { PageHeader } from "@/components/page-header"
 import { ResourceMenu, type ResourceMenuItem } from "@/components/resource-menu"
 import { CardGridSkeleton, EmptyState, ErrorState } from "@/components/resource-states"
@@ -21,6 +23,7 @@ export function NetworksPage() {
   const networks = useApi<DockerNetworkResource[]>("/api/v1/network", { pollInterval: 5000 })
   const [view, setView] = useStoredViewMode("containarr-networks-view")
   const [confirmingCleanup, setConfirmingCleanup] = useState(false)
+  const [creatingNetwork, setCreatingNetwork] = useState(false)
   const [cleanupPending, setCleanupPending] = useState(false)
   const [cleanupError, setCleanupError] = useState<string | null>(null)
   const [sort, setSort] = useState<{ key: NetworkSortKey; direction: SortDirection } | null>(null)
@@ -69,8 +72,19 @@ export function NetworksPage() {
             Cleanup
           </Button>
           <ViewToggle value={view} onChange={setView} />
+          <Button type="button" onClick={() => setCreatingNetwork(true)} className="hidden md:inline-flex">
+            <Plus className="mr-1.5 size-4" />
+            New
+          </Button>
         </div>
       </div>
+
+      <MobileHeaderAction>
+        <Button type="button" className="h-9" onClick={() => setCreatingNetwork(true)}>
+          <Plus className="mr-1.5 size-4" />
+          New
+        </Button>
+      </MobileHeaderAction>
 
       {networks.status === "loading" && <CardGridSkeleton />}
       {networks.status === "error" && <ErrorState message={networks.error} onRetry={networks.reload} />}
@@ -317,6 +331,14 @@ export function NetworksPage() {
               }
             })
             .finally(() => setDeletePending(false))
+        }}
+      />
+      <NewNetworkDialog
+        open={creatingNetwork}
+        onClose={() => setCreatingNetwork(false)}
+        onCreated={() => {
+          setCreatingNetwork(false)
+          networks.reload()
         }}
       />
     </section>

@@ -155,6 +155,7 @@ export function appConfigurationFromCompose(source: string): AppConfiguration {
     tls: "only_https",
     dockerImage: service.image.trim(),
     dockerNetworkMode: service.network_mode === "host" ? "host" : "bridge",
+    dockerNetworks: [],
     dockerVolumes: volumes,
     dockerDevices: devices,
     dockerPorts: ports,

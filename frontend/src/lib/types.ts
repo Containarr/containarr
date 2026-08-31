@@ -32,6 +32,7 @@ export type AppResource = {
     error: string | null
   }
   dockerNetworkMode: "bridge" | "host"
+  dockerNetworks: DockerNetworkAttachment[]
   dockerVolumes: string[]
   dockerDevices: string[]
   dockerPorts: DockerPort[]
@@ -51,6 +52,7 @@ export type AppConfiguration = Pick<
   | "tls"
   | "dockerImage"
   | "dockerNetworkMode"
+  | "dockerNetworks"
   | "dockerVolumes"
   | "dockerDevices"
   | "dockerPorts"
@@ -84,6 +86,11 @@ export type DockerPort = {
   hostIp?: string
   container: number
   protocol: "tcp" | "udp"
+}
+
+export type DockerNetworkAttachment = {
+  name: string
+  aliases: string[]
 }
 
 export type RegistryApp = {

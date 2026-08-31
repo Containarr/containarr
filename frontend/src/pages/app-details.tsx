@@ -238,7 +238,11 @@ export function AppDetailsPage() {
             <Detail label="Container Port" value={resource.port ?? "—"} mono />
             <Detail
               label="Network"
-              value={resource.dockerNetworkMode === "host" ? "Host" : "Bridge"}
+              value={resource.dockerNetworkMode === "host"
+                ? "Host"
+                : resource.dockerNetworks[0]?.name
+                  ? `Bridged — ${resource.dockerNetworks[0].name}`
+                  : "Bridged — Default"}
             />
             <Detail label="User ID" value={resource.dockerUserId ?? "Default"} mono />
             <Detail label="Group ID" value={resource.dockerGroupId ?? "Default"} mono />
@@ -268,7 +272,10 @@ export function AppDetailsPage() {
               </p>
               <div className="mt-1 space-y-1 break-words font-mono text-xs">
                 {resource.url ? <p>{resource.url}</p> : null}
-                {!resource.url ? <p>—</p> : null}
+                {resource.dockerNetworkMode === "bridge" && resource.dockerNetworks.length > 0 && resource.subdomain && resource.port
+                  ? <p>{`http://${resource.subdomain}:${resource.port}`}</p>
+                  : null}
+                {!resource.url && !(resource.dockerNetworkMode === "bridge" && resource.dockerNetworks.length > 0 && resource.subdomain && resource.port) ? <p>—</p> : null}
               </div>
             </div>
             <Detail label="Image" value={resource.dockerImage} mono />
