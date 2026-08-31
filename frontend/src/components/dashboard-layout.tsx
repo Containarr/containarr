@@ -39,8 +39,8 @@ const navigation = [
 const dockerNavigation = [
   { label: "Containers", to: "/containers", icon: Container },
   { label: "Images", to: "/images", icon: Images },
-  { label: "Volumes", to: "/volumes", icon: Database },
   { label: "Networks", to: "/networks", icon: Network },
+  { label: "Volumes", to: "/volumes", icon: Database },
 ]
 
 const settingsNavigation = [
