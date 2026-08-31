@@ -30,9 +30,11 @@
 # Requirements
 
 * A Linux host, e.g. Raspberry Pi
-* Port 80 (HTTP) and 443 (HTTPS) available
+* Port 80 (HTTP) and 443 (HTTPS) available in your router.
 
 # Getting Started
+
+Open a terminal or SSH session on your host device.
 
 ## 1. Install Docker
 
@@ -49,11 +51,12 @@ And log in again.
 ## 2. Run Containarr
 
 ```bash
-$ docker run -d \
+$ docker run \
+  --detach \
   --name=containarr \
   --network=host \
-  -v ~/.containarr/:/data/ \
-  -v /var/run/docker.sock:/var/run/docker.sock \
+  --volume ~/.containarr/:/data/ \
+  --volume /var/run/docker.sock:/var/run/docker.sock \
   --restart unless-stopped \
   ghcr.io/containarr/containarr:latest
 ```
@@ -79,7 +82,7 @@ $ docker run -d \
 
 ## 3. Open a Browser
 
-Open http://localhost in your web browser to set-up Containarr, and run your first container.
+Open [http://localhost](http://localhost) in your web browser to set-up Containarr, and run your first container. Or, navigate to `http://<ip-of-your-host>` if you're running Containarr on another device.
 
 # Roadmap
 
@@ -103,6 +106,51 @@ https://plex.mydomain.com → Router → 192.168.1.100:443 → Traefik → http:
 ```
 
 > Containarr's own web UI listens on `127.0.0.1:81`, and Traefik proxies it on ports 80 and 443.
+
+# FAQ
+
+**My host already listens on port `80` and/or `443`, can I still use Containarr?**
+
+If you cannot disable the service that runs on those ports, for example on Synology NAS, you can customize the HTTP and HTTPS ports that Containarr listens on.
+
+Set the environment variables of Containarr to 
+
+|Environment Variable|Default Value|New Value|
+|---|---|---|
+|`PORT_HTTP`|`80`|`8000`|
+|`PORT_HTTPS`|`443`|`4430`|
+
+Then in your router, set-up port forwarding so that the external port `80` is forwarded to your host's port `8000`, and the external port `443` is forwarded to `4430`. This entirely bypasses the service that's already listening on ports `80` and/or `443`.
+
+<details>
+
+  <summary>Terminal</summary>
+
+	$ docker run \
+	  --detach \
+	  --name=containarr \
+	  --network=host \
+	  --volume ~/.containarr/:/data/ \
+	  --volume /var/run/docker.sock:/var/run/docker.sock \
+	  --restart unless-stopped \
+	  --env PORT_HTTP=8000 \
+	  --env PORT_HTTPS=4300 \
+	  ghcr.io/containarr/containarr:latest
+</details>
+
+<details>
+
+  <summary>docker-compose.yml</summary>
+
+  ```yaml
+  services:
+    containarr:
+      # ...
+      environment:
+        - PORT_HTTP: 8000
+        - PORT_HTTPS: 4430
+  ```
+</details>
 
 # Contributing
 

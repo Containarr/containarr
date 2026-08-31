@@ -15,3 +15,6 @@ services:
       - ./config.mjs:/app/config.mjs
       - ./package.json:/app/package.json
       - ./package-lock.json:/app/package-lock.json
+    # environment:
+    #   - PORT_HTTP=1234
+    #   - PORT_HTTPS=1235
