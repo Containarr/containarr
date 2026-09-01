@@ -316,15 +316,13 @@ function ContainersTable({
   const [sort, setSort] = useState<{
     key: ContainerSortKey
     direction: SortDirection
-  } | null>(null)
+  }>({ key: "container", direction: "asc" })
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [confirmingBulkDelete, setConfirmingBulkDelete] = useState(false)
   const [bulkDeletePending, setBulkDeletePending] = useState(false)
   const [bulkDeleteError, setBulkDeleteError] = useState<string | null>(null)
   const groupedItems = useMemo(() => {
     const defaultItems = groupContainers(items).flatMap((group) => group.items)
-    if (!sort) return defaultItems
-
     return [...defaultItems].sort((left, right) => {
       const leftGroupRank = getContainerGroupRank(left)
       const rightGroupRank = getContainerGroupRank(right)

@@ -901,8 +901,9 @@ function CustomAppForm({
             <div className="flex items-start gap-3 rounded-xl border bg-muted/20 p-4 text-sm text-muted-foreground">
               <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
               <p>
-                Importing replaces the existing container with a newly started,
-                app-managed container. Existing labels are not imported.
+                Importing replaces the existing container with an app-managed
+                container and preserves whether it is running or stopped.
+                Existing labels are not imported.
               </p>
             </div>
           )}

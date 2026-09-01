@@ -24,14 +24,13 @@ export function ImagesPage() {
   const [confirmingCleanup, setConfirmingCleanup] = useState(false)
   const [cleanupPending, setCleanupPending] = useState(false)
   const [cleanupError, setCleanupError] = useState<string | null>(null)
-  const [sort, setSort] = useState<{ key: ImageSortKey; direction: SortDirection } | null>(null)
+  const [sort, setSort] = useState<{ key: ImageSortKey; direction: SortDirection }>({ key: "image", direction: "asc" })
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deletePending, setDeletePending] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const items = images.status === "success" ? images.data : []
   const sortedItems = useMemo(() => {
-    if (!sort) return items
     return [...items].sort((left, right) => {
       const leftValue = sort.key === "image" ? left.tags[0] || "Untagged image"
         : sort.key === "id" ? left.id
@@ -177,7 +176,7 @@ export function ImagesPage() {
                       {(["image", "id", "size", "containers", "created"] as const).map((key) => (
                         <SortableTableHeader
                           key={key}
-                          label={key.charAt(0).toUpperCase() + key.slice(1)}
+                          label={key === "id" ? "ID" : key.charAt(0).toUpperCase() + key.slice(1)}
                           active={sort?.key === key}
                           direction={sort?.direction || "asc"}
                           onClick={() => changeSort(key)}

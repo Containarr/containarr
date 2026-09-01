@@ -10,6 +10,7 @@ import { PageHeader } from "@/components/page-header"
 import { ResourceMenu, type ResourceMenuItem } from "@/components/resource-menu"
 import { CardGridSkeleton, EmptyState, ErrorState } from "@/components/resource-states"
 import { SortableTableHeader, type SortDirection } from "@/components/sortable-table-header"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ViewToggle } from "@/components/view-toggle"
@@ -26,14 +27,13 @@ export function NetworksPage() {
   const [creatingNetwork, setCreatingNetwork] = useState(false)
   const [cleanupPending, setCleanupPending] = useState(false)
   const [cleanupError, setCleanupError] = useState<string | null>(null)
-  const [sort, setSort] = useState<{ key: NetworkSortKey; direction: SortDirection } | null>(null)
+  const [sort, setSort] = useState<{ key: NetworkSortKey; direction: SortDirection }>({ key: "network", direction: "asc" })
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deletePending, setDeletePending] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const items = networks.status === "success" ? networks.data : []
   const sortedItems = useMemo(() => {
-    if (!sort) return items
     return [...items].sort((left, right) => {
       const leftValue = sort.key === "network" ? left.name
         : sort.key === "driver" ? left.driver
@@ -123,8 +123,13 @@ export function NetworksPage() {
                   <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-700 dark:text-cyan-400">
                     <Network className="size-5" />
                   </div>
-                  <div className="min-w-0">
-                    <CardTitle className="truncate text-base">{network.name}</CardTitle>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <CardTitle className="truncate text-base">{network.name}</CardTitle>
+                      {["bridge", "host", "none"].includes(network.name) && (
+                        <Badge variant="outline" title="Native Docker network. It cannot be removed.">Native</Badge>
+                      )}
+                    </div>
                     <p className="mt-1 truncate text-xs text-muted-foreground">
                       {[network.driver, network.internal ? "internal" : null, network.ingress ? "ingress" : null].filter(Boolean).join(" · ")}
                     </p>
@@ -242,7 +247,12 @@ export function NetworksPage() {
                           />
                         </td>
                         <td className="px-4 py-3">
-                          <p className="font-medium">{network.name}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium">{network.name}</p>
+                            {["bridge", "host", "none"].includes(network.name) && (
+                              <Badge variant="outline" title="Native Docker network. It cannot be removed.">Native</Badge>
+                            )}
+                          </div>
                           <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">{network.id.slice(0, 12)}</p>
                         </td>
                         <td className="px-4 py-3">{network.driver}</td>

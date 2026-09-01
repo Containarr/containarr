@@ -24,14 +24,13 @@ export function VolumesPage() {
   const [confirmingCleanup, setConfirmingCleanup] = useState(false)
   const [cleanupPending, setCleanupPending] = useState(false)
   const [cleanupError, setCleanupError] = useState<string | null>(null)
-  const [sort, setSort] = useState<{ key: VolumeSortKey; direction: SortDirection } | null>(null)
+  const [sort, setSort] = useState<{ key: VolumeSortKey; direction: SortDirection }>({ key: "volume", direction: "asc" })
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deletePending, setDeletePending] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const items = volumes.status === "success" ? volumes.data : []
   const sortedItems = useMemo(() => {
-    if (!sort) return items
     return [...items].sort((left, right) => {
       const leftValue = sort.key === "volume" ? left.name
         : sort.key === "driver" ? left.driver

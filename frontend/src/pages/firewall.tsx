@@ -40,10 +40,10 @@ export function FirewallPage() {
   }, [searchParams, policies.status])
 
   const items = policies.status === "success" ? Object.values(policies.data) : []
-  const appUsage = apps.status === "success"
-    ? Object.values(apps.data).reduce<Record<string, number>>((counts, app) => {
-        counts[app.policyId] = (counts[app.policyId] ?? 0) + 1
-        return counts
+  const policyApps = apps.status === "success"
+    ? Object.values(apps.data).reduce<Record<string, AppResource[]>>((groupedApps, app) => {
+        groupedApps[app.policyId] = [...(groupedApps[app.policyId] ?? []), app]
+        return groupedApps
       }, {})
     : null
 
@@ -83,19 +83,19 @@ export function FirewallPage() {
       )}
       {policies.status === "success" && items.length > 0 && (
         view === "cards" ? (
-          <PolicyCardGrid items={items} appUsage={appUsage} onEdit={setDialogPolicy} onDelete={(policy) => {
+          <PolicyCardGrid items={items} policyApps={policyApps} onEdit={setDialogPolicy} onDelete={(policy) => {
             setDeleteError(null)
             setDeleting(policy)
           }} />
         ) : (
           <>
             <div className="sm:hidden">
-              <PolicyCardGrid items={items} appUsage={appUsage} onEdit={setDialogPolicy} onDelete={(policy) => {
+              <PolicyCardGrid items={items} policyApps={policyApps} onEdit={setDialogPolicy} onDelete={(policy) => {
                 setDeleteError(null)
                 setDeleting(policy)
               }} />
             </div>
-            <PolicyTable items={items} appUsage={appUsage} onEdit={setDialogPolicy} onDelete={(policy) => {
+            <PolicyTable items={items} policyApps={policyApps} onEdit={setDialogPolicy} onDelete={(policy) => {
               setDeleteError(null)
               setDeleting(policy)
             }} />
@@ -153,15 +153,15 @@ export function FirewallPage() {
 }
 
 function PolicyCardGrid({
-  appUsage,
   items,
   onDelete,
   onEdit,
+  policyApps,
 }: {
-  appUsage: Record<string, number> | null
   items: PolicyResource[]
   onDelete: (policy: PolicyResource) => void
   onEdit: (policy: PolicyResource) => void
+  policyApps: Record<string, AppResource[]> | null
 }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -205,14 +205,21 @@ function PolicyCardGrid({
                     ? "Everyone can access apps"
                     : `${policy.allowedIps.length} allowed ${policy.allowedIps.length === 1 ? "source" : "sources"}`}
                   <span aria-hidden="true"> ・ </span>
-                  <Link
-                    to={`/apps?policy=${encodeURIComponent(policy.id)}`}
-                    className="font-medium underline-offset-4 hover:text-foreground hover:underline"
-                  >
-                    {appUsage
-                      ? `Used in ${appUsage[policy.id] ?? 0} ${(appUsage[policy.id] ?? 0) === 1 ? "app" : "apps"}`
-                      : "View apps"}
-                  </Link>
+                  {policyApps ? (
+                    policyApps[policy.id]?.length ? (
+                      <span className="inline-flex flex-wrap gap-x-2 gap-y-1">
+                        {policyApps[policy.id].map((app) => (
+                          <Link
+                            key={app.id}
+                            to={`/apps/${app.id}`}
+                            className="font-medium underline-offset-4 hover:text-foreground hover:underline"
+                          >
+                            {app.name || "Unnamed app"}
+                          </Link>
+                        ))}
+                      </span>
+                    ) : "No apps"
+                  ) : "Loading apps…"}
                 </p>
               </div>
             </div>
@@ -253,46 +260,41 @@ function PolicyCardGrid({
 }
 
 function PolicyTable({
-  appUsage,
   items,
   onDelete,
   onEdit,
+  policyApps,
 }: {
-  appUsage: Record<string, number> | null
   items: PolicyResource[]
   onDelete: (policy: PolicyResource) => void
   onEdit: (policy: PolicyResource) => void
+  policyApps: Record<string, AppResource[]> | null
 }) {
   const [sort, setSort] = useState<{
-    key: "name" | "sources" | "allowed" | "apps"
+    key: "name" | "allowed" | "apps"
     direction: SortDirection
-  } | null>(null)
+  }>({ key: "name", direction: "asc" })
   const sortedItems = useMemo(() => {
-    if (!sort) return items
     return [...items].sort((left, right) => {
       const leftValue = sort.key === "name"
         ? left.name
-        : sort.key === "sources"
-          ? String(left.id === "public" ? Number.MAX_SAFE_INTEGER : left.allowedIps.length)
-          : sort.key === "apps"
-            ? String(appUsage?.[left.id] ?? 0)
-            : left.allowedIps.join(" ")
+        : sort.key === "apps"
+          ? (policyApps?.[left.id] ?? []).map((app) => app.name || "").join(" ")
+          : left.allowedIps.join(" ")
       const rightValue = sort.key === "name"
         ? right.name
-        : sort.key === "sources"
-          ? String(right.id === "public" ? Number.MAX_SAFE_INTEGER : right.allowedIps.length)
-          : sort.key === "apps"
-            ? String(appUsage?.[right.id] ?? 0)
-            : right.allowedIps.join(" ")
+        : sort.key === "apps"
+          ? (policyApps?.[right.id] ?? []).map((app) => app.name || "").join(" ")
+          : right.allowedIps.join(" ")
       const comparison = leftValue.localeCompare(rightValue, undefined, {
         numeric: true,
         sensitivity: "base",
       })
       return sort.direction === "asc" ? comparison : -comparison
     })
-  }, [appUsage, items, sort])
+  }, [items, policyApps, sort])
 
-  function changeSort(key: "name" | "sources" | "allowed" | "apps") {
+  function changeSort(key: "name" | "allowed" | "apps") {
     setSort((current) => ({
       key,
       direction: current?.key === key && current.direction === "asc" ? "desc" : "asc",
@@ -305,7 +307,6 @@ function PolicyTable({
         <thead className="border-b bg-muted/40 text-xs text-muted-foreground">
           <tr>
             <SortableTableHeader label="Policy" active={sort?.key === "name"} direction={sort?.direction || "asc"} onClick={() => changeSort("name")} />
-            <SortableTableHeader label="Sources" active={sort?.key === "sources"} direction={sort?.direction || "asc"} onClick={() => changeSort("sources")} />
             <SortableTableHeader label="Allowed IPs" active={sort?.key === "allowed"} direction={sort?.direction || "asc"} onClick={() => changeSort("allowed")} />
             <SortableTableHeader label="Apps" active={sort?.key === "apps"} direction={sort?.direction || "asc"} onClick={() => changeSort("apps")} />
             <th className="w-12 px-2 py-3"><span className="sr-only">Actions</span></th>
@@ -342,12 +343,9 @@ function PolicyTable({
                   {policy.name}
                 </div>
               </td>
-              <td className="px-4 py-3 text-muted-foreground">
-                {policy.id === "public" ? "Everyone" : policy.allowedIps.length}
-              </td>
               <td className="px-4 py-3">
                 {policy.id === "public" ? (
-                  <span className="text-muted-foreground">All addresses</span>
+                  <span className="text-muted-foreground">Everyone</span>
                 ) : (
                   <div className="flex flex-wrap gap-1.5">
                     {policy.allowedIps.map((entry) => <span key={entry} title={getIpv4CidrRange(entry)} className="rounded-md bg-muted px-2 py-1 font-mono text-xs">{entry}</span>)}
@@ -356,14 +354,21 @@ function PolicyTable({
                 )}
               </td>
               <td className="px-4 py-3">
-                <Link
-                  to={`/apps?policy=${encodeURIComponent(policy.id)}`}
-                  className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-                >
-                  {appUsage
-                    ? `Used in ${appUsage[policy.id] ?? 0} ${(appUsage[policy.id] ?? 0) === 1 ? "app" : "apps"}`
-                    : "View apps"}
-                </Link>
+                {policyApps ? (
+                  policyApps[policy.id]?.length ? (
+                    <div className="flex flex-wrap gap-x-3 gap-y-1">
+                      {policyApps[policy.id].map((app) => (
+                        <Link
+                          key={app.id}
+                          to={`/apps/${app.id}`}
+                          className="font-medium hover:underline"
+                        >
+                          {app.name || "Unnamed app"}
+                        </Link>
+                      ))}
+                    </div>
+                  ) : <span className="text-muted-foreground">None</span>
+                ) : <span className="text-muted-foreground">Loading…</span>}
               </td>
               <td className="w-12 px-2 py-3">
                 <ResourceMenu

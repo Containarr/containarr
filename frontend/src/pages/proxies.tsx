@@ -285,9 +285,8 @@ function ProxyTable({
   const [sort, setSort] = useState<{
     key: ProxySortKey
     direction: SortDirection
-  } | null>(null)
+  }>({ key: "proxy", direction: "asc" })
   const sortedItems = useMemo(() => {
-    if (!sort) return items
     return [...items].sort((left, right) => {
       const comparison = getProxySortValue(left, sort.key, domain, policyNames).localeCompare(
         getProxySortValue(right, sort.key, domain, policyNames),

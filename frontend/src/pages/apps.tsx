@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type KeyboardEvent } from "react"
-import { ArrowUpRight, FileDown, Globe2, Pencil, Plus, Power, PowerOff, ShieldCheck, Trash2, X } from "lucide-react"
+import { ArrowUpRight, FileDown, Globe2, Pencil, Plus, Power, PowerOff, ShieldCheck, Trash2 } from "lucide-react"
 import { Link, useNavigate, useSearchParams } from "react-router-dom"
 
 import { AppLogo } from "@/components/app-logo"
@@ -42,13 +42,6 @@ export function AppsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const items = apps.status === "success" ? Object.values(apps.data) : []
-  const policyFilterId = searchParams.get("policy")
-  const policyFilter = policyFilterId && policies.status === "success"
-    ? policies.data[policyFilterId]
-    : null
-  const filteredItems = policyFilterId
-    ? items.filter((app) => app.policyId === policyFilterId)
-    : items
   const importableContainers = containers.status === "success"
     ? containers.data.filter((container) => container.importable)
     : []
@@ -89,40 +82,13 @@ export function AppsPage() {
         </Button>
       </MobileHeaderAction>
 
-      {policyFilterId && (
-        <div className="mb-6 flex flex-wrap items-center gap-2" aria-label="Active filters">
-          <span className="inline-flex h-8 items-center gap-1.5 rounded-full border bg-muted/40 pl-3 pr-1.5 text-sm font-medium">
-            {policyFilterId === "public" ? (
-              <Globe2 className="size-3.5 shrink-0 text-muted-foreground" />
-            ) : (
-              <ShieldCheck className="size-3.5 shrink-0 text-muted-foreground" />
-            )}
-            <span>{policyFilter?.name ?? (policies.status === "loading" ? "Loading policy…" : "Unknown policy")}</span>
-            <button
-              type="button"
-              aria-label="Remove firewall policy filter"
-              className="flex size-5 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-              onClick={() => {
-                const nextSearchParams = new URLSearchParams(searchParams)
-                nextSearchParams.delete("policy")
-                setSearchParams(nextSearchParams, { replace: true })
-              }}
-            >
-              <X className="size-3.5" />
-            </button>
-          </span>
-        </div>
-      )}
-
       {apps.status === "loading" && <CardGridSkeleton />}
       {apps.status === "error" && (
         <ErrorState message={apps.error} onRetry={apps.reload} />
       )}
-      {apps.status === "success" && filteredItems.length === 0 && (
+      {apps.status === "success" && items.length === 0 && (
         <EmptyState>
-          {policyFilterId ? (
-            `No apps use ${policyFilter?.name ?? "this firewall policy"}.`
-          ) : importableContainers.length > 0 ? (
+          {importableContainers.length > 0 ? (
             <>
               No apps have been configured yet. You can import {importableContainers.length}{" "}
               existing {importableContainers.length === 1 ? "container" : "containers"}{" "}
@@ -133,16 +99,16 @@ export function AppsPage() {
           )}
         </EmptyState>
       )}
-      {apps.status === "success" && filteredItems.length > 0 && (
+      {apps.status === "success" && items.length > 0 && (
         <>
           {view === "cards" ? (
-            <AppsCardGrid items={filteredItems} domain={domain} policyNames={policyNames} navigate={navigate} onReload={apps.reload} onDelete={setDeleting} />
+            <AppsCardGrid items={items} domain={domain} policyNames={policyNames} navigate={navigate} onReload={apps.reload} onDelete={setDeleting} />
           ) : (
             <>
               <div className="sm:hidden">
-                <AppsCardGrid items={filteredItems} domain={domain} policyNames={policyNames} navigate={navigate} onReload={apps.reload} onDelete={setDeleting} />
+                <AppsCardGrid items={items} domain={domain} policyNames={policyNames} navigate={navigate} onReload={apps.reload} onDelete={setDeleting} />
               </div>
-              <AppsTable items={filteredItems} domain={domain} policyNames={policyNames} onReload={apps.reload} onDelete={setDeleting} />
+              <AppsTable items={items} domain={domain} policyNames={policyNames} onReload={apps.reload} onDelete={setDeleting} />
             </>
           )}
         </>
@@ -328,10 +294,8 @@ function AppsTable({
   onReload: () => void
 }) {
   const navigate = useNavigate()
-  const [sort, setSort] = useState<{ key: AppSortKey; direction: SortDirection } | null>(null)
+  const [sort, setSort] = useState<{ key: AppSortKey; direction: SortDirection }>({ key: "app", direction: "asc" })
   const sortedItems = useMemo(() => {
-    if (!sort) return items
-
     return [...items].sort((left, right) => {
       const comparison = getAppSortValue(left, sort.key, domain, policyNames).localeCompare(
         getAppSortValue(right, sort.key, domain, policyNames),
