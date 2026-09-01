@@ -12,9 +12,10 @@ export type AppResource = {
   containerId: string | null
   containerError: {
     containerId: string
-    exitCode: number
+    exitCode: number | null
     finishedAt: string
     logs: string
+    message?: string
   } | null
   dockerImage: string
   autoUpdate: boolean

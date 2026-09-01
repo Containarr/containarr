@@ -72,29 +72,28 @@ export function AppDetailsPage() {
   const normalizedState = state?.toLowerCase() ?? ""
   const live = normalizedState === "running"
   const statusState =
-    resource.disabled
-      ? "disabled"
-      : resource.certificate.status === "error"
-    || (
-      resource.containerError
-      && ["dead", "exited", "restarting"].includes(normalizedState)
-    )
+    resource.containerError
+    && (!normalizedState || ["dead", "exited", "restarting"].includes(normalizedState))
       ? "error"
-      : ["provisioning", "renewing"].includes(resource.certificate.status)
-        ? "provisioning"
-        : live
-          ? "running"
-          : "starting"
+      : resource.disabled
+        ? "disabled"
+        : resource.certificate.status === "error"
+          ? "error"
+          : ["provisioning", "renewing"].includes(resource.certificate.status)
+            ? "provisioning"
+            : live
+              ? "running"
+              : "starting"
   const statusLabel =
-    resource.disabled
-      ? "Disabled"
-      : statusState === "error"
+    statusState === "error"
       ? "Error"
-      : statusState === "provisioning"
-        ? "Provisioning Certificate"
-        : statusState === "running"
-          ? "Live"
-          : "Starting"
+      : resource.disabled
+        ? "Disabled"
+        : statusState === "provisioning"
+          ? "Provisioning Certificate"
+          : statusState === "running"
+            ? "Live"
+            : "Starting"
 
   async function deleteApp() {
     setDeleting(true)
@@ -294,21 +293,22 @@ export function AppDetailsPage() {
           </CardHeader>
           <CardContent className="mt-5">
             <p className="text-sm text-muted-foreground">
-              Exited with code {resource.containerError.exitCode} on{" "}
-              {new Intl.DateTimeFormat(undefined, {
-                dateStyle: "medium",
-                timeStyle: "medium",
-              }).format(new Date(resource.containerError.finishedAt))}.
+              {resource.containerError.message
+                ? resource.containerError.message
+                : `Exited with code ${resource.containerError.exitCode} on ${new Intl.DateTimeFormat(undefined, {
+                    dateStyle: "medium",
+                    timeStyle: "medium",
+                  }).format(new Date(resource.containerError.finishedAt))}.`}
             </p>
             {resource.containerError.logs ? (
               <pre className="mt-4 max-h-[28rem] overflow-auto whitespace-pre-wrap break-words rounded-lg bg-zinc-950 p-4 font-mono text-xs leading-relaxed text-zinc-100">
                 <Ansi>{resource.containerError.logs}</Ansi>
               </pre>
-            ) : (
+            ) : !resource.containerError.message ? (
               <p className="mt-4 text-sm text-muted-foreground">
                 The container did not write any logs before it exited.
               </p>
-            )}
+            ) : null}
           </CardContent>
         </Card>
       )}
