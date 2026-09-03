@@ -29,7 +29,12 @@ export function ImagesPage() {
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deletePending, setDeletePending] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
-  const items = images.status === "success" ? images.data : []
+  const items = images.status === "success"
+    ? [...images.data].sort((left, right) =>
+        (left.tags[0] || "Untagged image").localeCompare((right.tags[0] || "Untagged image"), undefined, { numeric: true, sensitivity: "base" })
+        || left.id.localeCompare(right.id)
+      )
+    : []
   const sortedItems = useMemo(() => {
     return [...items].sort((left, right) => {
       const leftValue = sort.key === "image" ? left.tags[0] || "Untagged image"

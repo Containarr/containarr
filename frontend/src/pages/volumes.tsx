@@ -29,7 +29,12 @@ export function VolumesPage() {
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deletePending, setDeletePending] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
-  const items = volumes.status === "success" ? volumes.data : []
+  const items = volumes.status === "success"
+    ? [...volumes.data].sort((left, right) =>
+        left.name.localeCompare(right.name, undefined, { numeric: true, sensitivity: "base" })
+        || left.name.localeCompare(right.name)
+      )
+    : []
   const sortedItems = useMemo(() => {
     return [...items].sort((left, right) => {
       const leftValue = sort.key === "volume" ? left.name

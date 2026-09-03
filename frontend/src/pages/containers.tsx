@@ -42,7 +42,12 @@ export function ContainersPage() {
   const [cleanupPending, setCleanupPending] = useState(false)
   const [cleanupError, setCleanupError] = useState<string | null>(null)
   const navigate = useNavigate()
-  const items = containers.status === "success" ? containers.data : []
+  const items = containers.status === "success"
+    ? [...containers.data].sort((left, right) =>
+        (left.name || "Unnamed container").localeCompare((right.name || "Unnamed container"), undefined, { numeric: true, sensitivity: "base" })
+        || left.id.localeCompare(right.id)
+      )
+    : []
   const appsById = apps.status === "success" ? apps.data : {}
 
   return (

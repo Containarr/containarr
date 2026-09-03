@@ -41,7 +41,12 @@ export function AppsPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
-  const items = apps.status === "success" ? Object.values(apps.data) : []
+  const items = apps.status === "success"
+    ? Object.values(apps.data).sort((left, right) =>
+        (left.name || "Unnamed app").localeCompare((right.name || "Unnamed app"), undefined, { numeric: true, sensitivity: "base" })
+        || left.id.localeCompare(right.id)
+      )
+    : []
   const importableContainers = containers.status === "success"
     ? containers.data.filter((container) => container.importable)
     : []

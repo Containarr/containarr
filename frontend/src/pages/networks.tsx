@@ -32,7 +32,12 @@ export function NetworksPage() {
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deletePending, setDeletePending] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
-  const items = networks.status === "success" ? networks.data : []
+  const items = networks.status === "success"
+    ? [...networks.data].sort((left, right) =>
+        left.name.localeCompare(right.name, undefined, { numeric: true, sensitivity: "base" })
+        || left.id.localeCompare(right.id)
+      )
+    : []
   const sortedItems = useMemo(() => {
     return [...items].sort((left, right) => {
       const leftValue = sort.key === "network" ? left.name

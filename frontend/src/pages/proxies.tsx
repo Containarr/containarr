@@ -39,7 +39,12 @@ export function ProxiesPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
-  const items = proxies.status === "success" ? Object.values(proxies.data) : []
+  const items = proxies.status === "success"
+    ? Object.values(proxies.data).sort((left, right) =>
+        left.subdomain.localeCompare(right.subdomain, undefined, { numeric: true, sensitivity: "base" })
+        || left.id.localeCompare(right.id)
+      )
+    : []
   const domain =
     domainRequest.status === "success" ? domainRequest.data.domain : null
   const policyNames = policies.status === "success"

@@ -39,7 +39,12 @@ export function FirewallPage() {
     }
   }, [searchParams, policies.status])
 
-  const items = policies.status === "success" ? Object.values(policies.data) : []
+  const items = policies.status === "success"
+    ? Object.values(policies.data).sort((left, right) =>
+        left.name.localeCompare(right.name, undefined, { numeric: true, sensitivity: "base" })
+        || left.id.localeCompare(right.id)
+      )
+    : []
   const policyApps = apps.status === "success"
     ? Object.values(apps.data).reduce<Record<string, AppResource[]>>((groupedApps, app) => {
         groupedApps[app.policyId] = [...(groupedApps[app.policyId] ?? []), app]
