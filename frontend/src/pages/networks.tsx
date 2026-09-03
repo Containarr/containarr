@@ -33,7 +33,9 @@ export function NetworksPage() {
   const [deletePending, setDeletePending] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const items = networks.status === "success"
-    ? [...networks.data].sort((left, right) =>
+    ? networks.data
+      .filter((network) => network.name !== "none" || network.containers.length > 0)
+      .sort((left, right) =>
         left.name.localeCompare(right.name, undefined, { numeric: true, sensitivity: "base" })
         || left.id.localeCompare(right.id)
       )
