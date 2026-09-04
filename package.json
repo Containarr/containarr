@@ -1,6 +1,6 @@
 {
   "name": "@containarr/containarr",
-  "version": "0.37.0",
+  "version": "0.38.0",
   "scripts": {
     "start": "DEBUG=HTTPServer,Traefik,Docker,Settings,SQLite,DDNS,LetsEncrypt,Apps,App:*,Proxies,Updates,Backups node server.mjs",
     "serve": "DEBUG=HTTPServer,Traefik,Docker,Settings,SQLite,DDNS,LetsEncrypt,Apps,App:*,Proxies,Updates,Backups node --watch --watch-kill-signal SIGINT server.mjs",
