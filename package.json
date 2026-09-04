@@ -1,6 +1,6 @@
 {
   "name": "@containarr/containarr",
-  "version": "0.39.0",
+  "version": "0.40.0",
   "scripts": {
     "test": "node --test",
     "start": "DEBUG=HTTPServer,Traefik,Docker,Settings,SQLite,DDNS,LetsEncrypt,Apps,App:*,Proxies,Updates,Backups,Events node server.mjs",
@@ -15,6 +15,7 @@
     "debug": "^4.4.3",
     "dockerode": "^5.0.1",
     "express": "^5.2.1",
+    "markdown-it": "^15.0.1",
     "semver": "^7.8.5",
     "sequelize": "^6.37.8",
     "web-push": "^3.6.7",

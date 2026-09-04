@@ -84,6 +84,10 @@ $ docker run \
 
 Open [http://localhost](http://localhost) in your web browser to set-up Containarr, and run your first container. Or, navigate to `http://<ip-of-your-host>` if you're running Containarr on another device.
 
+## Changelog URL
+
+The Updates page always shows [CHANGELOG.md](https://github.com/Containarr/containarr/blob/main/CHANGELOG.md) below the update card. Set the `CONTAINARR_CHANGELOG_URL` environment variable to override the public Markdown URL. It defaults to `https://raw.githubusercontent.com/Containarr/containarr/main/CHANGELOG.md`.
+
 # Roadmap
 
 - Protect services with `Sign in with Google`.

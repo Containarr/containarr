@@ -2,6 +2,7 @@ import PACKAGE from './package.json' with { type: 'json' };
 
 export const CONTAINARR_VERSION = process.env.CONTAINARR_VERSION || PACKAGE.version;
 export const CONTAINARR_IMAGE = process.env.CONTAINARR_IMAGE || 'ghcr.io/containarr/containarr:latest';
+export const CONTAINARR_CHANGELOG_URL = process.env.CONTAINARR_CHANGELOG_URL || 'https://raw.githubusercontent.com/Containarr/containarr/main/CHANGELOG.md';
 export const PORT_HTTP = process.env.PORT_HTTP || 80;
 export const PORT_HTTPS = process.env.PORT_HTTPS || 443;
 export const PORT_ADMIN = process.env.PORT_ADMIN || 81;
