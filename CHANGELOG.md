@@ -1,3 +1,7 @@
+# v0.41.0
+
+* Changed the Changelog heading to sit outside the scrollable panel and match the Events page section titles, removing the nested card.
+
 # v0.40.0
 
 * Added an always-visible, scrollable changelog below the update card on the Updates page.

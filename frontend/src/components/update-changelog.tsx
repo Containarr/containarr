@@ -8,7 +8,7 @@ export function UpdateChangelog() {
 
   return (
     <div className="space-y-3">
-      <h2 id="changelog-heading" className="font-medium">Changelog</h2>
+      <h2 id="changelog-heading" className="text-xl font-semibold tracking-tight">Changelog</h2>
       {changelog.status === "loading" ? (
         <p role="status" className="text-sm text-muted-foreground">Loading changelog…</p>
       ) : changelog.status === "error" ? (

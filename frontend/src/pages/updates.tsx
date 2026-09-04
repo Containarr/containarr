@@ -16,11 +16,9 @@ export function UpdatesPage() {
     <section>
       <PageHeader title="Updates" description="New is always better! It's my oldest rule." />
       <UpdateStatusCard />
-      <Card className="mt-6 max-w-3xl shadow-none">
-        <CardContent className="pt-6">
-          <UpdateChangelog />
-        </CardContent>
-      </Card>
+      <div className="mt-6 max-w-3xl">
+        <UpdateChangelog />
+      </div>
     </section>
   )
 }
