@@ -2,8 +2,9 @@
   "name": "@containarr/containarr",
   "version": "0.38.0",
   "scripts": {
-    "start": "DEBUG=HTTPServer,Traefik,Docker,Settings,SQLite,DDNS,LetsEncrypt,Apps,App:*,Proxies,Updates,Backups node server.mjs",
-    "serve": "DEBUG=HTTPServer,Traefik,Docker,Settings,SQLite,DDNS,LetsEncrypt,Apps,App:*,Proxies,Updates,Backups node --watch --watch-kill-signal SIGINT server.mjs",
+    "test": "node --test",
+    "start": "DEBUG=HTTPServer,Traefik,Docker,Settings,SQLite,DDNS,LetsEncrypt,Apps,App:*,Proxies,Updates,Backups,Events node server.mjs",
+    "serve": "DEBUG=HTTPServer,Traefik,Docker,Settings,SQLite,DDNS,LetsEncrypt,Apps,App:*,Proxies,Updates,Backups,Events node --watch --watch-kill-signal SIGINT server.mjs",
     "start:docker": "docker compose -f docker-compose.yml up",
     "serve:docker": "docker compose -f docker-compose.yml -f docker-compose.dev.yml up",
     "build:docker": "docker build -t containarr ."
@@ -16,6 +17,7 @@
     "express": "^5.2.1",
     "semver": "^7.8.5",
     "sequelize": "^6.37.8",
+    "web-push": "^3.6.7",
     "ws": "^8.21.3"
   }
 }

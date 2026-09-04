@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import {
   ArrowRight,
+  Bell,
   Container,
   Database,
   DatabaseBackup,
@@ -46,6 +47,7 @@ const dockerNavigation = [
 const settingsNavigation = [
   { label: "Domain", to: "/domain", icon: Globe2 },
   { label: "Backups", to: "/backups", icon: DatabaseBackup },
+  { label: "Events", to: "/events", icon: Bell },
   { label: "Updates", to: "/updates", icon: Download },
 ]
 

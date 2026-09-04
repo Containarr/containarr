@@ -18,6 +18,7 @@ import { OnboardingPage } from "@/pages/onboarding"
 import { ProxiesPage } from "@/pages/proxies"
 import { ProxyDetailsPage } from "@/pages/proxy-details"
 import { FirewallPage } from "@/pages/firewall"
+import { EventsPage } from "@/pages/events"
 import { DomainSettingsPage } from "@/pages/settings"
 import { UpdatesPage } from "@/pages/updates"
 import { VolumesPage } from "@/pages/volumes"
@@ -99,10 +100,12 @@ function AppRoutes() {
         <Route path="/domain" element={<DomainSettingsPage />} />
         <Route path="/backups" element={<BackupsPage />} />
         <Route path="/updates" element={<UpdatesPage />} />
+        <Route path="/events" element={<EventsPage />} />
         <Route path="/settings" element={<Navigate to="/domain" replace />} />
         <Route path="/settings/domain" element={<Navigate to="/domain" replace />} />
         <Route path="/settings/backups" element={<Navigate to="/backups" replace />} />
         <Route path="/settings/updates" element={<Navigate to="/updates" replace />} />
+        <Route path="/settings/events" element={<Navigate to="/events" replace />} />
       </Route>
       <Route path="/login" element={<Navigate to="/apps" replace />} />
       <Route path="/onboarding" element={<Navigate to="/apps" replace />} />
