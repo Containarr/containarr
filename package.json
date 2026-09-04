@@ -1,6 +1,6 @@
 {
   "name": "@containarr/containarr",
-  "version": "0.38.0",
+  "version": "0.39.0",
   "scripts": {
     "test": "node --test",
     "start": "DEBUG=HTTPServer,Traefik,Docker,Settings,SQLite,DDNS,LetsEncrypt,Apps,App:*,Proxies,Updates,Backups,Events node server.mjs",
