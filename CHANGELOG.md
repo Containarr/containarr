@@ -1,3 +1,7 @@
+# Next
+
+* Changed desktop screenshots to show the current interface and newly added features.
+
 # v0.44.0
 
 * Changed the Add to Home Screen icon to use the iOS logo and padding with a transparent background.
