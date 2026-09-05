@@ -1,5 +1,6 @@
-# Next
+# v0.45.0
 
+* Fixed invalid Docker image references being saved and image request or download errors crashing Containarr.
 * Changed desktop screenshots to show the current interface and newly added features.
 
 # v0.44.0
