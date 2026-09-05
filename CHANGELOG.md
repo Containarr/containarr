@@ -1,3 +1,8 @@
+# v0.43.0
+
+* Added `npm run serve:frontend` to start the frontend development server from the project root with network access enabled.
+* Added swipe gestures to open and close the navigation drawer in the iOS Home Screen app when the hamburger menu is visible.
+
 # v0.42.0
 
 * Changed apps with automatic updates enabled to skip update-available notifications.

@@ -53,6 +53,8 @@ const settingsNavigation = [
 
 export function DashboardLayout() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const menuButton = useRef<HTMLButtonElement>(null)
+  const mobileNavigation = useRef<HTMLElement>(null)
   const domainRequest = useApi<DomainSettings>("/api/v1/ddns/domain")
   const [domainConnectionFailed, setDomainConnectionFailed] = useState(false)
   const latestDomainCheck = useRef(0)
@@ -75,6 +77,83 @@ export function DashboardLayout() {
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
   }, [menuOpen])
+
+  useEffect(() => {
+    const ios = /iPad|iPhone|iPod/.test(navigator.userAgent)
+      || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+    if (!ios) return
+
+    let swipe: { identifier: number; x: number; y: number; horizontal: boolean } | null = null
+
+    function onTouchStart(event: TouchEvent) {
+      swipe = null
+      const standalone = window.matchMedia("(display-mode: standalone)").matches
+        || (navigator as Navigator & { standalone?: boolean }).standalone
+      if (!standalone || !menuButton.current?.getClientRects().length || event.touches.length !== 1
+        || event.defaultPrevented || document.querySelector("dialog[open]")) return
+
+      const touch = event.touches[0]
+      if (menuOpen) {
+        if (!mobileNavigation.current?.contains(event.target as Node)) return
+      } else if (touch.clientX > 20) return
+
+      // iOS requires cancelling touchstart at the edge to block its navigation gesture.
+      if (touch.clientX <= 20 && event.cancelable) event.preventDefault()
+      swipe = { identifier: touch.identifier, x: touch.clientX, y: touch.clientY, horizontal: false }
+    }
+
+    function onTouchMove(event: TouchEvent) {
+      if (!swipe) return
+      if (event.touches.length !== 1 || event.touches[0].identifier !== swipe.identifier) {
+        swipe = null
+        return
+      }
+      const dx = event.touches[0].clientX - swipe.x
+      const dy = event.touches[0].clientY - swipe.y
+      if (!swipe.horizontal) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) < 10) return
+        if (Math.abs(dy) >= Math.abs(dx) || (menuOpen ? dx > 0 : dx < 0)) {
+          swipe = null
+          return
+        }
+        swipe.horizontal = true
+      }
+      if (event.cancelable) event.preventDefault()
+    }
+
+    function onTouchEnd(event: TouchEvent) {
+      const start = swipe
+      swipe = null
+      if (!start || event.touches.length || !menuButton.current?.getClientRects().length) return
+      const touch = Array.from(event.changedTouches).find(touch => touch.identifier === start.identifier)
+      if (!touch) return
+      const dx = touch.clientX - start.x
+      const dy = touch.clientY - start.y
+      // Suppress link clicks after dragging across the open drawer.
+      if (start.horizontal && event.cancelable) event.preventDefault()
+      if (Math.abs(dx) >= 50 && Math.abs(dx) > Math.abs(dy) * 1.5 && (menuOpen ? dx < 0 : dx > 0)) {
+        if (event.cancelable) event.preventDefault()
+        setMenuOpen(!menuOpen)
+      }
+    }
+
+    function cancelSwipe() {
+      swipe = null
+    }
+
+    document.addEventListener("touchstart", onTouchStart, { passive: false })
+    document.addEventListener("touchmove", onTouchMove, { passive: false })
+    document.addEventListener("touchend", onTouchEnd, { passive: false })
+    document.addEventListener("touchcancel", cancelSwipe)
+    window.addEventListener("resize", cancelSwipe)
+    return () => {
+      document.removeEventListener("touchstart", onTouchStart)
+      document.removeEventListener("touchmove", onTouchMove)
+      document.removeEventListener("touchend", onTouchEnd)
+      document.removeEventListener("touchcancel", cancelSwipe)
+      window.removeEventListener("resize", cancelSwipe)
+    }
+  }, [menuOpen, location.pathname])
 
   useEffect(() => {
     function onDomainConnectionChecked(event: Event) {
@@ -120,6 +199,7 @@ export function DashboardLayout() {
       <div className="min-w-0">
         <header className="sticky top-0 z-40 flex h-16 items-center gap-3 border-b bg-sidebar/95 px-4 text-sidebar-foreground backdrop-blur md:hidden">
           <button
+            ref={menuButton}
             type="button"
             aria-label="Open navigation"
             aria-controls="mobile-navigation"
@@ -142,6 +222,7 @@ export function DashboardLayout() {
               onClick={() => setMenuOpen(false)}
             />
             <aside
+              ref={mobileNavigation}
               id="mobile-navigation"
               className="relative flex h-full w-[18rem] max-w-[85vw] flex-col border-r bg-sidebar text-sidebar-foreground shadow-2xl"
             >

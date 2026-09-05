@@ -1,8 +1,9 @@
 {
   "name": "@containarr/containarr",
-  "version": "0.42.0",
+  "version": "0.43.0",
   "scripts": {
     "test": "node --test",
+    "serve:frontend": "npm --prefix frontend run dev -- --host",
     "start": "DEBUG=HTTPServer,Traefik,Docker,Settings,SQLite,DDNS,LetsEncrypt,Apps,App:*,Proxies,Updates,Backups,Events node server.mjs",
     "serve": "DEBUG=HTTPServer,Traefik,Docker,Settings,SQLite,DDNS,LetsEncrypt,Apps,App:*,Proxies,Updates,Backups,Events node --watch --watch-kill-signal SIGINT server.mjs",
     "start:docker": "docker compose -f docker-compose.yml up",
