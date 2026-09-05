@@ -1,3 +1,8 @@
+# v0.42.0
+
+* Changed apps with automatic updates enabled to skip update-available notifications.
+* Fixed app notifications to open the app’s page and Containarr update notifications to open the Updates page.
+
 # v0.41.0
 
 * Changed the Changelog heading to sit outside the scrollable panel and match the Events page section titles, removing the nested card.
