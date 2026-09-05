@@ -1,3 +1,8 @@
+# v0.44.0
+
+* Changed the Add to Home Screen icon to use the iOS logo and padding with a transparent background.
+* Changed the changelog to keep staged entries under Next until release.
+
 # v0.43.0
 
 * Added `npm run serve:frontend` to start the frontend development server from the project root with network access enabled.
