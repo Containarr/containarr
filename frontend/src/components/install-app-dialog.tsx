@@ -1697,12 +1697,19 @@ function PathAutocomplete({
         ref={input}
         required={required}
         value={value}
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        aria-controls={open ? browserId : undefined}
         onChange={(event) => {
           onChange(event.target.value)
         }}
+        placeholder={placeholder}
+        autoComplete="off"
+        className="pr-10 font-mono text-xs"
+      />
+      <button
+        type="button"
+        aria-label={source === "host" ? "Browse host files" : source === "device" ? "Browse devices" : "Browse image files"}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-controls={open ? browserId : undefined}
         onClick={() => {
           const nextPath = value || root
           setRequestPath(
@@ -1716,26 +1723,10 @@ function PathAutocomplete({
           setFolderError("")
           setOpen(true)
         }}
-        onKeyDown={(event) => {
-          if (!['Enter', 'ArrowDown'].includes(event.key)) return
-          event.preventDefault()
-          const nextPath = value || root
-          setRequestPath(
-            nextPath.endsWith("/")
-              ? nextPath
-              : `${nextPath.slice(0, nextPath.lastIndexOf("/") + 1) || root}`
-          )
-          setEditingPath(false)
-          setCreatingFolder(false)
-          setNewFolderName("")
-          setFolderError("")
-          setOpen(true)
-        }}
-        placeholder={placeholder}
-        autoComplete="off"
-        className="pr-9 font-mono text-xs"
-      />
-      <Folder className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted-foreground" />
+        className="absolute top-1/2 right-1 flex size-7 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <Folder className="size-4" />
+      </button>
       {open && createPortal(
         <div
           className="fixed inset-0 z-[70] flex items-end justify-center bg-black/45 p-0 sm:items-center sm:p-5"
