@@ -1,4 +1,4 @@
-# Next
+# v0.46.0
 
 * Changed host and device file browsing to use a lightweight directory listing instead of starting Node.js for each request.
 * Changed New/Edit app path fields to open the file browser only from the folder icon, with a hover state.
