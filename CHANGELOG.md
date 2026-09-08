@@ -1,3 +1,7 @@
+# v0.47.0
+
+* Changed the app page to hide image update controls for local image IDs.
+
 # v0.46.0
 
 * Changed host and device file browsing to use a lightweight directory listing instead of starting Node.js for each request.

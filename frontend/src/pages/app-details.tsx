@@ -278,7 +278,9 @@ export function AppDetailsPage() {
               </div>
             </div>
             <Detail label="Image" value={resource.dockerImage} mono />
-            <ImageUpdateControls app={resource} onReload={app.reload} />
+            {!/^(?:sha256:[a-f0-9]{64}|[a-f0-9]{12,64})$/.test(resource.dockerImage) && (
+              <ImageUpdateControls app={resource} onReload={app.reload} />
+            )}
           </CardContent>
         </Card>
       </div>
