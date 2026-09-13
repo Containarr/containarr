@@ -548,10 +548,13 @@ function ImageUpdateControls({
     }
   }
 
-  const status = pending === "checking"
-    ? "Checking for updates…"
-    : pending === "updating"
-      ? "Updating app…"
+  const updating = pending === "updating" || app.imageUpdate.status === "updating"
+  const checking = pending === "checking" || app.imageUpdate.status === "checking"
+  const busy = pending !== null || checking || updating
+  const status = updating
+    ? "Updating app…"
+    : checking
+      ? "Checking for updates…"
       : getImageUpdateStatus(app)
 
   return (
@@ -561,14 +564,20 @@ function ImageUpdateControls({
           <input
             type="checkbox"
             checked={autoUpdate}
-            disabled={pending !== null}
+            disabled={busy}
             onChange={(event) => void changeAutoUpdate(event.target.checked)}
             className="mt-0.5 size-4 rounded border"
           />
           <span>
             <span className="block text-sm font-medium">Auto-update</span>
-            <span className="mt-0.5 block text-xs text-muted-foreground">
-              Recreate this app automatically when its image changes.
+            <span
+              className={`mt-0.5 block text-xs ${
+                error || app.imageUpdate.status === "error"
+                  ? "text-red-600 dark:text-red-400"
+                  : "text-muted-foreground"
+              }`}
+            >
+              {error || status}
             </span>
           </span>
         </label>
@@ -577,36 +586,27 @@ function ImageUpdateControls({
             <Button
               type="button"
               onClick={() => void checkForUpdates(true)}
-              disabled={pending !== null}
+              disabled={busy}
               className="h-8"
             >
               <Download className="mr-1.5 size-3.5" />
-              Update now
+              {updating ? "Updating..." : "Update now"}
             </Button>
           )}
           <Button
             type="button"
             variant="outline"
             onClick={() => void checkForUpdates()}
-            disabled={pending !== null}
+            disabled={busy}
             className="h-8"
           >
             <RefreshCw
-              className={`mr-1.5 size-3.5 ${pending === "checking" ? "animate-spin" : ""}`}
+              className={`mr-1.5 size-3.5 ${checking || updating ? "animate-spin" : ""}`}
             />
-            Check for Updates
+            {updating ? "Updating..." : "Check for Updates"}
           </Button>
         </div>
       </div>
-      <p
-        className={`mt-3 text-xs ${
-          error || app.imageUpdate.status === "error"
-            ? "text-red-600 dark:text-red-400"
-            : "text-muted-foreground"
-        }`}
-      >
-        {error || status}
-      </p>
     </div>
   )
 }
