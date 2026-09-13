@@ -8,6 +8,7 @@ export type AppResource = {
   registryId: string | null
   registryVersion: number | null
   hasLogo: boolean
+  logoVersion: string | null
   tls: string
   containerId: string | null
   containerError: {

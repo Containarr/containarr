@@ -78,3 +78,43 @@ test('invalid image input cannot persist an imported container', async () => {
   }), { statusCode: 400 });
   assert.equal(state.writes, writes);
 });
+
+const icon = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aWQAAAABJRU5ErkJggg==', 'base64');
+
+test('app icons can be replaced, preserved by unrelated edits, and removed', async () => {
+  const apps = new Apps();
+  const app = await apps.createApp({ name: 'Original', dockerImage: 'alpine' });
+  await apps.updateAppLogo({ appId: 'app', logo: `data:image/png;base64,${icon.toString('base64')}` });
+  assert.deepEqual(app.db.logo, icon);
+  assert.equal(app.db.name, 'Original');
+  assert.equal(app.db.dockerImage, 'alpine');
+  await apps.updateApp({ appId: 'app', dockerImage: 'alpine', name: 'Renamed' });
+  assert.deepEqual(app.db.logo, icon);
+  await apps.updateAppLogo({ appId: 'app', logo: null });
+  assert.equal(app.db.logo, null);
+});
+
+test('invalid and oversized icons cannot change saved app settings', async () => {
+  const apps = new Apps();
+  const app = await apps.createApp({ name: 'Original', dockerImage: 'alpine', logo: icon });
+  const writes = state.writes;
+  const oversized = Buffer.from(icon);
+  oversized.writeUInt32BE(257, 16);
+  const zeroHeight = Buffer.from(icon);
+  zeroHeight.writeUInt32BE(0, 20);
+  for (const logo of [
+    undefined, '', {}, [], 42,
+    'data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=',
+    'data:image/png;base64,%%%%',
+    'data:image/png;base64,AAAA',
+    `data:image/png;base64,${'A'.repeat(512 * 1024)}`,
+    `data:image/png;base64,${oversized.toString('base64')}`,
+    `data:image/png;base64,${zeroHeight.toString('base64')}`,
+    `data:image/png;base64,${icon.subarray(0, -12).toString('base64')}`,
+  ]) {
+    await assert.rejects(apps.updateAppLogo({ appId: 'app', logo }), { statusCode: 400 });
+  }
+  assert.equal(state.writes, writes);
+  assert.equal(app.db.name, 'Original');
+  assert.deepEqual(app.db.logo, icon);
+});

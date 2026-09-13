@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import Ansi from "ansi-to-react"
 import {
   ArrowLeft,
@@ -7,6 +7,7 @@ import {
   CircleAlert,
   Container,
   Download,
+  FileUp,
   LoaderCircle,
   Network,
   Pencil,
@@ -40,6 +41,10 @@ export function AppDetailsPage() {
   const { appId = "" } = useParams()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
+  const [iconLoading, setIconLoading] = useState(false)
+  const [iconError, setIconError] = useState<string | null>(null)
+  const [iconDragging, setIconDragging] = useState(false)
+  const iconInput = useRef<HTMLInputElement>(null)
   const [editing, setEditing] = useState(false)
   const [recreatePrompt, setRecreatePrompt] = useState<AppResource | null>(null)
   const [togglingDisabled, setTogglingDisabled] = useState(false)
@@ -95,6 +100,52 @@ export function AppDetailsPage() {
             ? "Live"
             : "Starting"
 
+  async function uploadIcon(files: FileList | null) {
+    if (iconLoading || !files?.length) return
+    setIconError(null)
+    if (files.length !== 1) {
+      setIconError("Choose one image for the app icon.")
+      return
+    }
+    const file = files[0]
+    if (!["image/png", "image/jpeg", "image/webp", "image/gif"].includes(file.type)) {
+      setIconError("Choose a PNG, JPEG, WebP, or GIF image.")
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setIconError("Choose an image smaller than 5 MB.")
+      return
+    }
+    setIconLoading(true)
+    const url = URL.createObjectURL(file)
+    try {
+      const image = new Image()
+      image.src = url
+      await image.decode()
+      if (!image.naturalWidth || !image.naturalHeight
+        || image.naturalWidth * image.naturalHeight > 16_000_000) {
+        throw new Error("Choose an image with no more than 16 million pixels.")
+      }
+      const scale = Math.min(1, 256 / image.naturalWidth, 256 / image.naturalHeight)
+      const canvas = document.createElement("canvas")
+      canvas.width = Math.max(1, Math.round(image.naturalWidth * scale))
+      canvas.height = Math.max(1, Math.round(image.naturalHeight * scale))
+      const context = canvas.getContext("2d")
+      if (!context) throw new Error("Unable to prepare the icon.")
+      context.drawImage(image, 0, 0, canvas.width, canvas.height)
+      await apiRequest(`/api/v1/app/${resource.id}/logo`, {
+        method: "PUT",
+        body: JSON.stringify({ logo: canvas.toDataURL("image/png") }),
+      })
+      app.reload()
+    } catch (uploadError) {
+      setIconError(uploadError instanceof Error ? uploadError.message : "Unable to update the icon. Try another image.")
+    } finally {
+      URL.revokeObjectURL(url)
+      setIconLoading(false)
+    }
+  }
+
   async function deleteApp() {
     setDeleting(true)
     setDeleteError(null)
@@ -135,11 +186,68 @@ export function AppDetailsPage() {
 
       <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-start">
         <div className="flex min-w-0 items-center gap-4">
-          <AppLogo
-            appId={resource.hasLogo ? resource.id : undefined}
-            alt={`${resource.name || "App"} logo`}
-            className="size-14"
+          <input
+            ref={iconInput}
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            aria-label="Upload app icon"
+            hidden
+            disabled={iconLoading}
+            onChange={(event) => {
+              void uploadIcon(event.target.files)
+              event.target.value = ""
+            }}
           />
+          <button
+            type="button"
+            aria-label="Change app icon"
+            aria-busy={iconLoading}
+            disabled={iconLoading}
+            onClick={() => iconInput.current?.click()}
+            onDragStart={(event) => event.preventDefault()}
+            onDragOver={(event) => {
+              if (!event.dataTransfer.types.includes("Files")) return
+              event.preventDefault()
+              if (!iconLoading) {
+                event.dataTransfer.dropEffect = "copy"
+                setIconDragging(true)
+              }
+            }}
+            onDragLeave={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                setIconDragging(false)
+              }
+            }}
+            onDrop={(event) => {
+              event.preventDefault()
+              setIconDragging(false)
+              void uploadIcon(event.dataTransfer.files)
+            }}
+            className="group relative block size-14 shrink-0 cursor-pointer overflow-hidden rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-wait"
+          >
+            <AppLogo
+              appId={resource.hasLogo ? resource.id : undefined}
+              logoVersion={resource.logoVersion}
+              alt={`${resource.name || "App"} logo`}
+              className="size-14"
+            />
+            <span
+              aria-hidden="true"
+              className={`pointer-events-none absolute inset-0 flex items-center justify-center bg-black/60 text-white transition-opacity ${
+                iconDragging || iconLoading
+                  ? "opacity-100"
+                  : "opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100"
+              }`}
+            >
+              {iconLoading ? (
+                <LoaderCircle className="size-4 animate-spin" />
+              ) : iconDragging ? (
+                <FileUp className="size-4" />
+              ) : (
+                <Pencil className="size-4" />
+              )}
+            </span>
+          </button>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2.5">
               <h1 className="truncate text-2xl font-semibold tracking-tight">
@@ -205,6 +313,8 @@ export function AppDetailsPage() {
           {disabledError && <p className="text-xs text-red-600">{disabledError}</p>}
         </div>
       </div>
+
+      {iconError && <p role="alert" className="mt-3 text-sm text-red-600">{iconError}</p>}
 
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
         <Card className="shadow-none">

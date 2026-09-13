@@ -1,3 +1,7 @@
+# v0.48.0
+
+* Added click-to-upload and drag-and-drop editing on the app page icon, with hover overlays and automatic saving.
+
 # v0.47.0
 
 * Changed the app page to hide image update controls for local image IDs.

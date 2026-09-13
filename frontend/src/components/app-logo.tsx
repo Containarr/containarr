@@ -8,6 +8,7 @@ type AppLogoProps = {
   appId?: string
   className?: string
   logoUrl?: string
+  logoVersion?: string | null
 }
 
 export function AppLogo({
@@ -15,10 +16,11 @@ export function AppLogo({
   appId,
   className,
   logoUrl,
+  logoVersion,
 }: AppLogoProps) {
   const [failed, setFailed] = useState(false)
   const src = appId
-    ? `/api/v1/app/${appId}/logo`
+    ? `/api/v1/app/${appId}/logo${logoVersion ? `?v=${logoVersion}` : ""}`
     : logoUrl ?? null
 
   useEffect(() => setFailed(false), [src])

@@ -235,6 +235,7 @@ function AppsCardGrid({
               <div className="flex min-w-0 items-center gap-3">
                 <AppLogo
                   appId={app.hasLogo ? app.id : undefined}
+                  logoVersion={app.logoVersion}
                   alt={`${app.name || "App"} logo`}
                   className="size-10"
                 />
@@ -401,6 +402,7 @@ function AppsTable({
                   >
                     <AppLogo
                       appId={app.hasLogo ? app.id : undefined}
+                      logoVersion={app.logoVersion}
                       alt=""
                       className="size-8"
                     />
