@@ -1,3 +1,7 @@
+# v0.51.0
+
+* Added a sortable Memory column to the Containers table, with live usage and an unavailable indicator when memory statistics cannot be read.
+
 # v0.50.0
 
 * Added per-volume “Include in Backup” icon toggles with tooltips and green enabled states when adding or editing apps, with selected user data archived alongside the database.

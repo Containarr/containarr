@@ -1,6 +1,6 @@
 {
   "name": "@containarr/containarr",
-  "version": "0.50.0",
+  "version": "0.51.0",
   "scripts": {
     "test": "node --test",
     "serve:frontend": "npm --prefix frontend run dev -- --host",

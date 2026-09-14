@@ -1,4 +1,4 @@
-import { useMemo, useState, type KeyboardEvent } from "react"
+import { useEffect, useMemo, useState, type KeyboardEvent } from "react"
 import { ArrowUpRight, Eraser, Fingerprint, Link2, Package, PackagePlus, Play, RefreshCw, Square, Trash2 } from "lucide-react"
 import { Link, useNavigate } from "react-router-dom"
 
@@ -25,7 +25,7 @@ import { useApi } from "@/hooks/use-api"
 import { useStoredViewMode } from "@/hooks/use-stored-view-mode"
 import { getComposeProject, getContainerAppId } from "@/lib/container-labels"
 import { apiRequest } from "@/lib/api"
-import type { AppResource, ContainerResource, DockerCleanupResult } from "@/lib/types"
+import type { AppResource, ContainerResource, ContainerStats, DockerCleanupResult } from "@/lib/types"
 
 export function ContainersPage() {
   const containers = useApi<ContainerResource[]>("/api/v1/container", {
@@ -326,6 +326,43 @@ function ContainersTable({
   const [confirmingBulkDelete, setConfirmingBulkDelete] = useState(false)
   const [bulkDeletePending, setBulkDeletePending] = useState(false)
   const [bulkDeleteError, setBulkDeleteError] = useState<string | null>(null)
+  const [memoryUsage, setMemoryUsage] = useState<Record<string, number | null>>({})
+  const activeContainerIds = JSON.stringify(items
+    .filter((container) => ["running", "paused", "restarting"].includes(container.state.toLowerCase()))
+    .map((container) => container.id)
+    .sort())
+
+  useEffect(() => {
+    const ids: string[] = JSON.parse(activeContainerIds)
+    const controller = new AbortController()
+    let timeout: ReturnType<typeof setTimeout> | undefined
+
+    async function refreshMemory() {
+      const results = await Promise.allSettled(ids.map((id) =>
+        apiRequest<ContainerStats>(`/api/v1/container/${encodeURIComponent(id)}/stats`, {
+          signal: controller.signal,
+        })
+      ))
+      if (controller.signal.aborted) return
+
+      setMemoryUsage(Object.fromEntries(results.map((result, index) => [
+        ids[index],
+        result.status === "fulfilled"
+          && result.value.memoryLimit > 0
+          && Number.isFinite(result.value.memoryUsage)
+          ? result.value.memoryUsage
+          : null,
+      ])))
+      timeout = setTimeout(() => void refreshMemory(), 5000)
+    }
+
+    void refreshMemory()
+    return () => {
+      controller.abort()
+      clearTimeout(timeout)
+    }
+  }, [activeContainerIds])
+
   const groupedItems = useMemo(() => {
     const defaultItems = groupContainers(items).flatMap((group) => group.items)
     return [...defaultItems].sort((left, right) => {
@@ -333,14 +370,17 @@ function ContainersTable({
       const rightGroupRank = getContainerGroupRank(right)
       if (leftGroupRank !== rightGroupRank) return leftGroupRank - rightGroupRank
 
-      const comparison = getContainerSortValue(left, sort.key, apps).localeCompare(
-        getContainerSortValue(right, sort.key, apps),
-        undefined,
-        { numeric: true, sensitivity: "base" }
-      )
+      const comparison = sort.key === "ram"
+        ? (["running", "paused", "restarting"].includes(left.state.toLowerCase()) ? memoryUsage[left.id] ?? -1 : 0)
+          - (["running", "paused", "restarting"].includes(right.state.toLowerCase()) ? memoryUsage[right.id] ?? -1 : 0)
+        : getContainerSortValue(left, sort.key, apps).localeCompare(
+            getContainerSortValue(right, sort.key, apps),
+            undefined,
+            { numeric: true, sensitivity: "base" }
+          )
       return sort.direction === "asc" ? comparison : -comparison
     })
-  }, [apps, items, sort])
+  }, [apps, items, memoryUsage, sort])
   const selectableItems = groupedItems.filter((container) => container.deletable)
   const allSelected = selectableItems.length > 0 && selectableItems.every((container) => selected.has(container.id))
   const someSelected = selectableItems.some((container) => selected.has(container.id))
@@ -365,7 +405,7 @@ function ContainersTable({
           </Button>
         </div>
       )}
-      <div className="overflow-hidden rounded-xl border bg-card shadow-xs">
+      <div className="overflow-x-auto rounded-xl border bg-card shadow-xs">
        <table className="w-full text-left text-sm">
         <thead className="border-b bg-muted/40 text-xs text-muted-foreground">
           <tr>
@@ -379,11 +419,12 @@ function ContainersTable({
                 className="size-4 accent-primary"
               />
             </th>
-            {(["container", "group", "status", "image", "app"] as const).map(
+            {(["container", "group", "status", "ram", "image", "app"] as const).map(
               (key) => (
                 <SortableTableHeader
                   key={key}
-                  label={key.charAt(0).toUpperCase() + key.slice(1)}
+                  label={key === "ram" ? "Memory" : key.charAt(0).toUpperCase() + key.slice(1)}
+                  align={key === "ram" ? "right" : "left"}
                   active={sort?.key === key}
                   direction={sort?.direction || "asc"}
                   onClick={() => changeSort(key)}
@@ -397,6 +438,14 @@ function ContainersTable({
           {groupedItems.map((container) => {
             const appId = getContainerAppId(container)
             const running = container.state.toLowerCase() === "running"
+            const memory = ["running", "paused", "restarting"].includes(container.state.toLowerCase())
+              ? memoryUsage[container.id] ?? null
+              : 0
+            const units = ["B", "KB", "MB", "GB", "TB"]
+            const exponent = memory && memory > 0
+              ? Math.min(Math.floor(Math.log(memory) / Math.log(1024)), units.length - 1)
+              : 0
+            const scaledMemory = (memory ?? 0) / 1024 ** exponent
             const menuItems: ResourceMenuItem[] = [
               {
                 label: "Open",
@@ -486,6 +535,14 @@ function ContainersTable({
               <td className="px-4 py-3">
                 <StatusBadge state={container.state} />
               </td>
+              <td
+                className="whitespace-nowrap px-4 py-3 text-right tabular-nums"
+                title={memory === null ? "Memory usage is unavailable." : undefined}
+              >
+                {memory === null
+                  ? "—"
+                  : `${scaledMemory.toFixed(scaledMemory >= 10 || exponent === 0 ? 0 : 1)} ${units[exponent]}`}
+              </td>
               <td className="max-w-72 truncate px-4 py-3 font-mono text-xs">
                 {container.image}
               </td>
@@ -547,7 +604,7 @@ function ContainersTable({
   )
 }
 
-type ContainerSortKey = "container" | "group" | "status" | "image" | "app"
+type ContainerSortKey = "container" | "group" | "status" | "ram" | "image" | "app"
 
 function getContainerSortValue(
   container: ContainerResource,
