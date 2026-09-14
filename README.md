@@ -86,7 +86,7 @@ Open [http://localhost](http://localhost) in your web browser to set-up Containa
 
 ## Backups
 
-Connect an empty private Git repository on the Backups page. Containarr backs up its database after configuration changes. Additional backups run every 6 hours by default. Change **Interval** to adjust the schedule; `0` disables the schedule. The interval is saved across restarts, and an overdue backup runs on startup.
+Connect an empty private Git repository on the Backups page. Containarr backs up its database and selected app volumes every 6 hours by default. Change **Interval** to adjust the schedule; `0` disables the schedule. Saving backup settings starts a new interval without running a backup. Configuration changes do not trigger backups; use **Back Up Now** to run one manually. The schedule is saved across restarts, and an overdue backup runs on startup.
 
 When adding or editing an app, select **Include in Backup** for each volume containing user data. All volumes start excluded, so large media libraries remain out of backups unless selected. Both host paths and named Docker volumes are supported.
 

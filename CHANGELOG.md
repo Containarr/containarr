@@ -1,3 +1,11 @@
+# v0.53.0
+
+* Removed automatic backups after configuration changes. Saving backup settings now starts a new interval without running a backup.
+* Removed the interval-reset explanation from the Backups page.
+* Changed app volumes to a sortable table showing host path, container path, on-demand size calculation, and permissions.
+* Added a sortable Include in Backup column to app volumes showing each volume’s saved backup selection.
+* Changed app environment variables and devices to matching sortable tables showing names and values, or host paths, container paths, and device permissions.
+
 # v0.52.0
 
 * Added /24 firewall suggestions alongside /16 suggestions for local networks.

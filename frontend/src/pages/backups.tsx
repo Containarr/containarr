@@ -55,7 +55,7 @@ export function BackupsPage() {
       })
       cacheApiResponse("/api/v1/backup", updated)
       setSavedSettings(updated)
-      setMessage(updated.error ? null : "Repository connected and backup pushed.")
+      setMessage("Backup settings saved.")
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Backup settings could not be saved.")
     } finally {
@@ -171,7 +171,7 @@ export function BackupsPage() {
                   </span>
                 </div>
                 <p className="mt-2 text-xs text-muted-foreground">
-                  Set to 0 to disable scheduled backups. Configuration changes always trigger a backup.
+                  Set to 0 to disable scheduled backups.
                   Select “Include in Backup” on volumes when adding or editing an app.
                   Archives are copied while apps are running; stop an app first if its data requires a consistent snapshot.
                 </p>
@@ -188,8 +188,8 @@ export function BackupsPage() {
               )}
 
               {message && (
-                <div className={`flex items-start gap-3 rounded-xl border p-4 ${message.includes("pushed") ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300" : "border-red-500/25 bg-red-500/10 text-red-800 dark:text-red-300"}`}>
-                  {message.includes("pushed") ? <Check className="mt-0.5 size-5 shrink-0" /> : <CircleAlert className="mt-0.5 size-5 shrink-0" />}
+                <div className={`flex items-start gap-3 rounded-xl border p-4 ${message === "Backup pushed." || message === "Backup settings saved." ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300" : "border-red-500/25 bg-red-500/10 text-red-800 dark:text-red-300"}`}>
+                  {message === "Backup pushed." || message === "Backup settings saved." ? <Check className="mt-0.5 size-5 shrink-0" /> : <CircleAlert className="mt-0.5 size-5 shrink-0" />}
                   <p className="text-sm">{message}</p>
                 </div>
               )}

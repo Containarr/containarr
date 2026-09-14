@@ -27,6 +27,7 @@ import { CertificateDetail } from "@/components/certificate-badge"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { EditAppDialog } from "@/components/install-app-dialog"
 import { ErrorState } from "@/components/resource-states"
+import { SortableTableHeader, type SortDirection } from "@/components/sortable-table-header"
 import { StatusBadge } from "@/components/status-badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -52,6 +53,23 @@ export function AppDetailsPage() {
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [volumeSizes, setVolumeSizes] = useState<Record<string, {
+    pending: boolean
+    size?: number
+    error?: string
+  }>>({})
+  const [volumeSort, setVolumeSort] = useState<{
+    key: "hostPath" | "containerPath" | "size" | "permissions" | "includeInBackup"
+    direction: SortDirection
+  }>({ key: "hostPath", direction: "asc" })
+  const [environmentSort, setEnvironmentSort] = useState<{
+    key: "name" | "value"
+    direction: SortDirection
+  }>({ key: "name", direction: "asc" })
+  const [deviceSort, setDeviceSort] = useState<{
+    key: "hostPath" | "containerPath" | "permissions"
+    direction: SortDirection
+  }>({ key: "hostPath", direction: "asc" })
   const app = useApi<AppResource>(`/api/v1/app/${appId}`, {
     pollInterval: 1000,
   })
@@ -70,6 +88,55 @@ export function AppDetailsPage() {
   }
 
   const resource = app.data
+  const sortedEnvironment = Object.entries(resource.dockerEnvironment)
+    .map(([name, value]) => ({ name, value }))
+    .sort((left, right) => {
+      const comparison = left[environmentSort.key].localeCompare(right[environmentSort.key], undefined, { numeric: true, sensitivity: "base" })
+      return environmentSort.direction === "asc" ? comparison : -comparison
+    })
+  const sortedDevices = resource.dockerDevices.map((device, index) => {
+    const [hostPath, containerPath = hostPath, mode = "rwm"] = device.split(":")
+    const permissions = [
+      mode.includes("r") ? "Read" : "",
+      mode.includes("w") ? "Write" : "",
+      mode.includes("m") ? "Create Device" : "",
+    ].filter(Boolean).join(", ") || "None"
+    return { device, index, hostPath, containerPath, permissions }
+  }).sort((left, right) => {
+    const comparison = left[deviceSort.key].localeCompare(right[deviceSort.key], undefined, { numeric: true, sensitivity: "base" })
+    return deviceSort.direction === "asc" ? comparison : -comparison
+  })
+  const sortedVolumes = resource.dockerVolumes.map((volume, index) => {
+    const [source, target, mode = "rw"] = volume.split(":")
+    const options = mode.split(",")
+    const key = JSON.stringify([resource.id, volume])
+    return {
+      volume,
+      index,
+      source,
+      target,
+      key,
+      hostPath: target ? source : "—",
+      containerPath: target || source,
+      size: volumeSizes[key]?.size,
+      includeInBackup: resource.backupVolumes.includes(volume),
+      permissions: options.includes("ro") || options.includes("r") ? "Read"
+        : options.includes("wo") || options.includes("w") ? "Write" : "Read & Write",
+    }
+  }).sort((left, right) => {
+    let comparison
+    if (volumeSort.key === "size") {
+      // Keep uncalculated sizes last in either direction.
+      if (left.size === undefined) return right.size === undefined ? 0 : 1
+      if (right.size === undefined) return -1
+      comparison = left.size - right.size
+    } else if (volumeSort.key === "includeInBackup") {
+      comparison = Number(left.includeInBackup) - Number(right.includeInBackup)
+    } else {
+      comparison = left[volumeSort.key].localeCompare(right[volumeSort.key], undefined, { numeric: true, sensitivity: "base" })
+    }
+    return volumeSort.direction === "asc" ? comparison : -comparison
+  })
   const domain =
     domainRequest.status === "success" ? domainRequest.data.domain : null
   const publicUrl = getPublicAppUrl(resource, domain)
@@ -426,26 +493,189 @@ export function AppDetailsPage() {
       )}
 
       <div className="mt-4 grid gap-4">
-        <ListCard
-          title="Environment"
-          icon={Box}
-          items={Object.entries(resource.dockerEnvironment).map(
-            ([key, value]) => `${key}=${value}`
-          )}
-          empty="No environment variables configured."
-        />
-        <ListCard
-          title="Volumes"
-          icon={Network}
-          items={resource.dockerVolumes}
-          empty="No volumes configured."
-        />
-        <ListCard
-          title="Devices"
-          icon={Usb}
-          items={resource.dockerDevices}
-          empty="No devices configured."
-        />
+        <Card className="min-w-0 shadow-none">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Box className="size-4 text-muted-foreground" />
+              Environment
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="mt-5">
+            {sortedEnvironment.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No environment variables configured.</p>
+            ) : (
+              <div className="overflow-x-auto rounded-lg border">
+                <table className="w-full text-left text-sm">
+                  <thead className="border-b bg-muted/40 text-xs text-muted-foreground">
+                    <tr>
+                      {([["name", "Name"], ["value", "Value"]] as const).map(([key, label]) => (
+                        <SortableTableHeader
+                          key={key}
+                          label={label}
+                          active={environmentSort.key === key}
+                          direction={environmentSort.direction}
+                          onClick={() => setEnvironmentSort((current) => ({
+                            key,
+                            direction: current.key === key && current.direction === "asc" ? "desc" : "asc",
+                          }))}
+                        />
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {sortedEnvironment.map(({ name, value }) => (
+                      <tr key={name}>
+                        <td className="min-w-40 max-w-96 break-all px-4 py-3 font-mono text-xs">{name}</td>
+                        <td className="min-w-48 max-w-96 whitespace-pre-wrap break-all px-4 py-3 font-mono text-xs">{value}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+        <Card className="min-w-0 shadow-none">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Network className="size-4 text-muted-foreground" />
+              Volumes
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="mt-5">
+            {resource.dockerVolumes.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No volumes configured.</p>
+            ) : (
+              <div className="overflow-x-auto rounded-lg border">
+                <table className="w-full text-left text-sm">
+                  <thead className="border-b bg-muted/40 text-xs text-muted-foreground">
+                    <tr>
+                      {([
+                        ["hostPath", "Host Path"],
+                        ["containerPath", "Container Path"],
+                        ["size", "Size"],
+                        ["permissions", "Permissions"],
+                        ["includeInBackup", "Include in Backup"],
+                      ] as const).map(([key, label]) => (
+                        <SortableTableHeader
+                          key={key}
+                          label={label}
+                          active={volumeSort.key === key}
+                          direction={volumeSort.direction}
+                          onClick={() => setVolumeSort((current) => ({
+                            key,
+                            direction: current.key === key && current.direction === "asc" ? "desc" : "asc",
+                          }))}
+                        />
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {sortedVolumes.map(({ volume, index, source, target, key, hostPath, containerPath, size, permissions, includeInBackup }) => {
+                      const calculation = volumeSizes[key]
+                      const unit = size === undefined || size < 1024
+                        ? 0 : Math.min(Math.floor(Math.log(size) / Math.log(1024)), 4)
+                      return (
+                        <tr key={`${key}-${index}`}>
+                          <td className="min-w-48 max-w-96 break-all px-4 py-3 font-mono text-xs">{hostPath}</td>
+                          <td className="min-w-40 max-w-96 break-all px-4 py-3 font-mono text-xs">{containerPath}</td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2 whitespace-nowrap">
+                              {size !== undefined && (
+                                <span title={`${size.toLocaleString()} bytes`}>
+                                  {unit === 0 ? `${size} B` : `${(size / 1024 ** unit).toFixed(unit > 1 ? 1 : 0)} ${["B", "KB", "MB", "GB", "TB"][unit]}`}
+                                </span>
+                              )}
+                              <Button
+                                type="button"
+                                variant="outline"
+                                className="h-8 text-xs"
+                                disabled={!target || calculation?.pending}
+                                aria-label={`Calculate size of ${source}`}
+                                onClick={async () => {
+                                  setVolumeSizes((current) => ({ ...current, [key]: { ...current[key], pending: true, error: undefined } }))
+                                  try {
+                                    const result = await apiRequest<{ size: number }>(`/api/v1/app/${resource.id}/volume/size`, {
+                                      method: "POST",
+                                      body: JSON.stringify({ volume }),
+                                    })
+                                    setVolumeSizes((current) => ({ ...current, [key]: { pending: false, size: result.size } }))
+                                  } catch (error) {
+                                    setVolumeSizes((current) => ({
+                                      ...current,
+                                      [key]: { pending: false, error: error instanceof Error ? error.message : "Unable to calculate volume size." },
+                                    }))
+                                  }
+                                }}
+                              >
+                                {calculation?.pending && <LoaderCircle className="mr-1.5 size-3.5 animate-spin" />}
+                                {calculation?.pending ? "Calculating…" : "Calculate"}
+                              </Button>
+                            </div>
+                            {calculation?.error && <p role="alert" className="mt-2 max-w-64 break-words text-xs text-red-600 dark:text-red-400">{calculation.error}</p>}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3">
+                            {permissions}
+                          </td>
+                          <td className={`whitespace-nowrap px-4 py-3 ${includeInBackup ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>
+                            {includeInBackup ? "Yes" : "No"}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+        <Card className="min-w-0 shadow-none">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Usb className="size-4 text-muted-foreground" />
+              Devices
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="mt-5">
+            {sortedDevices.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No devices configured.</p>
+            ) : (
+              <div className="overflow-x-auto rounded-lg border">
+                <table className="w-full text-left text-sm">
+                  <thead className="border-b bg-muted/40 text-xs text-muted-foreground">
+                    <tr>
+                      {([
+                        ["hostPath", "Host Path"],
+                        ["containerPath", "Container Path"],
+                        ["permissions", "Permissions"],
+                      ] as const).map(([key, label]) => (
+                        <SortableTableHeader
+                          key={key}
+                          label={label}
+                          active={deviceSort.key === key}
+                          direction={deviceSort.direction}
+                          onClick={() => setDeviceSort((current) => ({
+                            key,
+                            direction: current.key === key && current.direction === "asc" ? "desc" : "asc",
+                          }))}
+                        />
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {sortedDevices.map(({ device, index, hostPath, containerPath, permissions }) => (
+                      <tr key={`${device}-${index}`}>
+                        <td className="min-w-48 max-w-96 break-all px-4 py-3 font-mono text-xs">{hostPath}</td>
+                        <td className="min-w-40 max-w-96 break-all px-4 py-3 font-mono text-xs">{containerPath}</td>
+                        <td className="whitespace-nowrap px-4 py-3">{permissions}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       <EditAppDialog
@@ -769,45 +999,6 @@ function Detail({
         <p className={valueClassName}>{value}</p>
       )}
     </div>
-  )
-}
-
-function ListCard({
-  empty,
-  icon: Icon,
-  items,
-  title,
-}: {
-  empty: string
-  icon: typeof Box
-  items: string[]
-  title: string
-}) {
-  return (
-    <Card className="shadow-none">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Icon className="size-4 text-muted-foreground" />
-          {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="mt-5">
-        {items.length > 0 ? (
-          <div className="space-y-2">
-            {items.map((item) => (
-              <div
-                key={item}
-                className="rounded-lg bg-muted/50 px-3 py-2 font-mono text-xs"
-              >
-                {item}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">{empty}</p>
-        )}
-      </CardContent>
-    </Card>
   )
 }
 

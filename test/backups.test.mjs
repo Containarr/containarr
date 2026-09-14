@@ -79,7 +79,10 @@ test('selected data is committed with a manifest; unselected media is never capt
   const result = await backups.setSettings({ repositoryUrl });
   assert.equal(result.error, null);
   assert.equal(result.intervalHours, 6);
-  assert.ok(result.lastBackupAt);
+  assert.equal(result.lastBackupAt, null);
+  assert.deepEqual(docker.captured, []);
+  await backups.backup();
+  assert.ok((await backups.getSettings()).lastBackupAt);
   assert.deepEqual(docker.captured, ['config:/config']);
   const { stdout } = await run('git', ['--git-dir', remote, 'show', 'main:volumes/manifest.json']);
   const manifest = JSON.parse(stdout);
@@ -149,11 +152,85 @@ test('intervals honor elapsed hours, resume after restart, and can be disabled',
   restarted.stop();
 });
 
+test('saving backup settings waits a full interval, including after restart or re-enabling', async t => {
+  const previousSettings = new Map(settings);
+  t.after(() => {
+    settings.clear();
+    for (const [key, value] of previousSettings) settings.set(key, value);
+  });
+  let now = Date.now();
+  t.mock.method(Date, 'now', () => now);
+  let runs = 0;
+  t.mock.method(Backups.prototype, 'backup', async () => { runs++; });
+  settings.delete('backup_last_backup_at');
+  settings.delete('backup_schedule_started_at');
+
+  const instance = new Backups();
+  await instance.setSettings({ repositoryUrl, intervalHours: 2 });
+  assert.equal(runs, 0);
+  assert.equal(settings.get('backup_last_backup_at'), undefined);
+  const restarted = new Backups();
+  await restarted.checkSchedule();
+  now += 2 * 3_600_000 - 1;
+  await restarted.checkSchedule();
+  assert.equal(runs, 0);
+  now++;
+  await restarted.checkSchedule();
+  assert.equal(runs, 1);
+
+  settings.set('backup_last_backup_at', new Date(now - 24 * 3_600_000).toISOString());
+  await restarted.setSettings({ repositoryUrl, intervalHours: 1 });
+  await restarted.checkSchedule();
+  assert.equal(runs, 1);
+  now += 3_600_000;
+  await restarted.checkSchedule();
+  assert.equal(runs, 2);
+
+  await restarted.setSettings({ repositoryUrl, intervalHours: 0 });
+  now += 24 * 3_600_000;
+  await restarted.checkSchedule();
+  assert.equal(runs, 2);
+  await restarted.setSettings({ repositoryUrl, branch: 'other', intervalHours: 6 });
+  await new Backups().checkSchedule();
+  assert.equal(runs, 2);
+  now += 6 * 3_600_000;
+  await new Backups().checkSchedule();
+  assert.equal(runs, 3);
+});
+
+test('a configured schedule without previous backups starts its interval on the first check', async t => {
+  const previousSettings = new Map(settings);
+  t.after(() => {
+    settings.clear();
+    for (const [key, value] of previousSettings) settings.set(key, value);
+  });
+  let now = Date.now();
+  t.mock.method(Date, 'now', () => now);
+  let runs = 0;
+  t.mock.method(Backups.prototype, 'backup', async () => { runs++; });
+  settings.delete('backup_last_backup_at');
+  settings.delete('backup_schedule_started_at');
+  settings.delete('backup_interval_hours');
+  settings.delete('backup_repository_url');
+  await new Backups().checkSchedule();
+  assert.equal(settings.has('backup_schedule_started_at'), false);
+  settings.set('backup_repository_url', repositoryUrl);
+  await new Backups().checkSchedule();
+  assert.equal(settings.get('backup_schedule_started_at'), new Date(now).toISOString());
+  now += 6 * 3_600_000 - 1;
+  await new Backups().checkSchedule();
+  assert.equal(runs, 0);
+  now++;
+  await new Backups().checkSchedule();
+  assert.equal(runs, 1);
+});
+
 test('failed scheduled backups wait an interval before retrying', async t => {
   const restarted = new Backups();
   let now = Date.now();
   t.mock.method(Date, 'now', () => now);
   settings.set('backup_last_backup_at', new Date(now - 3_600_000).toISOString());
+  settings.delete('backup_schedule_started_at');
   settings.set('backup_interval_hours', 1);
   db.apps = [{ id: 'app-1', name: 'Plex', dockerVolumes: ['config:/config'], backupVolumes: ['config:/config'] }];
   docker.captured = [];
