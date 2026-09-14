@@ -84,6 +84,16 @@ $ docker run \
 
 Open [http://localhost](http://localhost) in your web browser to set-up Containarr, and run your first container. Or, navigate to `http://<ip-of-your-host>` if you're running Containarr on another device.
 
+## Backups
+
+Connect an empty private Git repository on the Backups page. Containarr backs up its database after configuration changes. Additional backups run every 6 hours by default. Change **Interval** to adjust the schedule; `0` disables the schedule. The interval is saved across restarts, and an overdue backup runs on startup.
+
+When adding or editing an app, select **Include in Backup** for each volume containing user data. All volumes start excluded, so large media libraries remain out of backups unless selected. Both host paths and named Docker volumes are supported.
+
+Backups contain `db.sqlite` and compressed archives in `volumes/`. `volumes/manifest.json` maps each archive to its app and original volume mapping. To restore app data, stop the app, extract the matching archive into a temporary directory, and restore the contents of `backup-source` to the original host path or named volume, preserving ownership and permissions. Restore `db.sqlite` to Containarr’s data directory while Containarr is stopped.
+
+Volume files are copied while apps are running. Stop apps that need a consistent database snapshot before taking a manual backup. Deselecting a volume removes its archive from the latest snapshot; earlier copies remain in Git history. Your Git provider’s repository and file-size limits still apply.
+
 ## Changelog URL
 
 The Updates page always shows [CHANGELOG.md](https://github.com/Containarr/containarr/blob/main/CHANGELOG.md) below the update card. Set the `CONTAINARR_CHANGELOG_URL` environment variable to override the public Markdown URL. It defaults to `https://raw.githubusercontent.com/Containarr/containarr/main/CHANGELOG.md`.

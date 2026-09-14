@@ -36,6 +36,7 @@ export type AppResource = {
   dockerNetworkMode: "bridge" | "host"
   dockerNetworks: DockerNetworkAttachment[]
   dockerVolumes: string[]
+  backupVolumes: string[]
   dockerDevices: string[]
   dockerPorts: DockerPort[]
   dockerEnvironment: Record<string, string>
@@ -56,6 +57,7 @@ export type AppConfiguration = Pick<
   | "dockerNetworkMode"
   | "dockerNetworks"
   | "dockerVolumes"
+  | "backupVolumes"
   | "dockerDevices"
   | "dockerPorts"
   | "dockerEnvironment"
@@ -237,6 +239,7 @@ export type DomainSettings = {
 }
 
 export type BackupSettings = {
+  intervalHours: number
   repositoryUrl: string
   branch: string
   publicKey: string

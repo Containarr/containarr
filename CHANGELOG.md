@@ -1,3 +1,8 @@
+# v0.50.0
+
+* Added per-volume “Include in Backup” icon toggles with tooltips and green enabled states when adding or editing apps, with selected user data archived alongside the database.
+* Added automatic backups every 6 hours by default, with a configurable interval that persists across restarts. Configuration changes always trigger a backup.
+
 # v0.49.0
 
 * Changed app image update controls to show the status beneath Auto-update and display "Updating..." on the button while applying an update.

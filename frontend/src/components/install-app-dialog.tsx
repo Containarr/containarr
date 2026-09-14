@@ -7,6 +7,7 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
+  DatabaseBackup,
   File,
   FileUp,
   Folder,
@@ -50,6 +51,7 @@ type EnvironmentRow = {
   valueRequired?: boolean
 }
 type VolumeRow = {
+  includeInBackup?: boolean
   id: string
   host: string
   container: string
@@ -633,6 +635,7 @@ function RegistryInstallForm({
           policyId,
           dockerEnvironment: environmentToRecord(environment),
           dockerVolumes: volumesToBinds(volumes),
+          backupVolumes: volumesToBinds(volumes.filter((row) => row.includeInBackup)),
           dockerDevices: volumesToBinds(devices),
           dockerPorts: portsToDocker(ports),
           dockerUserId: userId === "" ? null : Number(userId),
@@ -814,7 +817,10 @@ function CustomAppForm({
     environmentFromRecord(defaults?.dockerEnvironment ?? {})
   )
   const [volumes, setVolumes] = useState<VolumeRow[]>(() =>
-    volumesFromRegistry(defaults?.dockerVolumes ?? [])
+    volumesFromRegistry(defaults?.dockerVolumes ?? []).map((row) => ({
+      ...row,
+      includeInBackup: defaults?.backupVolumes?.includes(`${row.host}:${row.container}`) ?? false,
+    }))
   )
   const [devices, setDevices] = useState<VolumeRow[]>(() =>
     volumesFromRegistry(defaults?.dockerDevices ?? [])
@@ -861,6 +867,7 @@ function CustomAppForm({
             dockerNetworkMode: networkMode,
             dockerNetworks,
             dockerVolumes: volumesToBinds(volumes),
+            backupVolumes: volumesToBinds(volumes.filter((row) => row.includeInBackup)),
             dockerDevices: volumesToBinds(devices),
             dockerPorts: portsToDocker(ports),
             dockerEnvironment: environmentToRecord(environment),
@@ -1505,13 +1512,17 @@ function VolumeEditor({
   return (
     <ListEditor
       title="Volumes"
-      hint="Bind a host path to a path inside the container."
+      hint="Mount a host path or named volume. Include only user data in backups; leave backups disabled for large media volumes."
       onAdd={() =>
         onChange([...value, { id: createRowId(), host: "", container: "" }])
       }
     >
       {value.map((row) => (
-        <EditorRow key={row.id} onRemove={() => onChange(removeById(value, row.id))}>
+        <EditorRow
+          key={row.id}
+          columns="grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto]"
+          onRemove={() => onChange(removeById(value, row.id))}
+        >
           <PathAutocomplete
             required={row.hostRequired}
             value={row.host}
@@ -1531,6 +1542,25 @@ function VolumeEditor({
             source="image"
             image={image}
           />
+          <button
+            type="button"
+            aria-label="Include in Backup"
+            aria-pressed={row.includeInBackup ?? false}
+            aria-describedby={`${row.id}-backup-tooltip`}
+            onClick={() => onChange(updateById(value, row.id, { includeInBackup: !row.includeInBackup }))}
+            className={`group relative flex size-9 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${row.includeInBackup
+              ? "bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 dark:text-emerald-400"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
+          >
+            <DatabaseBackup className="size-4" aria-hidden="true" />
+            <span
+              id={`${row.id}-backup-tooltip`}
+              role="tooltip"
+              className="invisible absolute right-0 bottom-full z-20 mb-2 w-max rounded-lg bg-foreground px-3 py-2 text-xs font-normal text-background opacity-0 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100 group-focus-visible:visible group-focus-visible:opacity-100"
+            >
+              {row.includeInBackup ? "Included in Backup" : "Include in Backup"}
+            </span>
+          </button>
         </EditorRow>
       ))}
     </ListEditor>

@@ -157,6 +157,7 @@ export function appConfigurationFromCompose(source: string): AppConfiguration {
     dockerNetworkMode: service.network_mode === "host" ? "host" : "bridge",
     dockerNetworks: [],
     dockerVolumes: volumes,
+    backupVolumes: [],
     dockerDevices: devices,
     dockerPorts: ports,
     dockerEnvironment: environment,

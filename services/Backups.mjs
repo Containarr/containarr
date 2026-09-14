@@ -1,2 +1,4 @@
 import Backups from '../lib/Backups.mjs';
-export default new Backups();
+const backups = new Backups();
+backups.start();
+export default backups;

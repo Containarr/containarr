@@ -14,6 +14,7 @@ import type { BackupSettings } from "@/lib/types"
 export function BackupsPage() {
   const settings = useApi<BackupSettings>("/api/v1/backup")
   const [repositoryUrl, setRepositoryUrl] = useState("")
+  const [intervalHours, setIntervalHours] = useState("6")
   const [branch, setBranch] = useState("main")
   const [saving, setSaving] = useState(false)
   const [backingUp, setBackingUp] = useState(false)
@@ -25,12 +26,13 @@ export function BackupsPage() {
     if (settings.status !== "success") return
     setRepositoryUrl(settings.data.repositoryUrl)
     setBranch(settings.data.branch)
+    setIntervalHours(String(settings.data.intervalHours))
   }, [settings.status, settings.status === "success" ? settings.data : null])
 
   if (settings.status === "loading") {
     return (
       <section>
-        <PageHeader title="Backups" description="Keep a Git copy of your Containarr database." />
+        <PageHeader title="Backups" description="Keep a Git copy of your configuration and selected app data." />
         <Skeleton className="mt-8 h-96 w-full max-w-3xl rounded-xl" />
       </section>
     )
@@ -49,7 +51,7 @@ export function BackupsPage() {
     try {
       const updated = await apiRequest<BackupSettings>("/api/v1/backup", {
         method: "PUT",
-        body: JSON.stringify({ repositoryUrl, branch }),
+        body: JSON.stringify({ repositoryUrl, branch, intervalHours: Number(intervalHours) }),
       })
       cacheApiResponse("/api/v1/backup", updated)
       setSavedSettings(updated)
@@ -82,7 +84,7 @@ export function BackupsPage() {
     <section>
       <PageHeader
         title="Backups"
-        description="Push db.sqlite to a private Git repository when your configuration changes."
+        description="Back up your configuration and selected app volumes to a private Git repository."
       />
 
       <div className="mt-8 max-w-3xl space-y-5">
@@ -147,6 +149,32 @@ export function BackupsPage() {
                   onChange={(event) => setBranch(event.target.value)}
                   className="mt-1.5 max-w-48 font-mono text-xs"
                 />
+              </div>
+
+              <div>
+                <label htmlFor="backup-interval" className="block text-sm font-medium">Interval</label>
+                <div className="mt-1.5 flex max-w-48 overflow-hidden rounded-lg border bg-background shadow-xs focus-within:border-foreground/30 focus-within:ring-2 focus-within:ring-ring/30">
+                  <Input
+                    id="backup-interval"
+                    type="number"
+                    min="0"
+                    max="8760"
+                    step="1"
+                    required
+                    value={intervalHours}
+                    onChange={(event) => setIntervalHours(event.target.value)}
+                    aria-describedby="backup-interval-unit"
+                    className="rounded-none border-0 shadow-none focus:ring-0"
+                  />
+                  <span id="backup-interval-unit" className="flex shrink-0 items-center border-l bg-muted/30 px-3 text-sm text-muted-foreground">
+                    hours
+                  </span>
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Set to 0 to disable scheduled backups. Configuration changes always trigger a backup.
+                  Select “Include in Backup” on volumes when adding or editing an app.
+                  Archives are copied while apps are running; stop an app first if its data requires a consistent snapshot.
+                </p>
               </div>
 
               {currentSettings.error && (
