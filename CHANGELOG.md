@@ -1,3 +1,8 @@
+# v0.52.0
+
+* Added /24 firewall suggestions alongside /16 suggestions for local networks.
+* Changed firewall IP ranges to appear in tooltips on hover or keyboard focus.
+
 # v0.51.0
 
 * Added a sortable Memory column to the Containers table, with live usage and an unavailable indicator when memory statistics cannot be read.

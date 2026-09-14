@@ -12,6 +12,7 @@ import { SortableTableHeader, type SortDirection } from "@/components/sortable-t
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Tooltip } from "@/components/ui/tooltip"
 import { ViewToggle } from "@/components/view-toggle"
 import { useApi } from "@/hooks/use-api"
 import { useStoredViewMode } from "@/hooks/use-stored-view-mode"
@@ -237,7 +238,9 @@ function PolicyCardGrid({
             ) : (
               <div className="flex flex-wrap gap-1.5">
                 {policy.allowedIps.map((entry) => (
-                  <span key={entry} title={getIpv4CidrRange(entry)} className="rounded-md bg-muted px-2 py-1 font-mono text-xs">{entry}</span>
+                  <Tooltip key={entry} text={getIpv4CidrRange(entry)} tabIndex={0}>
+                    <span className="rounded-md bg-muted px-2 py-1 font-mono text-xs">{entry}</span>
+                  </Tooltip>
                 ))}
                 {policy.allowedIps.length === 0 && (
                   <p className="text-xs text-muted-foreground">No addresses are allowed.</p>
@@ -353,7 +356,11 @@ function PolicyTable({
                   <span className="text-muted-foreground">Everyone</span>
                 ) : (
                   <div className="flex flex-wrap gap-1.5">
-                    {policy.allowedIps.map((entry) => <span key={entry} title={getIpv4CidrRange(entry)} className="rounded-md bg-muted px-2 py-1 font-mono text-xs">{entry}</span>)}
+                    {policy.allowedIps.map((entry) => (
+                      <Tooltip key={entry} text={getIpv4CidrRange(entry)} tabIndex={0}>
+                        <span className="rounded-md bg-muted px-2 py-1 font-mono text-xs">{entry}</span>
+                      </Tooltip>
+                    ))}
                     {policy.allowedIps.length === 0 && <span className="text-muted-foreground">None</span>}
                   </div>
                 )}

@@ -4,6 +4,7 @@ import { LoaderCircle, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Tooltip } from "@/components/ui/tooltip"
 import { useApi } from "@/hooks/use-api"
 import { apiRequest } from "@/lib/api"
 import type { PolicyResource } from "@/lib/types"
@@ -101,12 +102,14 @@ export function FirewallPolicyDialog({
                 {allowedIps.length > 0 && (
                   <div className="mb-2 flex flex-wrap gap-1.5">
                     {allowedIps.map((ip) => (
-                      <span key={ip} title={getIpv4CidrRange(ip)} className="inline-flex items-center gap-1 rounded-md bg-muted py-1 pr-1 pl-2 font-mono text-xs">
-                        {ip}
-                        <button type="button" aria-label={`Remove ${ip}`} className="flex size-5 items-center justify-center rounded hover:bg-background" onClick={() => setAllowedIps(allowedIps.filter((item) => item !== ip))}>
-                          <X className="size-3" />
-                        </button>
-                      </span>
+                      <Tooltip key={ip} text={getIpv4CidrRange(ip)}>
+                        <span className="inline-flex items-center gap-1 rounded-md bg-muted py-1 pr-1 pl-2 font-mono text-xs">
+                          {ip}
+                          <button type="button" aria-label={`Remove ${ip}`} className="flex size-5 items-center justify-center rounded hover:bg-background" onClick={() => setAllowedIps(allowedIps.filter((item) => item !== ip))}>
+                            <X className="size-3" />
+                          </button>
+                        </span>
+                      </Tooltip>
                     ))}
                   </div>
                 )}
@@ -132,15 +135,15 @@ export function FirewallPolicyDialog({
                 <div className="mt-3 flex flex-wrap items-center gap-1.5">
                   <span className="mr-0.5 text-xs text-muted-foreground">Suggestions</span>
                   {suggestedIps.map((ip) => (
-                    <button
-                      key={ip}
-                      type="button"
-                      title={getIpv4CidrRange(ip)}
-                      className="rounded-md border px-2 py-1 font-mono text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                      onClick={() => setAllowedIps([...allowedIps, ip])}
-                    >
-                      {ip}
-                    </button>
+                    <Tooltip key={ip} text={getIpv4CidrRange(ip)}>
+                      <button
+                        type="button"
+                        className="rounded-md border px-2 py-1 font-mono text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        onClick={() => setAllowedIps([...allowedIps, ip])}
+                      >
+                        {ip}
+                      </button>
+                    </Tooltip>
                   ))}
                 </div>
               )}
