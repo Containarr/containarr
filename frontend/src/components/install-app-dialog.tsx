@@ -8,6 +8,7 @@ import {
   ChevronDown,
   ChevronRight,
   DatabaseBackup,
+  ExternalLink,
   File,
   FileUp,
   Folder,
@@ -372,11 +373,9 @@ function InstallAppDialogContent({ onClose, onCreated }: DialogProps) {
                 {filteredRegistry.length ? (
                   <div className="grid gap-3 sm:grid-cols-2">
                     {filteredRegistry.map(([id, app]) => (
-                      <button
-                        type="button"
+                      <div
                         key={id}
-                        onClick={() => setSelected({ id, app })}
-                        className="flex flex-col rounded-xl border p-4 text-left transition-all hover:-translate-y-0.5 hover:border-foreground/25 hover:bg-muted/20 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        className="relative flex flex-col rounded-xl border p-4 transition-all hover:-translate-y-0.5 hover:border-foreground/25 hover:bg-muted/20 hover:shadow-sm"
                       >
                         <div className="flex items-start gap-3">
                           <AppLogo
@@ -385,16 +384,38 @@ function InstallAppDialogContent({ onClose, onCreated }: DialogProps) {
                             className="size-11"
                           />
                           <div className="min-w-0">
-                            <p className="font-medium">{app.name}</p>
-                            <p className="mt-0.5 text-xs text-muted-foreground">
-                              {app.category}
-                            </p>
+                            <button
+                              type="button"
+                              onClick={() => setSelected({ id, app })}
+                              className="text-left font-medium after:absolute after:inset-0 after:rounded-xl focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring"
+                            >
+                              {app.name}
+                            </button>
+                            <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
+                              <span>{app.category}</span>
+                              {app.website && /^https?:\/\//i.test(app.website) && (
+                                <>
+                                  <span aria-hidden="true">·</span>
+                                  <a
+                                    href={app.website}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    title={`Visit ${app.name} website`}
+                                    aria-label={`${app.name} project website (opens in a new tab)`}
+                                    className="relative inline-flex items-center gap-1 rounded-sm hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                  >
+                                    Website
+                                    <ExternalLink className="size-3" aria-hidden="true" />
+                                  </a>
+                                </>
+                              )}
+                            </div>
                           </div>
                         </div>
                         <p className="mt-3 flex-1 text-sm leading-relaxed text-muted-foreground">
                           {app.description}
                         </p>
-                      </button>
+                      </div>
                     ))}
                   </div>
                 ) : (

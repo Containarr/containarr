@@ -1,3 +1,8 @@
+# v0.54.0
+
+* Added project website links beside app categories in the New App registry browser, with an icon indicating they open in a new tab.
+* Changed the New App screenshot to show project website links.
+
 # v0.53.0
 
 * Removed automatic backups after configuration changes. Saving backup settings now starts a new interval without running a backup.
