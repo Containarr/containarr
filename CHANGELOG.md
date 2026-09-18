@@ -1,3 +1,7 @@
+# v0.55.0
+
+* Added an admin password reset command for Docker exec, with instructions in the README FAQ.
+
 # v0.54.0
 
 * Added project website links beside app categories in the New App registry browser, with an icon indicating they open in a new tab.

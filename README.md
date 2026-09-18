@@ -123,6 +123,16 @@ https://plex.mydomain.com → Router → 192.168.1.100:443 → Traefik → http:
 
 # FAQ
 
+**I forgot my admin password. How can I reset it?**
+
+Run this command on the Docker host while Containarr is running:
+
+```bash
+docker exec containarr node /app/reset-password.mjs
+```
+
+Replace `containarr` if your container has a different name. The command prints your admin username and a newly generated password, and signs out existing sessions. Sign in with these credentials, click your username in the sidebar, and choose **Change Password**. Your apps and settings are preserved, and no restart is needed.
+
 **My host already listens on port `80` and/or `443`, can I still use Containarr?**
 
 If you cannot disable the service that runs on those ports, for example on Synology NAS, you can customize the HTTP and HTTPS ports that Containarr listens on.

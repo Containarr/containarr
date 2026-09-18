@@ -50,6 +50,7 @@ COPY --from=frontend-builder /build/public /app/public
 COPY ./lib /app/lib
 COPY ./services /app/services
 COPY ./server.mjs /app/server.mjs
+COPY ./reset-password.mjs /app/reset-password.mjs
 COPY ./config.mjs /app/config.mjs
 COPY ./package.json /app/package.json
 COPY ./package-lock.json /app/package-lock.json
