@@ -812,12 +812,12 @@ function ImageUpdateControls({
           </span>
         </label>
         <div className="flex flex-wrap gap-2">
-          {app.imageUpdate.status === "available" && !app.autoUpdate && (
+          {(updating || (app.imageUpdate.status === "available" && !app.autoUpdate)) && (
             <Button
               type="button"
               onClick={() => void checkForUpdates(true)}
               disabled={busy}
-              className="h-8"
+              className="h-8 disabled:bg-muted disabled:text-muted-foreground"
             >
               <Download className="mr-1.5 size-3.5" />
               {updating ? "Updating..." : "Update now"}
@@ -833,7 +833,7 @@ function ImageUpdateControls({
             <RefreshCw
               className={`mr-1.5 size-3.5 ${checking || updating ? "animate-spin" : ""}`}
             />
-            {updating ? "Updating..." : "Check for Updates"}
+            {checking && !updating ? "Checking..." : "Check for Updates"}
           </Button>
         </div>
       </div>

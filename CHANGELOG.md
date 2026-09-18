@@ -1,3 +1,7 @@
+# v0.56.0
+
+* Fixed the app update button disappearing during an update; it now stays visible, greyed out, and shows "Updating..." until the update finishes.
+
 # v0.55.0
 
 * Added an admin password reset command for Docker exec, with instructions in the README FAQ.
