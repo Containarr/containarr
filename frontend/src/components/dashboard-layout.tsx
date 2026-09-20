@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import {
   ArrowRight,
+  Activity,
   Bell,
   Container,
   Database,
@@ -51,6 +52,10 @@ const settingsNavigation = [
   { label: "Updates", to: "/updates", icon: Download },
 ]
 
+const analyticsNavigation = [
+  { label: "Traffic", to: "/traffic", icon: Activity },
+]
+
 export function DashboardLayout() {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuButton = useRef<HTMLButtonElement>(null)
@@ -64,6 +69,8 @@ export function DashboardLayout() {
   )?.label ?? dockerNavigation.find(({ to }) =>
     location.pathname.startsWith(to)
   )?.label ?? settingsNavigation.find(({ to }) =>
+    location.pathname.startsWith(to)
+  )?.label ?? analyticsNavigation.find(({ to }) =>
     location.pathname.startsWith(to)
   )?.label ?? "Containarr"
 
@@ -378,6 +385,28 @@ function SidebarNavigation({
                 aria-label="Domain connection check failed"
               />
             )}
+          </NavLink>
+        ))}
+      </div>
+      <p className="mt-6 mb-2 px-2 text-[11px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+        Analytics
+      </p>
+      <div className="flex flex-col gap-1">
+        {analyticsNavigation.map(({ icon: Icon, label, to }) => (
+          <NavLink
+            key={to}
+            to={to}
+            onClick={onNavigate}
+            className={({ isActive }) =>
+              `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring ${
+                isActive
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-xs"
+                  : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
+              }`
+            }
+          >
+            <Icon className="size-4" aria-hidden="true" />
+            {label}
           </NavLink>
         ))}
       </div>

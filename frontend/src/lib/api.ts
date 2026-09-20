@@ -4,6 +4,7 @@ export async function apiRequest<T>(path: string, init?: RequestInit) {
     credentials: "same-origin",
     headers: {
       Accept: "application/json",
+      "X-Containarr-Client": "web-ui",
       ...(init?.body ? { "Content-Type": "application/json" } : {}),
       ...init?.headers,
     },

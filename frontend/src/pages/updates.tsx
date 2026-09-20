@@ -73,7 +73,7 @@ function UpdateStatusCard() {
 
       window.setTimeout(() => {
         const waitForContainarr = window.setInterval(() => {
-          fetch("/api/v1/auth/state", { cache: "no-store" })
+          fetch("/api/v1/auth/state", { cache: "no-store", headers: { "X-Containarr-Client": "web-ui" } })
             .then(response => {
               if (!response.ok) return
               window.clearInterval(waitForContainarr)

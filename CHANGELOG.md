@@ -1,6 +1,8 @@
-# Next
+# v0.58.0
 
 * Changed the Events table to show a maximum of 10 rows per page.
+* Added Analytics → Traffic to view the latest 100,000 HTTP requests from Traefik, with persistent logs and a Clear Logs button.
+* Changed Traffic logs to exclude Containarr API requests made by the web UI.
 
 # v0.57.0
 

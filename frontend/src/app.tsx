@@ -19,6 +19,7 @@ import { ProxiesPage } from "@/pages/proxies"
 import { ProxyDetailsPage } from "@/pages/proxy-details"
 import { FirewallPage } from "@/pages/firewall"
 import { EventsPage } from "@/pages/events"
+import { TrafficPage } from "@/pages/traffic"
 import { DomainSettingsPage } from "@/pages/settings"
 import { UpdatesPage } from "@/pages/updates"
 import { VolumesPage } from "@/pages/volumes"
@@ -97,6 +98,7 @@ function AppRoutes() {
         <Route path="/proxies" element={<ProxiesPage />} />
         <Route path="/proxies/:proxyId" element={<ProxyDetailsPage />} />
         <Route path="/firewall" element={<FirewallPage />} />
+        <Route path="/traffic" element={<TrafficPage />} />
         <Route path="/domain" element={<DomainSettingsPage />} />
         <Route path="/backups" element={<BackupsPage />} />
         <Route path="/updates" element={<UpdatesPage />} />
