@@ -1,3 +1,7 @@
+# Next
+
+* Changed the Events table to show a maximum of 10 rows per page.
+
 # v0.57.0
 
 * Fixed app updates to show "Updating..." inside the disabled Check for Updates button instead of a separate update button.

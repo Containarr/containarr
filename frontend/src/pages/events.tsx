@@ -337,7 +337,7 @@ export function EventsPage() {
             </tbody>
           </table>
         </div>
-        {events.status === "success" && events.data.total > 50 && <div className="mt-3 flex items-center justify-end gap-3 text-xs text-muted-foreground">
+        {events.status === "success" && events.data.total > events.data.pageSize && <div className="mt-3 flex items-center justify-end gap-3 text-xs text-muted-foreground">
           <span>Page {page} of {Math.ceil(events.data.total / events.data.pageSize)}</span>
           <Button variant="outline" disabled={page === 1} onClick={() => setPage(page - 1)} aria-label="Previous page"><ChevronLeft className="size-4" /></Button>
           <Button variant="outline" disabled={page * events.data.pageSize >= events.data.total} onClick={() => setPage(page + 1)} aria-label="Next page"><ChevronRight className="size-4" /></Button>
