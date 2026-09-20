@@ -1,3 +1,7 @@
+# v0.57.0
+
+* Fixed app updates to show "Updating..." inside the disabled Check for Updates button instead of a separate update button.
+
 # v0.56.0
 
 * Fixed the app update button disappearing during an update; it now stays visible, greyed out, and shows "Updating..." until the update finishes.
