@@ -247,6 +247,13 @@ export type BackupSettings = {
   backingUp: boolean
   lastBackupAt: string | null
   error: string | null
+  volumes: Array<{
+    appId: string
+    appName: string
+    hasLogo: boolean
+    logoVersion: string | null
+    volume: string
+  }>
 }
 
 export type DomainReachability = {

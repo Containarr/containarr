@@ -1,3 +1,10 @@
+# v0.59.0
+
+* Added a sortable Backups page table with linked app icons, live selected-volume sizes, warnings above 100 MB with backup-time and Git LFS limit guidance, and per-volume exclusion controls.
+* Changed backup volume guidance to appear with the Backed Up Volumes table.
+* Fixed the large-volume warning tooltip using an overly wide monospace layout.
+* Changed volume archives to use Git LFS while keeping the database and manifest in normal Git.
+
 # v0.58.0
 
 * Changed the Events table to show a maximum of 10 rows per page.

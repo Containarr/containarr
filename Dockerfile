@@ -19,7 +19,7 @@ ENV CONTAINARR_VERSION="${CONTAINARR_VERSION}"
 
 # Install system dependencies
 RUN apt-get update && \
-    apt-get install -y curl git openssh-client && \
+    apt-get install -y curl git git-lfs openssh-client && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 

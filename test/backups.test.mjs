@@ -74,6 +74,33 @@ test('backup settings reject invalid intervals before changing persisted configu
   assert.equal((await backups.getSettings()).intervalHours, 6);
 });
 
+test('backup settings list selected volumes and allow excluding them', async () => {
+  let saves = 0;
+  db.apps = [{
+    id: 'app-1',
+    name: 'Plex',
+    dockerVolumes: ['config:/config', '/media:/media'],
+    backupVolumes: ['config:/config', '/media:/media', 'config:/config'],
+    save: async () => { saves++; },
+  }];
+  assert.deepEqual((await backups.getSettings()).volumes, [
+    { appId: 'app-1', appName: 'Plex', hasLogo: false, logoVersion: null, volume: 'config:/config' },
+    { appId: 'app-1', appName: 'Plex', hasLogo: false, logoVersion: null, volume: '/media:/media' },
+  ]);
+
+  const app = { db: db.apps[0] };
+  const result = await backups.excludeVolume({ app, volume: '/media:/media' });
+  assert.equal(saves, 1);
+  assert.deepEqual(db.apps[0].backupVolumes, ['config:/config', 'config:/config']);
+  assert.deepEqual(result.volumes, [
+    { appId: 'app-1', appName: 'Plex', hasLogo: false, logoVersion: null, volume: 'config:/config' },
+  ]);
+  await assert.rejects(
+    backups.excludeVolume({ app, volume: '/media:/media' }),
+    { statusCode: 404 },
+  );
+});
+
 test('selected data is committed with a manifest; unselected media is never captured', async () => {
   db.apps = [{ id: 'app-1', name: 'Plex', dockerVolumes: ['config:/config', '/media:/media'], backupVolumes: ['config:/config'] }];
   const result = await backups.setSettings({ repositoryUrl });
@@ -90,7 +117,41 @@ test('selected data is committed with a manifest; unselected media is never capt
   assert.equal(manifest.volumes[0].volume, 'config:/config');
   assert.equal(manifest.volumes[0].appId, 'app-1');
   assert.match(manifest.volumes[0].archive, /^[a-f0-9]{64}\.tar\.gz$/);
-  assert.equal((await run('git', ['--git-dir', remote, 'show', `main:volumes/${manifest.volumes[0].archive}`])).stdout, 'archive:config:/config');
+  assert.equal(
+    (await run('git', ['--git-dir', remote, 'show', 'main:.gitattributes'])).stdout,
+    'volumes/*.tar.gz filter=lfs diff=lfs merge=lfs -text\n',
+  );
+  const pointer = (await run('git', ['--git-dir', remote, 'show', `main:volumes/${manifest.volumes[0].archive}`])).stdout;
+  assert.match(pointer, /^version https:\/\/git-lfs\.github\.com\/spec\/v1\noid sha256:[a-f0-9]{64}\nsize 22\n$/);
+  const restored = path.join(root, 'restored');
+  await run('git', ['clone', '--branch', 'main', remote, restored]);
+  assert.equal(await fs.readFile(path.join(restored, 'volumes', manifest.volumes[0].archive), 'utf8'), 'archive:config:/config');
+});
+
+test('existing regular archives migrate to Git LFS without rewriting earlier commits', async () => {
+  const local = path.join(root, 'regular-archives');
+  const legacyArchive = `${'a'.repeat(64)}.tar.gz`;
+  await run('git', ['clone', remote, local]);
+  await run('git', ['checkout', '--orphan', 'regular-archives'], { cwd: local });
+  await run('git', ['rm', '-rf', '.'], { cwd: local });
+  await fs.mkdir(path.join(local, 'volumes'));
+  await fs.writeFile(path.join(local, 'db.sqlite'), 'legacy database');
+  await fs.writeFile(path.join(local, 'volumes', 'manifest.json'), '{"version":1,"volumes":[]}\n');
+  await fs.writeFile(path.join(local, 'volumes', legacyArchive), 'legacy regular archive');
+  await run('git', ['add', '.'], { cwd: local });
+  await run('git', ['commit', '-m', 'Legacy regular archive'], { cwd: local });
+  await run('git', ['push', 'origin', 'regular-archives'], { cwd: local });
+
+  settings.set('backup_branch', 'regular-archives');
+  await backups.backup();
+  const manifest = JSON.parse((await run('git', ['--git-dir', remote, 'show', 'regular-archives:volumes/manifest.json'])).stdout);
+  const pointer = (await run('git', ['--git-dir', remote, 'show', `regular-archives:volumes/${manifest.volumes[0].archive}`])).stdout;
+  assert.match(pointer, /^version https:\/\/git-lfs\.github\.com\/spec\/v1\noid sha256:[a-f0-9]{64}\nsize 22\n$/);
+  assert.equal(
+    (await run('git', ['--git-dir', remote, 'show', `regular-archives^:volumes/${legacyArchive}`])).stdout,
+    'legacy regular archive',
+  );
+  settings.set('backup_branch', 'main');
 });
 
 test('failed capture preserves the remote backup and last successful time', async () => {
@@ -123,7 +184,7 @@ test('deselected and deleted volumes disappear from the latest snapshot', async 
   await backups.backup();
   assert.deepEqual(docker.captured, []);
   const { stdout } = await run('git', ['--git-dir', remote, 'ls-tree', '-r', '--name-only', 'main']);
-  assert.deepEqual(stdout.trim().split('\n'), ['db.sqlite', 'volumes/manifest.json']);
+  assert.deepEqual(stdout.trim().split('\n'), ['.gitattributes', 'db.sqlite', 'volumes/manifest.json']);
   db.apps = [];
   await backups.backup();
   assert.deepEqual(JSON.parse((await run('git', ['--git-dir', remote, 'show', 'main:volumes/manifest.json'])).stdout).volumes, []);
@@ -270,15 +331,24 @@ test('legacy database-only repositories remain supported', async () => {
   await run('git', ['checkout', 'main'], { cwd: local });
   await run('git', ['config', 'user.name', 'Test'], { cwd: local });
   await run('git', ['config', 'user.email', 'test@example.com'], { cwd: local });
-  await run('git', ['rm', '-r', 'volumes'], { cwd: local });
+  await run('git', ['rm', '-r', 'volumes', '.gitattributes'], { cwd: local });
   await run('git', ['commit', '-m', 'Database only'], { cwd: local });
   await run('git', ['push', 'origin', 'main'], { cwd: local });
   await backups.backup();
   assert.equal((await backups.getSettings()).error, null);
+  await run('git', ['pull', '--rebase', 'origin', 'main'], { cwd: local });
+  await fs.writeFile(path.join(local, '.gitattributes'), 'volumes/** filter=lfs diff=lfs merge=lfs -text\n');
+  await run('git', ['add', '.gitattributes'], { cwd: local });
+  await run('git', ['commit', '-m', 'Unsupported attributes'], { cwd: local });
+  await run('git', ['push', 'origin', 'main'], { cwd: local });
+  await assert.rejects(backups.backup(), /unsupported Git LFS attributes/);
+  await fs.writeFile(path.join(local, '.gitattributes'), 'volumes/*.tar.gz filter=lfs diff=lfs merge=lfs -text\n');
+  await run('git', ['add', '.gitattributes'], { cwd: local });
+  await run('git', ['commit', '-m', 'Restore backup attributes'], { cwd: local });
+  await run('git', ['push', 'origin', 'main'], { cwd: local });
   await fs.writeFile(path.join(local, 'unrelated.txt'), 'do not replace');
   await run('git', ['add', '.'], { cwd: local });
   await run('git', ['commit', '-m', 'Unrelated content'], { cwd: local });
-  await run('git', ['pull', '--rebase', 'origin', 'main'], { cwd: local });
   await run('git', ['push', 'origin', 'main'], { cwd: local });
   await assert.rejects(backups.backup(), /only Containarr backup files/);
 });

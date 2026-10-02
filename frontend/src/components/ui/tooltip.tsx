@@ -1,7 +1,9 @@
 import { useId, useLayoutEffect, useRef, useState, type ReactNode } from "react"
 import { createPortal } from "react-dom"
 
-export function Tooltip({ children, text, tabIndex }: { children: ReactNode; text?: string; tabIndex?: number }) {
+import { cn } from "@/lib/utils"
+
+export function Tooltip({ children, contentClassName, text, tabIndex }: { children: ReactNode; contentClassName?: string; text?: string; tabIndex?: number }) {
   const id = useId()
   const trigger = useRef<HTMLSpanElement>(null)
   const content = useRef<HTMLSpanElement>(null)
@@ -55,7 +57,10 @@ export function Tooltip({ children, text, tabIndex }: { children: ReactNode; tex
           ref={content}
           id={id}
           role="tooltip"
-          className="pointer-events-none fixed z-[100] max-w-[calc(100vw-1rem)] rounded-md bg-foreground px-2 py-1 font-mono text-xs text-background shadow-md"
+          className={cn(
+            "pointer-events-none fixed z-[100] max-w-[calc(100vw-1rem)] rounded-md bg-foreground px-2 py-1 font-mono text-xs text-background shadow-md",
+            contentClassName
+          )}
           style={position}
         >
           {text}
