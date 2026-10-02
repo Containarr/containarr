@@ -12,6 +12,7 @@ const remote = path.join(root, 'remote.git');
 const repositoryUrl = 'git@example.com:backup.git';
 const execFile = childProcess.execFile;
 const run = promisify(execFile);
+const gitState = { failNextPush: false };
 process.env.BACKUP_DIRECTORY = path.join(root, 'backups');
 const sqliteUrl = new URL('../services/SQLite.mjs', import.meta.url).href;
 const settingsUrl = new URL('../services/Settings.mjs', import.meta.url).href;
@@ -57,8 +58,14 @@ hooks.deregister();
 // Exercise real Git commits and pushes against a disposable local remote.
 childProcess.execFile = (command, args, ...rest) => execFile(command,
   command === 'git' ? args.map(arg => arg === repositoryUrl ? remote : arg) : args, ...rest);
-childProcess.execFile[promisify.custom] = (command, args, options) => run(command,
-  command === 'git' ? args.map(arg => arg === repositoryUrl ? remote : arg) : args, options);
+childProcess.execFile[promisify.custom] = async (command, args, options) => {
+  const mappedArgs = command === 'git' ? args.map(arg => arg === repositoryUrl ? remote : arg) : args;
+  if (command === 'git' && mappedArgs[0] === 'push' && gitState.failNextPush) {
+    gitState.failNextPush = false;
+    throw Object.assign(new Error('Push rejected: file too large'), { stderr: 'remote: file too large' });
+  }
+  return run(command, mappedArgs, options);
+};
 after(async () => {
   childProcess.execFile = execFile;
   await fs.rm(root, { recursive: true, force: true });
@@ -151,6 +158,38 @@ test('existing regular archives migrate to Git LFS without rewriting earlier com
     (await run('git', ['--git-dir', remote, 'show', `regular-archives^:volumes/${legacyArchive}`])).stdout,
     'legacy regular archive',
   );
+  settings.set('backup_branch', 'main');
+});
+
+test('failed initial pushes are discarded before retrying from a fresh checkout', async () => {
+  const branch = 'failed-initial-push';
+  settings.set('backup_branch', branch);
+  db.apps = [{
+    id: 'app-1',
+    name: 'Plex',
+    dockerVolumes: ['config:/config'],
+    backupVolumes: ['config:/config'],
+  }];
+  gitState.failNextPush = true;
+  await assert.rejects(backups.backup(), /file too large/);
+  await assert.rejects(
+    fs.access(path.join(process.env.BACKUP_DIRECTORY, 'repository')),
+    { code: 'ENOENT' },
+  );
+  await assert.rejects(run('git', ['--git-dir', remote, 'rev-parse', branch]));
+
+  db.apps[0].backupVolumes = [];
+  await backups.backup();
+  assert.equal((await run('git', ['--git-dir', remote, 'rev-list', '--count', branch])).stdout.trim(), '1');
+  assert.deepEqual(
+    (await run('git', ['--git-dir', remote, 'ls-tree', '-r', '--name-only', branch])).stdout.trim().split('\n'),
+    ['.gitattributes', 'db.sqlite', 'volumes/manifest.json'],
+  );
+  await assert.rejects(
+    fs.access(path.join(process.env.BACKUP_DIRECTORY, 'repository')),
+    { code: 'ENOENT' },
+  );
+  db.apps[0].backupVolumes = ['config:/config'];
   settings.set('backup_branch', 'main');
 });
 

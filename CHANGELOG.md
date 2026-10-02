@@ -1,3 +1,7 @@
+# v0.60.0
+
+* Fixed failed backup pushes contaminating later attempts by recreating and removing the local Git checkout for every backup.
+
 # v0.59.0
 
 * Added a sortable Backups page table with linked app icons, live selected-volume sizes, warnings above 100 MB with backup-time and Git LFS limit guidance, and per-volume exclusion controls.
