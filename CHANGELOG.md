@@ -1,3 +1,10 @@
+# v0.61.0
+
+* Fixed the mobile backup form placing Port and Keep Backups inputs beside their labels, and added a backups suffix.
+* Changed SFTP backups to remember server host keys automatically, removing the fingerprint field.
+* Changed S3 region to an optional override with automatic detection for AWS, Backblaze B2, and Cloudflare R2.
+* Added Git, S3, and SFTP backup strategies with destination settings and automatic retention for S3 and SFTP backups.
+
 # v0.60.0
 
 * Fixed failed backup pushes contaminating later attempts by recreating and removing the local Git checkout for every backup.

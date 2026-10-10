@@ -17,8 +17,18 @@ process.env.BACKUP_DIRECTORY = path.join(root, 'backups');
 const sqliteUrl = new URL('../services/SQLite.mjs', import.meta.url).href;
 const settingsUrl = new URL('../services/Settings.mjs', import.meta.url).href;
 const dockerUrl = new URL('../services/Docker.mjs', import.meta.url).href;
+const storageUrl = new URL('../lib/BackupStorage.mjs', import.meta.url).href;
 const hooks = registerHooks({
   load(url, context, nextLoad) {
+    if (url === storageUrl) return { format: 'module', shortCircuit: true, source: `
+      import fs from 'node:fs/promises';
+      export const state = { uploads: [], destination: null, fail: false };
+      export default async options => {
+        if (state.fail) throw new Error('Storage unavailable');
+        state.uploads.push(options);
+        await fs.copyFile(options.archivePath, state.destination);
+      };
+    ` };
     if (url === sqliteUrl) return { format: 'module', shortCircuit: true, source: `
       import fs from 'node:fs/promises';
       export const state = { apps: [], snapshots: 0 };
@@ -54,6 +64,7 @@ const { default: Backups } = await import('../lib/Backups.mjs');
 const { state: db } = await import(sqliteUrl);
 const { settings } = await import(settingsUrl);
 const { state: docker } = await import(dockerUrl);
+const { state: storage } = await import(storageUrl);
 hooks.deregister();
 // Exercise real Git commits and pushes against a disposable local remote.
 childProcess.execFile = (command, args, ...rest) => execFile(command,
@@ -390,4 +401,95 @@ test('legacy database-only repositories remain supported', async () => {
   await run('git', ['commit', '-m', 'Unrelated content'], { cwd: local });
   await run('git', ['push', 'origin', 'main'], { cwd: local });
   await assert.rejects(backups.backup(), /only Containarr backup files/);
+});
+
+
+test('S3 settings validate before saving, redact secrets, and preserve credentials on blank input', async () => {
+  const s3 = { endpoint: 'https://s3.example.com', region: 'us-east-1', bucket: 'backups', prefix: '/containarr/', accessKeyId: 'example-id', secretAccessKey: 'example-secret' };
+  const previous = new Map(settings);
+  for (const update of [
+    { strategy: 'unknown' },
+    { strategy: 's3', s3: { ...s3, endpoint: 'file:///tmp' } },
+    { strategy: 's3', s3: { ...s3, endpoint: 'https://user:password@example.com' } },
+    { strategy: 's3', s3: { ...s3, secretAccessKey: true } },
+    { strategy: 's3', s3, keepBackups: 0 },
+    { strategy: 's3', s3, keepBackups: 1.5 },
+  ]) {
+    await assert.rejects(backups.setSettings(update), TypeError);
+    assert.deepEqual(settings, previous);
+  }
+  const result = await backups.setSettings({ strategy: 's3', s3, keepBackups: 2, intervalHours: 1 });
+  assert.equal(result.strategy, 's3');
+  assert.equal(result.configured, true);
+  assert.equal(result.keepBackups, 2);
+  assert.equal(result.s3.prefix, 'containarr');
+  assert.equal(result.s3.hasSecretAccessKey, true);
+  assert.equal(JSON.stringify(result).includes('example-secret'), false);
+  assert.equal(result.lastBackupAt, null);
+  await backups.setSettings({ strategy: 's3', s3: { ...s3, secretAccessKey: '' } });
+  assert.equal(settings.get('backup_s3').secretAccessKey, 'example-secret');
+  await backups.setSettings({ repositoryUrl });
+  assert.equal((await backups.getSettings()).strategy, 'git');
+  assert.equal(settings.get('backup_s3').secretAccessKey, 'example-secret');
+  const automatic = await backups.setSettings({ strategy: 's3', s3: { ...s3, region: '' } });
+  assert.equal(automatic.s3.region, '');
+  const omitted = { ...s3 };
+  delete omitted.region;
+  assert.equal((await backups.setSettings({ strategy: 's3', s3: omitted })).s3.region, '');
+});
+
+test('SFTP validates its destination without requiring a fingerprint', async () => {
+  const sftp = { host: 'example.com', port: 22, username: 'backups', directory: '/backups' };
+  const previous = new Map(settings);
+  for (const invalid of [{ host: '' }, { port: 0 }, { port: '22' }, { directory: 'relative' }, { username: 'user\nother' }]) {
+    await assert.rejects(backups.setSettings({ strategy: 'sftp', sftp: { ...sftp, ...invalid } }), TypeError);
+    assert.deepEqual(settings, previous);
+  }
+  const result = await backups.setSettings({ strategy: 'sftp', sftp });
+  assert.equal(result.strategy, 'sftp');
+  assert.equal(result.configured, true);
+  assert.deepEqual(result.sftp, sftp);
+  assert.ok(result.publicKey.startsWith('ssh-ed25519 '));
+  settings.set('backup_sftp', { ...sftp, hostFingerprint: 'SHA256:' + 'a'.repeat(43) });
+  const updated = await backups.setSettings({ strategy: 'sftp', sftp });
+  assert.equal('hostFingerprint' in updated.sftp, false);
+  assert.equal(settings.get('backup_sftp').hostFingerprint, 'SHA256:' + 'a'.repeat(43));
+  await backups.setSettings({ strategy: 'sftp', sftp: { ...sftp, host: 'another.example.com' } });
+  assert.equal(settings.get('backup_sftp').hostFingerprint, undefined);
+});
+
+test('S3 and SFTP run scheduled snapshots without Git and preserve successful backups on failure', async t => {
+  db.apps = [{ id: 'app-1', name: 'Plex', dockerVolumes: ['config:/config', '/media:/media'], backupVolumes: ['config:/config'] }];
+  settings.delete('backup_repository_url');
+  let now = Date.now();
+  t.mock.method(Date, 'now', () => now);
+  for (const strategy of ['s3', 'sftp']) {
+    storage.destination = path.join(root, `${strategy}.tar`);
+    storage.uploads = [];
+    const instance = new Backups();
+    await instance.setSettings({ strategy, [strategy]: settings.get(`backup_${strategy}`), intervalHours: 1, keepBackups: 3 });
+    await instance.checkSchedule();
+    assert.equal(storage.uploads.length, 0);
+    now += 3_600_000;
+    await instance.checkSchedule();
+    assert.equal(storage.uploads.length, 1);
+    assert.equal(storage.uploads[0].strategy, strategy);
+    assert.equal(storage.uploads[0].keepBackups, 3);
+    assert.equal(storage.uploads[0].storageId, settings.get('backup_storage_id'));
+    const files = (await run('tar', ['-tf', storage.destination])).stdout;
+    assert.match(files, /db.sqlite/);
+    assert.match(files, /volumes\/manifest.json/);
+    assert.match(files, /volumes\/[a-f0-9]{64}\.tar\.gz/);
+    assert.doesNotMatch(files, /\.git|snapshot.tar/);
+    const manifest = JSON.parse((await run('tar', ['-xOf', storage.destination, 'volumes/manifest.json'])).stdout);
+    assert.equal(manifest.volumes.length, 1);
+    assert.equal(manifest.volumes[0].volume, 'config:/config');
+    await assert.rejects(fs.access(path.join(process.env.BACKUP_DIRECTORY, 'repository')), { code: 'ENOENT' });
+    const lastBackupAt = settings.get('backup_last_backup_at');
+    storage.fail = true;
+    await assert.rejects(instance.backup(), /Storage unavailable/);
+    assert.equal(settings.get('backup_last_backup_at'), lastBackupAt);
+    await assert.rejects(fs.access(path.join(process.env.BACKUP_DIRECTORY, 'repository')), { code: 'ENOENT' });
+    storage.fail = false;
+  }
 });

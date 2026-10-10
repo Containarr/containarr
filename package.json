@@ -1,6 +1,6 @@
 {
   "name": "@containarr/containarr",
-  "version": "0.60.0",
+  "version": "0.61.0",
   "scripts": {
     "test": "node --test",
     "serve:frontend": "npm --prefix frontend run dev -- --host",
@@ -11,6 +11,8 @@
     "build:docker": "docker build -t containarr ."
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1149.0",
+    "@aws-sdk/lib-storage": "^3.1149.0",
     "@sequelize/sqlite3": "^7.0.0-alpha.48",
     "acme-client": "^5.4.0",
     "debug": "^4.4.3",
@@ -19,6 +21,7 @@
     "markdown-it": "^15.0.1",
     "semver": "^7.8.5",
     "sequelize": "^6.37.8",
+    "ssh2-sftp-client": "^12.1.1",
     "web-push": "^3.6.7",
     "ws": "^8.21.3"
   }

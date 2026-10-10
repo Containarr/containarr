@@ -239,6 +239,22 @@ export type DomainSettings = {
 }
 
 export type BackupSettings = {
+  strategy: "git" | "s3" | "sftp"
+  keepBackups: number
+  s3: {
+    endpoint: string
+    region: string
+    bucket: string
+    prefix: string
+    accessKeyId: string
+    hasSecretAccessKey: boolean
+  }
+  sftp: {
+    host: string
+    port: number
+    username: string
+    directory: string
+  }
   intervalHours: number
   repositoryUrl: string
   branch: string
