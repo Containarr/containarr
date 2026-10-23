@@ -1,4 +1,4 @@
-FROM node:24.19.0-bookworm-slim AS frontend-builder
+FROM node:24.22.1-bookworm-slim AS frontend-builder
 
 WORKDIR /build/frontend
 
@@ -11,7 +11,7 @@ RUN npm run build
 FROM debian:bookworm-slim
 
 ARG TRAEFIK_VERSION=3.7.10
-ARG NODEJS_VERSION=24.19.0
+ARG NODEJS_VERSION=24.22.1
 ARG CONTAINARR_VERSION
 
 LABEL org.opencontainers.image.version="${CONTAINARR_VERSION}"

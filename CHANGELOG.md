@@ -1,3 +1,7 @@
+# v0.62.0
+
+* Changed the Docker build and runtime to Node.js 24.22.1, the latest LTS release.
+
 # v0.61.0
 
 * Fixed the mobile backup form placing Port and Keep Backups inputs beside their labels, and added a backups suffix.
