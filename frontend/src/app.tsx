@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AuthProvider, useAuth } from "@/hooks/use-auth"
 import { AppDetailsPage } from "@/pages/app-details"
+import { AdminPage } from "@/pages/admin"
 import { AppsPage } from "@/pages/apps"
 import { BackupsPage } from "@/pages/backups"
 import { ContainerDetailsPage } from "@/pages/container-details"
@@ -99,6 +100,7 @@ function AppRoutes() {
         <Route path="/proxies/:proxyId" element={<ProxyDetailsPage />} />
         <Route path="/firewall" element={<FirewallPage />} />
         <Route path="/traffic" element={<TrafficPage />} />
+        <Route path="/admin" element={<AdminPage />} />
         <Route path="/domain" element={<DomainSettingsPage />} />
         <Route path="/backups" element={<BackupsPage />} />
         <Route path="/updates" element={<UpdatesPage />} />

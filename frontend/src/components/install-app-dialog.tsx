@@ -1078,7 +1078,7 @@ function CustomAppForm({
   )
 }
 
-function PolicyField({
+export function PolicyField({
   onChange,
   value,
 }: {

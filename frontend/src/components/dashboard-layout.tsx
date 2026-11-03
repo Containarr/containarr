@@ -47,6 +47,7 @@ const dockerNavigation = [
 
 const settingsNavigation = [
   { label: "Domain", to: "/domain", icon: Globe2 },
+  { label: "Admin", to: "/admin", icon: ShieldCheck },
   { label: "Backups", to: "/backups", icon: DatabaseBackup },
   { label: "Events", to: "/events", icon: Bell },
   { label: "Updates", to: "/updates", icon: Download },

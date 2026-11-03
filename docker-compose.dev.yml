@@ -13,6 +13,7 @@ services:
       - ./services/:/app/services/
       - ./server.mjs:/app/server.mjs
       - ./reset-password.mjs:/app/reset-password.mjs
+      - ./reset-admin-firewall.mjs:/app/reset-admin-firewall.mjs
       - ./config.mjs:/app/config.mjs
       - ./package.json:/app/package.json
       - ./package-lock.json:/app/package-lock.json
