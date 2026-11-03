@@ -1,15 +1,10 @@
-# Next
+# v0.63.0
 
 * Changed the Admin URL field to appear disabled.
-
 * Added a Docker command and FAQ for resetting the Admin firewall policy to Public after a lockout.
-
 * Changed Admin settings to right-align Save below a divider and omit the saved confirmation message.
-
 * Changed the Admin firewall selector to use the app editor dropdown with policy icons.
-
 * Changed the Admin page domain description to link to Domain settings.
-
 * Added an Admin page with the admin URL and a firewall policy enforced by Traefik.
 
 # v0.62.0
